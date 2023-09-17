@@ -11,12 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import com.seiko.imageloader.ImageLoader
-import com.seiko.imageloader.cache.memory.maxSizePercent
-import com.seiko.imageloader.component.setupDefaultComponents
-import com.seiko.imageloader.defaultImageResultMemoryCache
-import com.seiko.imageloader.option.androidContext
-import okio.Path.Companion.toOkioPath
 
 class AndroidApp : Application() {
     companion object {
@@ -56,30 +50,4 @@ internal actual fun openUrl(url: String?) {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     AndroidApp.INSTANCE.startActivity(intent)
-}
-
-internal actual fun generateImageLoader(): ImageLoader {
-    return ImageLoader {
-        options {
-            androidContext(AndroidApp.INSTANCE.applicationContext)
-        }
-        components {
-            setupDefaultComponents()
-        }
-        interceptor {
-            // cache 100 success image result, without bitmap
-            defaultImageResultMemoryCache()
-            memoryCacheConfig {
-                // Set the max size to 25% of the app's available memory.
-                maxSizePercent(AndroidApp.INSTANCE.applicationContext, 0.25)
-            }
-            diskCacheConfig {
-                directory(
-                    AndroidApp.INSTANCE.applicationContext.cacheDir.resolve("image_cache")
-                        .toOkioPath(),
-                )
-                maxSizeBytes(512L * 1024 * 1024) // 512MB
-            }
-        }
-    }
 }

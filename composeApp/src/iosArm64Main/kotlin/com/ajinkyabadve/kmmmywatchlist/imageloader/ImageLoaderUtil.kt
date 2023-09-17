@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist
+package com.ajinkyabadve.kmmmywatchlist.imageloader
 
 import com.seiko.imageloader.ImageLoader
 import com.seiko.imageloader.component.setupDefaultComponents

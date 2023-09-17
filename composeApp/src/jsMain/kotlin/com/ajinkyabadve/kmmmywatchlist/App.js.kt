@@ -15,35 +15,3 @@ internal actual fun openUrl(url: String?) {
     url?.let { window.open(it) }
 }
 
-internal actual fun generateImageLoader(): ImageLoader {
-    return ImageLoader {
-        commonConfig()
-        components {
-            setupDefaultComponents(
-                httpClient = {
-                    HttpClient(Js.create()).config {
-                        append(HttpHeaders.AccessControlAllowOrigin, "*")
-                    }
-                },
-            )
-        }
-        interceptor {
-//            headers {
-// //                header("Access-Control-Allow-Origin: http://localhost:4200");
-// //                header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-// //                header("Access-Control-Allow-Headers: Content-Type, Authorization");
-//                append(HttpHeaders.AccessControlAllowOrigin, "*")
-//                append(HttpHeaders.AccessControlAllowMethods, "GET, POST, PUT")
-//                append(HttpHeaders.AccessControlMaxAge, "1800")
-//                append(HttpHeaders.AccessControlAllowHeaders, "Content-Type")
-//            }
-            memoryCacheConfig {
-                maxSizeBytes(32 * 1024 * 1024) // 32MB
-            }
-            diskCacheConfig(FakeFileSystem().apply { emulateUnix() }) {
-                directory(FileSystem.SYSTEM_TEMPORARY_DIRECTORY)
-                maxSizeBytes(256L * 1024 * 1024) // 256MB
-            }
-        }
-    }
-}

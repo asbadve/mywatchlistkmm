@@ -30,8 +30,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.ajinkyabadve.kmmmywatchlist.imageloader.generateImageLoader
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
-import com.seiko.imageloader.ImageLoader
 import com.seiko.imageloader.LocalImageLoader
 import com.seiko.imageloader.rememberImagePainter
 
@@ -105,4 +105,3 @@ internal fun App() = AppTheme {
 }
 
 internal expect fun openUrl(url: String?)
-internal expect fun generateImageLoader(): ImageLoader
