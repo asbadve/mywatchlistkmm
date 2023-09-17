@@ -1,0 +1,85 @@
+package com.ajinkyabadve.kmmmywatchlist
+
+import android.app.Activity
+import android.app.Application
+import android.content.Intent
+import android.graphics.Color
+import android.net.Uri
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.seiko.imageloader.ImageLoader
+import com.seiko.imageloader.cache.memory.maxSizePercent
+import com.seiko.imageloader.component.setupDefaultComponents
+import com.seiko.imageloader.defaultImageResultMemoryCache
+import com.seiko.imageloader.option.androidContext
+import okio.Path.Companion.toOkioPath
+
+class AndroidApp : Application() {
+    companion object {
+        lateinit var INSTANCE: AndroidApp
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        INSTANCE = this
+    }
+}
+
+class AppActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val systemBarColor = Color.parseColor("#80000000")
+        setContent {
+            val view = LocalView.current
+            if (!view.isInEditMode) {
+                SideEffect {
+                    val window = (view.context as Activity).window
+                    WindowCompat.setDecorFitsSystemWindows(window, false)
+                    window.statusBarColor = systemBarColor
+                    window.navigationBarColor = systemBarColor
+                }
+            }
+            App()
+        }
+    }
+}
+
+internal actual fun openUrl(url: String?) {
+    val uri = url?.let { Uri.parse(it) } ?: return
+    val intent = Intent().apply {
+        action = Intent.ACTION_VIEW
+        data = uri
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    AndroidApp.INSTANCE.startActivity(intent)
+}
+
+internal actual fun generateImageLoader(): ImageLoader {
+    return ImageLoader {
+        options {
+            androidContext(AndroidApp.INSTANCE.applicationContext)
+        }
+        components {
+            setupDefaultComponents()
+        }
+        interceptor {
+            // cache 100 success image result, without bitmap
+            defaultImageResultMemoryCache()
+            memoryCacheConfig {
+                // Set the max size to 25% of the app's available memory.
+                maxSizePercent(AndroidApp.INSTANCE.applicationContext, 0.25)
+            }
+            diskCacheConfig {
+                directory(
+                    AndroidApp.INSTANCE.applicationContext.cacheDir.resolve("image_cache")
+                        .toOkioPath(),
+                )
+                maxSizeBytes(512L * 1024 * 1024) // 512MB
+            }
+        }
+    }
+}
