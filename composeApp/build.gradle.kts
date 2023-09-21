@@ -60,7 +60,8 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.multiplatformSettings)
                 implementation(libs.koin.core)
-
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.ktor.client.content.negotiation)
             }
         }
 
@@ -150,6 +151,7 @@ compose.experimental {
 buildConfig {
     // BuildConfig configuration here.
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
+    buildConfigField("String", "TMDB_API_KEY", provider { "${project.properties["MY_WATCH_LIST_TMDB_API_KEY"]}" })
 }
 
 sqldelight {
