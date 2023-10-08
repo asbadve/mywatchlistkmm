@@ -1,23 +1,22 @@
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.ajinkyabadve.kmmmywatchlist.App
-import com.seiko.imageloader.ImageLoader
-import com.seiko.imageloader.component.setupDefaultComponents
-import com.seiko.imageloader.defaultImageResultMemoryCache
-import okio.Path.Companion.toOkioPath
+import com.ajinkyabadve.kmmmywatchlist.WindowSize
 import java.awt.Dimension
-import java.io.File
 
+@OptIn(ExperimentalMaterial3Api::class)
 fun main() = application {
+    val windowState = rememberWindowState(width = 800.dp, height = 600.dp)
     Window(
         title = "MyWatchList",
-        state = rememberWindowState(width = 800.dp, height = 600.dp),
+        state = windowState,
         onCloseRequest = ::exitApplication,
     ) {
-        window.minimumSize = Dimension(350, 600)
-        App()
+        window.minimumSize = Dimension(650, 900)
+        App(windowSize = WindowSize.basedOnWidth(windowState.size.width))
     }
 }
 

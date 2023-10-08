@@ -79,6 +79,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.android)
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.sqlDelight.driver.android)
+                implementation(libs.androidx.window)
             }
         }
 
@@ -99,7 +100,14 @@ kotlin {
             }
         }
 
+        val iosX64Main by getting
+        val iosArm64Main by getting
+        val iosSimulatorArm64Main by getting
         val iosMain by getting {
+            dependsOn(commonMain)
+            iosX64Main.dependsOn(this)
+            iosArm64Main.dependsOn(this)
+            iosSimulatorArm64Main.dependsOn(this)
             dependencies {
                 implementation(libs.ktor.client.darwin)
                 implementation(libs.sqlDelight.driver.native)

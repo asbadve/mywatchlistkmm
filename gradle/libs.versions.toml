@@ -49,6 +49,7 @@ sqlDelight-driver-native = { module = "app.cash.sqldelight:native-driver", versi
 sqlDelight-driver-js = { module = "app.cash.sqldelight:web-worker-driver", version.ref = "sqlDelight" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
+androidx-window = { group = "androidx.window", name = "window", version = "1.1.0" }
 
 [plugins]
 
