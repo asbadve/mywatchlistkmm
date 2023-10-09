@@ -21,8 +21,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.AssistChipDefaults.assistChipColors
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedAssistChip
@@ -52,6 +50,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.Tabs.DISCOVER
 import com.ajinkyabadve.kmmmywatchlist.Tabs.FAV
+import com.ajinkyabadve.kmmmywatchlist.Tabs.IMAGE_BASE_URL
 import com.ajinkyabadve.kmmmywatchlist.Tabs.MOVIES
 import com.ajinkyabadve.kmmmywatchlist.Tabs.NOW_PLAYING_MOVIES
 import com.ajinkyabadve.kmmmywatchlist.Tabs.PERSON
@@ -59,15 +58,16 @@ import com.ajinkyabadve.kmmmywatchlist.Tabs.POPULAR_MOVIES
 import com.ajinkyabadve.kmmmywatchlist.Tabs.TOP_RATED_MOVIES
 import com.ajinkyabadve.kmmmywatchlist.Tabs.TV_SHOWS
 import com.ajinkyabadve.kmmmywatchlist.Tabs.UPCOMING_MOVIES
+import com.ajinkyabadve.kmmmywatchlist.design.MovieCard
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
+import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.MovieListScreenState
+import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.NowPlayingMoviesViewModel
 import com.ajinkyabadve.kmmmywatchlist.imageloader.generateImageLoader
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_surface
 import com.seiko.imageloader.LocalImageLoader
 import com.seiko.imageloader.rememberImagePainter
-import com.ajinkyabadve.kmmmywatchlist.design.MovieCard
-import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.MovieListScreenState
-import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.NowPlayingMoviesViewModel
+import org.jetbrains.compose.resources.painterResource
 
 @ExperimentalMaterial3Api
 @Composable
@@ -79,7 +79,13 @@ internal fun App(windowSize: WindowSize) = AppTheme {
     ) {
         var selectedNavItem by remember { mutableStateOf(0) }
         var selectedTab by remember { mutableStateOf(0) }
-        val navItemList = listOf(MOVIES, TV_SHOWS, PERSON, DISCOVER, FAV)
+        val navItemList = listOf(
+            NavItem(MOVIES, painterResource("baseline_movie_24.xml")),
+            NavItem(TV_SHOWS, painterResource("baseline_tv_24.xml")),
+            NavItem(PERSON, painterResource("baseline_person_24.xml")),
+            NavItem(DISCOVER, painterResource("baseline_discover_24.xml")),
+            NavItem(FAV, painterResource("baseline_favorite_24.xml"))
+        )
         val tabItemList =
             listOf(NOW_PLAYING_MOVIES, UPCOMING_MOVIES, POPULAR_MOVIES, TOP_RATED_MOVIES)
         Scaffold(
@@ -121,11 +127,11 @@ internal fun App(windowSize: WindowSize) = AppTheme {
                             NavigationBarItem(
                                 icon = {
                                     Icon(
-                                        Icons.Filled.Favorite,
-                                        contentDescription = item,
+                                        item.icon,
+                                        contentDescription = item.title,
                                     )
                                 },
-                                label = { Text(item) },
+                                label = { Text(item.title) },
                                 selected = selectedNavItem == index,
                                 onClick = { selectedNavItem = index },
                             )
@@ -134,7 +140,6 @@ internal fun App(windowSize: WindowSize) = AppTheme {
                 }
             }
         ) { innerPadding ->
-
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.padding(innerPadding).background(md_theme_dark_surface)
@@ -148,11 +153,11 @@ internal fun App(windowSize: WindowSize) = AppTheme {
                                     modifier = Modifier.padding(8.dp),
                                     icon = {
                                         Icon(
-                                            Icons.Filled.Favorite,
-                                            contentDescription = item,
+                                            item.icon,
+                                            contentDescription = item.title,
                                         )
                                     },
-                                    label = { Text(item) },
+                                    label = { Text(item.title) },
                                     selected = selectedNavItem == index,
                                     onClick = { selectedNavItem = index },
                                 )
@@ -200,7 +205,7 @@ internal fun App(windowSize: WindowSize) = AppTheme {
                             ) {
                                 items(result.countriesList) { movie ->
                                     MovieRow(
-                                        "https://image.tmdb.org/t/p/w185/" + movie.posterPath,
+                                        IMAGE_BASE_URL + movie.posterPath,
                                         movie.title,
                                     )
                                 }
@@ -303,6 +308,8 @@ fun MovieRow(imageUrl: String?, title: String) {
     }
 }
 
+data class NavItem(val title: String, val icon: Painter)
+
 internal expect fun openUrl(url: String?)
 
 object Tabs {
@@ -315,4 +322,5 @@ object Tabs {
     const val PERSON = "Person"
     const val DISCOVER = "Discover"
     const val FAV = "My Fav"
+    const val IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w185/"
 }
