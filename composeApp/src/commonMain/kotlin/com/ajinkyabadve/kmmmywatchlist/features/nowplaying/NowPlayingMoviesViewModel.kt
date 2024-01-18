@@ -16,7 +16,7 @@ class NowPlayingMoviesViewModel {
         viewModelScope.launch(Dispatchers.Main) {
             state.emit(MovieListScreenState.Loading)
             try {
-                val response = nowPlayingRepository.getNowPlayingMovies()
+                val response = nowPlayingRepository.getNowPlayingMovies(1)
                 response.list?.let {
                     state.emit(
                         MovieListScreenState.Success(
@@ -33,7 +33,7 @@ class NowPlayingMoviesViewModel {
 }
 
 sealed interface MovieListScreenState {
-    object Loading : MovieListScreenState
+    data object Loading : MovieListScreenState
     data class Error(val message: String) : MovieListScreenState
     data class Success(
         val countriesList: List<Movie>,

@@ -14,9 +14,9 @@ class NowPlayingRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
 ) : NowPlayingRepository {
 
-    override suspend fun getNowPlayingMovies(): MoviePageResult {
+    override suspend fun getNowPlayingMovies(pageNo: Int): MoviePageResult {
         val response: HttpResponse = tmdbClient.client.get {
-            nowPlaying("now_playing", "1")
+            nowPlaying("now_playing", pageNo.toString())
         }
         return response.body()
     }

@@ -164,10 +164,10 @@ buildConfig {
 
 sqldelight {
     databases {
-        create("MyDatabase") {
-            // Database configuration here.
-            // https://cashapp.github.io/sqldelight
-            packageName.set("com.ajinkyabadve.kmmmywatchlist.db")
-        }
+//        create("MyDatabase") { //todo
+//            // Database configuration here.
+//            // https://cashapp.github.io/sqldelight
+//            packageName.set("com.ajinkyabadve.kmmmywatchlist.db")
+//        }
     }
 }

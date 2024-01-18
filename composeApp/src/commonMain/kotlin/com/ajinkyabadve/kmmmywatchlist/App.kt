@@ -72,6 +72,8 @@ import org.jetbrains.compose.resources.painterResource
 @ExperimentalMaterial3Api
 @Composable
 internal fun App(windowSize: WindowSize) = AppTheme {
+
+
     val viewModel = NowPlayingMoviesViewModel()
     val state = viewModel.state.collectAsState()
     CompositionLocalProvider(
@@ -187,6 +189,8 @@ internal fun App(windowSize: WindowSize) = AppTheme {
                         }
 
                     }
+
+
                     when (val result = state.value) {
                         is MovieListScreenState.Loading -> {
                             Box(
@@ -221,10 +225,14 @@ internal fun App(windowSize: WindowSize) = AppTheme {
                             }
                         }
                     }
+
+
                 }
             }
         }
     }
+
+
 }
 
 @Composable
