@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.window.layout.WindowMetricsCalculator
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 
 class AndroidApp : Application() {
     companion object {
@@ -47,7 +48,7 @@ class AppActivity : ComponentActivity() {
 }
 
 @Composable
-private fun Activity.rememberWindowSize(): WindowSize {
+private fun Activity.rememberWindowSize(): MoviesTab.WindowSize {
     val configuration = LocalConfiguration.current
     val windowMetrics = remember(configuration) {
         WindowMetricsCalculator.getOrCreate()
@@ -56,7 +57,7 @@ private fun Activity.rememberWindowSize(): WindowSize {
     val windowDpSize = with(LocalDensity.current) {
         windowMetrics.bounds.toComposeRect().size.toDpSize()
     }
-    return WindowSize.basedOnWidth(windowDpSize.width)
+    return MoviesTab.WindowSize.basedOnWidth(windowDpSize.width)
 }
 
 internal actual fun openUrl(url: String?) {

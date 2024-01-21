@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.nowplaying.repository
 
 import MyWatchList.composeApp.BuildConfig.TMDB_API_KEY
+import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.network.TmdbClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
@@ -8,15 +9,14 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.URLProtocol
 import io.ktor.http.encodedPath
-import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.model.MoviePageResult
 
 class NowPlayingRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
 ) : NowPlayingRepository {
 
-    override suspend fun getNowPlayingMovies(pageNo: Int): MoviePageResult {
+    override suspend fun getNowPlayingMovies(pageNo: Int, moveFetchType: String): MoviePageResult {
         val response: HttpResponse = tmdbClient.client.get {
-            nowPlaying("now_playing", pageNo.toString())
+            nowPlaying(moveFetchType, pageNo.toString())
         }
         return response.body()
     }

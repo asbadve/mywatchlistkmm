@@ -1,13 +1,14 @@
-package com.ajinkyabadve.kmmmywatchlist.features.nowplaying
+package com.ajinkyabadve.kmmmywatchlist.homepage.screens
 
+import cafe.adriel.voyager.core.model.ScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.model.Movie
+import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.repository.NowPlayingRepositoryImpl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.model.Movie
-import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.repository.NowPlayingRepositoryImpl
 
-class NowPlayingMoviesViewModel {
+class MoviesScreenModel(movieFetchType: String = "now_playing") : ScreenModel {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
     private val nowPlayingRepository = NowPlayingRepositoryImpl()
     val state = MutableStateFlow<MovieListScreenState>(MovieListScreenState.Loading)
@@ -16,7 +17,7 @@ class NowPlayingMoviesViewModel {
         viewModelScope.launch(Dispatchers.Main) {
             state.emit(MovieListScreenState.Loading)
             try {
-                val response = nowPlayingRepository.getNowPlayingMovies(1)
+                val response = nowPlayingRepository.getNowPlayingMovies(1, movieFetchType)
                 response.list?.let {
                     state.emit(
                         MovieListScreenState.Success(
@@ -29,6 +30,10 @@ class NowPlayingMoviesViewModel {
                 state.emit(MovieListScreenState.Error(e.message.toString()))
             }
         }
+    }
+
+    override fun onDispose() {
+        super.onDispose()
     }
 }
 

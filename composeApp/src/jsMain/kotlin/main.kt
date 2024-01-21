@@ -2,7 +2,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.CanvasBasedWindow
 import com.ajinkyabadve.kmmmywatchlist.App
-import com.ajinkyabadve.kmmmywatchlist.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import org.jetbrains.skiko.wasm.onWasmReady
 
 @ExperimentalMaterial3Api
@@ -11,7 +11,7 @@ fun main() {
     onWasmReady {
         CanvasBasedWindow("MyWatchList") {
             //todo pass actual size by calculating it
-            App(WindowSize.EXPANDED)
+            App(MoviesTab.WindowSize.EXPANDED)
         }
     }
 }

@@ -2,7 +2,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.window.ComposeUIViewController
 import com.ajinkyabadve.kmmmywatchlist.App
-import com.ajinkyabadve.kmmmywatchlist.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.seiko.imageloader.ImageLoader
 import com.seiko.imageloader.component.setupDefaultComponents
 import com.seiko.imageloader.defaultImageResultMemoryCache
@@ -15,7 +15,7 @@ import platform.UIKit.UIViewController
 @OptIn(ExperimentalMaterial3Api::class)
 fun MainViewController(): UIViewController {
 
-    return ComposeUIViewController { App(WindowSize.COMPACT) }
+    return ComposeUIViewController { App(MoviesTab.WindowSize.COMPACT) }
 }
 
 fun generateImageLoader(): ImageLoader {

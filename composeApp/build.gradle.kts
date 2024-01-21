@@ -46,11 +46,16 @@ kotlin {
         }
         val commonMain by getting {
             dependencies {
+                implementation("dev.chrisbanes.material3:material3-window-size-class-multiplatform:0.3.2")
                 implementation(compose.runtime)
                 implementation(compose.material3)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
                 implementation(libs.voyager.navigator)
+                implementation(libs.voyager.screenModel)
+                implementation(libs.voyager.tabNavigator)
+                implementation(libs.voyager.transitions)
+                implementation(libs.voyager.koin)
                 implementation(libs.composeImageLoader)
                 implementation(libs.napier)
                 implementation(libs.kotlinx.coroutines.core)
