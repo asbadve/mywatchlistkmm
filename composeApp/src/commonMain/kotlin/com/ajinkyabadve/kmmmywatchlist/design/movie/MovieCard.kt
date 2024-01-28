@@ -1,10 +1,9 @@
-package com.ajinkyabadve.kmmmywatchlist.design
+package com.ajinkyabadve.kmmmywatchlist.design.movie
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -29,7 +28,9 @@ fun MovieCard(
     accessibilityContentDescription: String? = null,
 ) {
     Card(
-        modifier = modifier.width(210.dp).height(275.dp)
+        modifier = modifier
+            .width(210.dp)
+            .fillMaxHeight()
             .semantics(mergeDescendants = true, properties = {
                 contentDescription =
                     accessibilityContentDescription ?: "$movieTitle, double tap to activate"
@@ -40,18 +41,17 @@ fun MovieCard(
         Column {
             Image(
                 modifier = modifier
-//                    .width(100.dp)
-//                    .height(150.dp),
-                    .fillMaxWidth()
-                    .fillMaxHeight(),
+                    .width(210.dp)
+                    .height(275.dp),
                 painter = painter,
                 contentScale = ContentScale.Crop,
                 contentDescription = null,
             )
             Text(
                 text = movieTitle,
-                modifier = modifier.padding(16.dp).semantics(mergeDescendants = true) {},
+                modifier = modifier.fillMaxHeight().padding(8.dp).semantics(mergeDescendants = true) {},
                 maxLines = 2,
+                minLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }

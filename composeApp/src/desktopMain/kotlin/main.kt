@@ -4,7 +4,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.ajinkyabadve.kmmmywatchlist.App
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
+import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import java.awt.Dimension
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -16,7 +16,7 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
     ) {
         window.minimumSize = Dimension(650, 900)
-        App(windowSize = MoviesTab.WindowSize.basedOnWidth(windowState.size.width))
+        App()
     }
 }
 

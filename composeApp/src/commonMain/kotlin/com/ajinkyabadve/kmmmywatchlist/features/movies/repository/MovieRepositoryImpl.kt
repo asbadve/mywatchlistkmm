@@ -1,7 +1,7 @@
-package com.ajinkyabadve.kmmmywatchlist.features.nowplaying.repository
+package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 
 import MyWatchList.composeApp.BuildConfig.TMDB_API_KEY
-import com.ajinkyabadve.kmmmywatchlist.features.nowplaying.model.MoviePageResult
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.network.TmdbClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
@@ -10,18 +10,18 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.URLProtocol
 import io.ktor.http.encodedPath
 
-class NowPlayingRepositoryImpl(
+class MovieRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
-) : NowPlayingRepository {
+) : MovieRepository {
 
-    override suspend fun getNowPlayingMovies(pageNo: Int, moveFetchType: String): MoviePageResult {
+    override suspend fun getMovies(pageNo: Int, moveFetchType: String): MoviePageResult {
         val response: HttpResponse = tmdbClient.client.get {
-            nowPlaying(moveFetchType, pageNo.toString())
+            mediaHttpBuilder(moveFetchType, pageNo.toString())
         }
         return response.body()
     }
 
-    private fun HttpRequestBuilder.nowPlaying(path: String, pageNumber: String) {
+    private fun HttpRequestBuilder.mediaHttpBuilder(path: String, pageNumber: String) {
         url {
             protocol = URLProtocol.HTTPS
             host = HOST

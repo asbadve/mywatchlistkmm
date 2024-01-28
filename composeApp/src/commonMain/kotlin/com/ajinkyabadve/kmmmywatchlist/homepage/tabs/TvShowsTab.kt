@@ -10,7 +10,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import cafe.adriel.voyager.transitions.SlideTransition
-import com.ajinkyabadve.kmmmywatchlist.homepage.screens.MoviesScreen
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesScreen
 
 object TvShowsTab : Tab {
 
@@ -21,7 +21,7 @@ object TvShowsTab : Tab {
 
             return remember {
                 TabOptions(
-                    index = 0u,
+                    index = 1u,
                     title = "Home",
                     icon = icon
                 )
@@ -33,11 +33,11 @@ object TvShowsTab : Tab {
     override fun Content() {
         val tabTitle = MoviesTab.options.title
         LifecycleEffect(
-            onStarted = { print("Navigator" + "Start tab $tabTitle") },
-            onDisposed = { print("Navigator" + "Dispose tab $tabTitle") }
+            onStarted = { print("NavigatorStart tab $tabTitle") },
+            onDisposed = { print("NavigatorDispose tab $tabTitle") }
         )
 
-        Navigator(screen = MoviesScreen("popular")) {
+        Navigator(screen = MoviesScreen()) {
             SlideTransition(it) { screen ->
                 screen.Content()
             }

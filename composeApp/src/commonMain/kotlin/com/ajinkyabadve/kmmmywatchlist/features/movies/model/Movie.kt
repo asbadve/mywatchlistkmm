@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.nowplaying.model
+package com.ajinkyabadve.kmmmywatchlist.features.movies.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
