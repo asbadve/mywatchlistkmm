@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 class MoviesScreenModel(movieFetchType: String = NOW_PLAYING_API_PATH) : ScreenModel {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
     private val movieRepository = MovieRepositoryImpl()
-    val movieState = MutableStateFlow<MovieListScreenState>(MovieListScreenState.Loading)
-    val movieFilterState = MutableStateFlow<MovieFilterState>(
+    internal val movieState = MutableStateFlow<MovieListScreenState>(MovieListScreenState.Loading)
+    internal val movieFilterState = MutableStateFlow<MovieFilterState>(
         MovieFilterState.Success(
             selectedChip = 0,
             chipItemList = chipList
@@ -36,7 +36,7 @@ class MoviesScreenModel(movieFetchType: String = NOW_PLAYING_API_PATH) : ScreenM
                         ),
                     )
                 }
-            } catch (e: Exception) {
+            } catch (e: Exception) {// TODO find another solution
                 e.printStackTrace()
                 movieState.emit(MovieListScreenState.Error(e.message.toString()))
             }
@@ -47,7 +47,7 @@ class MoviesScreenModel(movieFetchType: String = NOW_PLAYING_API_PATH) : ScreenM
         super.onDispose()
     }
 
-    fun onSelectChip(selectedChipIndex: Int) {
+    fun onChipSelected(selectedChipIndex: Int) {
         movieFilterState.update {
             MovieFilterState.Success(selectedChipIndex, chipList)
         }
@@ -91,14 +91,14 @@ class MoviesScreenModel(movieFetchType: String = NOW_PLAYING_API_PATH) : ScreenM
     }
 }
 
-sealed interface MovieFilterState {
+internal sealed interface MovieFilterState {
     data class Success(
         val selectedChip: Int = 0,
         val chipItemList: List<String> = listOf()
     ) : MovieFilterState
 }
 
-sealed interface MovieListScreenState {
+internal sealed interface MovieListScreenState {
     data object Loading : MovieListScreenState
     data class Error(val message: String) : MovieListScreenState
     data class Success(

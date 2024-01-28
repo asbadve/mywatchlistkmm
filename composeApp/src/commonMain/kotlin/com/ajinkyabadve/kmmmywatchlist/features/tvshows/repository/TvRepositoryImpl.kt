@@ -1,24 +1,23 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository
 
-import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
 import com.ajinkyabadve.kmmmywatchlist.network.builder.mediaHttpBuilder
 import com.ajinkyabadve.kmmmywatchlist.network.client.TmdbClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 
-class MovieRepositoryImpl(
+class TvRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
-) : MovieRepository {
-
-    override suspend fun getMovies(pageNo: Int, moveFetchType: String): MoviePageResult {
+) : TvRepository {
+    override suspend fun getTvShows(pageNo: Int, moveFetchType: String): TvPageResult {
         val response: HttpResponse = tmdbClient.client.get {
-            mediaHttpBuilder(moveFetchType, pageNo.toString(), MOVIE)
+            mediaHttpBuilder(moveFetchType, pageNo.toString(), TV)
         }
         return response.body()
     }
 
     private companion object {
-        const val MOVIE = "/3/movie/"
+        const val TV = "/3/tv/"
     }
 }

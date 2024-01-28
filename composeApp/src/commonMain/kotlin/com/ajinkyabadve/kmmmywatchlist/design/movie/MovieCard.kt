@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun MovieCard(
+fun MediaCard(
     modifier: Modifier = Modifier,
     movieTitle: String,
     painter: Painter,
@@ -57,7 +57,7 @@ fun MovieCard(
         }
     }
 }
-
+//TODO move to appropriate class or find another solution
 private fun String.toColor(): Color = Color(this.removePrefix("#").toLong(16) or 0x00000000FF000000)
 
 // @Preview(name = "Light Mode")

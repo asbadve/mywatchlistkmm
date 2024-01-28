@@ -5,6 +5,7 @@ package com.ajinkyabadve.kmmmywatchlist
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -105,6 +106,7 @@ internal fun App() = AppTheme {
                 if (windowSize == WindowSize.EXPANDED) {
 
                     NavigationRail(content = {
+                        Spacer(Modifier.weight(1f))
                         NavigationRailItem(
                             modifier = Modifier.padding(8.dp),
                             icon = {
@@ -117,6 +119,7 @@ internal fun App() = AppTheme {
                             selected = tabNavigator.current.key == MoviesTab.key,
                             onClick = { tabNavigator.current = MoviesTab },
                         )
+                        Spacer(Modifier.weight(1f))
                         NavigationRailItem(
                             modifier = Modifier.padding(8.dp),
                             icon = {
@@ -129,6 +132,7 @@ internal fun App() = AppTheme {
                             selected = tabNavigator.current.key == TvShowsTab.key,
                             onClick = { tabNavigator.current = TvShowsTab },
                         )
+                        Spacer(Modifier.weight(1f))
                     })
                 }
                 Column {

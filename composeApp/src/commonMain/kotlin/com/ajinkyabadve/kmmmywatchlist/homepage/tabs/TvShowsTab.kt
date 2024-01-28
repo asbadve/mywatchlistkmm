@@ -10,7 +10,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import cafe.adriel.voyager.transitions.SlideTransition
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesScreen
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvScreen
 
 object TvShowsTab : Tab {
 
@@ -22,7 +22,7 @@ object TvShowsTab : Tab {
             return remember {
                 TabOptions(
                     index = 1u,
-                    title = "Home",
+                    title = "Tv shows",
                     icon = icon
                 )
             }
@@ -37,7 +37,7 @@ object TvShowsTab : Tab {
             onDisposed = { print("NavigatorDispose tab $tabTitle") }
         )
 
-        Navigator(screen = MoviesScreen()) {
+        Navigator(screen = TvScreen()) {
             SlideTransition(it) { screen ->
                 screen.Content()
             }

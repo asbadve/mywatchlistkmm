@@ -1,6 +1,4 @@
-@file:OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
-
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,23 +30,23 @@ import com.ajinkyabadve.kmmmywatchlist.design.movie.movieListScrollableChips
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.seiko.imageloader.rememberImagePainter
 
-@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
-class MoviesScreen : Screen {
+class TvScreen : Screen {
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
     override fun Content() {
         val windowSizeClass = calculateWindowSizeClass()
-        val viewModel = rememberScreenModel(MoviesTab.Tabs.MOVIES, factory = {
-            MoviesScreenModel()
+        val viewModel = rememberScreenModel(MoviesTab.Tabs.TV_SHOWS, factory = {
+            TvScreenModel()
         })
-        val state = viewModel.movieState.collectAsState()
-        val movieFilterState = viewModel.movieFilterState.collectAsState()
+        val state = viewModel.tvState.collectAsState()
+        val tvFilterStateState = viewModel.tvFilterState.collectAsState()
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            movieFilterChips(movieFilterState, viewModel)
+            tvFilterChips(tvFilterStateState, viewModel)
             when (val result = state.value) {
-                is MovieListScreenState.Loading -> {
+                is TvListScreenState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                     ) {
@@ -56,7 +54,7 @@ class MoviesScreen : Screen {
                     }
                 }
 
-                is MovieListScreenState.Success -> {
+                is TvListScreenState.Success -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -66,7 +64,7 @@ class MoviesScreen : Screen {
                             contentPadding = PaddingValues(8.dp),
                         ) {
                             items(result.movieList) { movie ->
-                                movieRow(
+                                tvRow(
                                     MoviesTab.Tabs.IMAGE_BASE_URL + movie.posterPath,
                                     movie.title,
                                 )
@@ -75,7 +73,7 @@ class MoviesScreen : Screen {
                     }
                 }
 
-                is MovieListScreenState.Error -> {
+                is TvListScreenState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                     ) {
@@ -84,14 +82,15 @@ class MoviesScreen : Screen {
                 }
             }
         }
+
     }
 
     @Composable
-    private fun movieFilterChips(
-        movieFilterState: State<MovieFilterState>, viewModel: MoviesScreenModel
+    private fun tvFilterChips(
+        tvFilterStateState: State<TvFilterState>, viewModel: TvScreenModel
     ) {
-        movieFilterState.value.let {
-            if (it is MovieFilterState.Success) {
+        tvFilterStateState.value.let {
+            if (it is TvFilterState.Success) {
                 movieListScrollableChips(selectedChip = it.selectedChip,
                     chipItemList = it.chipItemList,
                     onClick = { index ->
@@ -102,7 +101,7 @@ class MoviesScreen : Screen {
     }
 
     @Composable
-    private fun movieRow(imageUrl: String?, title: String) {
+    private fun tvRow(imageUrl: String?, title: String) {
         var painter: Painter? = null
         imageUrl?.let {
             painter = rememberImagePainter(url = imageUrl, filterQuality = FilterQuality.Medium)
@@ -118,4 +117,3 @@ class MoviesScreen : Screen {
         }
     }
 }
-

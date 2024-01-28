@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.network
+package com.ajinkyabadve.kmmmywatchlist.network.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
@@ -11,7 +11,7 @@ class TmdbClient {
     internal val client = HttpClient {
         expectSuccess = true
         install(HttpTimeout) {
-            val timeout = 30000L
+            val timeout = TIME_OUT
             connectTimeoutMillis = timeout
             requestTimeoutMillis = timeout
             socketTimeoutMillis = timeout
@@ -29,5 +29,10 @@ class TmdbClient {
 
     object TmdbApiClient {
         val newInstance: TmdbClient = TmdbClient()
+    }
+
+    private companion object {
+        const val TIME_OUT = 30000L
+
     }
 }
