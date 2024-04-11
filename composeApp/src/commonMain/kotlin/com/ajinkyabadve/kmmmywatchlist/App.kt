@@ -3,7 +3,9 @@
 package com.ajinkyabadve.kmmmywatchlist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,127 +39,159 @@ import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.TvShowsTab
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_surface
+import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_surface
 import org.jetbrains.compose.resources.painterResource
 
+@Suppress("ktlint:standard:function-naming", "detekt:FunctionNaming")
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @ExperimentalMaterial3Api
 @Composable
-internal fun App() = AppTheme {
-    val windowSize = getWindowSize(calculateWindowSizeClass())
-    TabNavigator(MoviesTab, tabDisposable = {
-        TabDisposable(
-            navigator = it, tabs = listOf(MoviesTab, TvShowsTab)
-        )
-    }) { tabNavigator ->
-        Scaffold(modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars), topBar = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (windowSize == WindowSize.COMPACT) {
-                    TopAppBar(
-                        title = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth()
-                                    .padding(start = 0.dp, 16.dp, 16.dp, 16.dp)
-                            ) {
-                                SearchBox(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    hint = "Search for Movies & Tv shows",
-                                    onClick = {},
-                                )
-                            }
-                        },
-                    )
+internal fun App() =
+    AppTheme {
+        val windowSize = getWindowSize(calculateWindowSizeClass())
+        TabNavigator(MoviesTab, tabDisposable = {
+            TabDisposable(
+                navigator = it,
+                tabs = listOf(MoviesTab, TvShowsTab),
+            )
+        }) { tabNavigator ->
+            Scaffold(
+                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
+                topBar = {
+                    topAppBar(windowSize)
+                },
+                bottomBar = {
+                    bottomAppBar(windowSize, tabNavigator)
+                },
+            ) { innerPadding ->
+                appScreenContent(innerPadding, windowSize, tabNavigator)
+            }
+        }
+    }
+
+@Composable
+private fun appScreenContent(
+    innerPadding: PaddingValues,
+    windowSize: WindowSize,
+    tabNavigator: TabNavigator,
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier =
+            Modifier.padding(innerPadding)
+                .background(if (isSystemInDarkTheme()) md_theme_dark_surface else md_theme_light_surface),
+    ) {
+        if (windowSize == WindowSize.EXPANDED) {
+            NavigationRail(content = {
+                Spacer(Modifier.weight(1f))
+                NavigationRailItem(
+                    modifier = Modifier.padding(8.dp),
+                    icon = {
+                        Icon(
+                            painterResource("baseline_movie_24.xml"),
+                            contentDescription = MoviesTab.Tabs.MOVIES,
+                        )
+                    },
+                    label = { Text(MoviesTab.Tabs.MOVIES) },
+                    selected = tabNavigator.current.key == MoviesTab.key,
+                    onClick = { tabNavigator.current = MoviesTab },
+                )
+                Spacer(Modifier.weight(1f))
+                NavigationRailItem(
+                    modifier = Modifier.padding(8.dp),
+                    icon = {
+                        Icon(
+                            painterResource("baseline_tv_24.xml"),
+                            contentDescription = MoviesTab.Tabs.TV_SHOWS,
+                        )
+                    },
+                    label = { Text(MoviesTab.Tabs.TV_SHOWS) },
+                    selected = tabNavigator.current.key == TvShowsTab.key,
+                    onClick = { tabNavigator.current = TvShowsTab },
+                )
+                Spacer(Modifier.weight(1f))
+            })
+        }
+        Column {
+            if (windowSize == WindowSize.EXPANDED || windowSize == WindowSize.MEDIUM) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    SearchBox(
+                        hint = "Search Movies, Tv shows, Person",
+                        modifier = Modifier.wrapContentHeight(),
+                    ) { }
                 }
             }
-        }, bottomBar = {
-            if (windowSize == WindowSize.COMPACT || windowSize == WindowSize.MEDIUM) {
-                NavigationBar {
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                painterResource("baseline_movie_24.xml"),
-                                contentDescription = MoviesTab.Tabs.MOVIES,
-                            )
-                        },
-                        label = { Text(MoviesTab.Tabs.MOVIES) },
-                        selected = tabNavigator.current.key == MoviesTab.key,//selectedNavItem == index
-                        onClick = { tabNavigator.current = MoviesTab },
+            CurrentTab()
+        }
+    }
+}
+
+@Composable
+private fun bottomAppBar(
+    windowSize: WindowSize,
+    tabNavigator: TabNavigator,
+) {
+    if (windowSize == WindowSize.COMPACT || windowSize == WindowSize.MEDIUM) {
+        NavigationBar {
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        painterResource("baseline_movie_24.xml"),
+                        contentDescription = MoviesTab.Tabs.MOVIES,
                     )
+                },
+                label = { Text(MoviesTab.Tabs.MOVIES) },
+                selected = tabNavigator.current.key == MoviesTab.key, // selectedNavItem == index
+                onClick = { tabNavigator.current = MoviesTab },
+            )
 
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                painterResource("baseline_tv_24.xml"),
-                                contentDescription = MoviesTab.Tabs.TV_SHOWS,
-                            )
-                        },
-                        label = { Text(MoviesTab.Tabs.TV_SHOWS) },
-                        selected = tabNavigator.current.key == TvShowsTab.key,//selectedNavItem == index
-                        onClick = { tabNavigator.current = TvShowsTab },
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        painterResource("baseline_tv_24.xml"),
+                        contentDescription = MoviesTab.Tabs.TV_SHOWS,
                     )
-                }
-            }
-        }) { innerPadding ->
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.padding(innerPadding).background(md_theme_dark_surface)
-            ) {
-                if (windowSize == WindowSize.EXPANDED) {
+                },
+                label = { Text(MoviesTab.Tabs.TV_SHOWS) },
+                selected = tabNavigator.current.key == TvShowsTab.key, // selectedNavItem == index
+                onClick = { tabNavigator.current = TvShowsTab },
+            )
+        }
+    }
+}
 
-                    NavigationRail(content = {
-                        Spacer(Modifier.weight(1f))
-                        NavigationRailItem(
-                            modifier = Modifier.padding(8.dp),
-                            icon = {
-                                Icon(
-                                    painterResource("baseline_movie_24.xml"),
-                                    contentDescription = MoviesTab.Tabs.MOVIES,
-                                )
-                            },
-                            label = { Text(MoviesTab.Tabs.MOVIES) },
-                            selected = tabNavigator.current.key == MoviesTab.key,
-                            onClick = { tabNavigator.current = MoviesTab },
+@Composable
+@ExperimentalMaterial3Api
+private fun topAppBar(windowSize: WindowSize) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (windowSize == WindowSize.COMPACT) {
+            TopAppBar(
+                title = {
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .padding(start = 0.dp, 16.dp, 16.dp, 16.dp),
+                    ) {
+                        SearchBox(
+                            modifier = Modifier.fillMaxWidth(),
+                            hint = "Search for Movies & Tv shows",
+                            onClick = {},
                         )
-                        Spacer(Modifier.weight(1f))
-                        NavigationRailItem(
-                            modifier = Modifier.padding(8.dp),
-                            icon = {
-                                Icon(
-                                    painterResource("baseline_tv_24.xml"),
-                                    contentDescription = MoviesTab.Tabs.TV_SHOWS,
-                                )
-                            },
-                            label = { Text(MoviesTab.Tabs.TV_SHOWS) },
-                            selected = tabNavigator.current.key == TvShowsTab.key,
-                            onClick = { tabNavigator.current = TvShowsTab },
-                        )
-                        Spacer(Modifier.weight(1f))
-                    })
-                }
-                Column {
-                    if (windowSize == WindowSize.EXPANDED || windowSize == WindowSize.MEDIUM) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            SearchBox(
-                                hint = "Search Movies, Tv shows, Person",
-                                modifier = Modifier.wrapContentHeight()
-                            ) { }
-                        }
-
                     }
-                    CurrentTab()
-                }
-            }
+                },
+            )
         }
     }
 }
 
 private fun getWindowSize(windowSizeClass: WindowSizeClass) =
-    WindowSize.basedOnWindowSizeClass(windowSizeClass.widthSizeClass.toString())
+    WindowSize.basedOnWindowSizeClass(
+        windowSizeClass.widthSizeClass.toString(),
+    )
 
 internal expect fun openUrl(url: String?)
-
-

@@ -2,120 +2,95 @@
 
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
-import com.ajinkyabadve.kmmmywatchlist.core.getGridColumn
-import com.ajinkyabadve.kmmmywatchlist.design.movie.MediaCard
+import cafe.adriel.voyager.navigator.tab.CurrentTab
+import cafe.adriel.voyager.navigator.tab.TabDisposable
+import cafe.adriel.voyager.navigator.tab.TabNavigator
 import com.ajinkyabadve.kmmmywatchlist.design.movie.movieListScrollableChips
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.NOW_PLAYING_MOVIES
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.POPULAR_MOVIES
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.TOP_RATED_MOVIES
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.UPCOMING_MOVIES
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.chipList
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.nowplaying.NowPlayingMovieScreen
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.popular.PopularMovieScreen
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.toprated.TopRatedMovieScreen
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.upcoming.UpcomingMovieScreen
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
-import com.seiko.imageloader.rememberImagePainter
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class MoviesScreen : Screen {
     @Composable
     override fun Content() {
-        val windowSizeClass = calculateWindowSizeClass()
-        val viewModel = rememberScreenModel(MoviesTab.Tabs.MOVIES, factory = {
-            MoviesScreenModel()
-        })
-        val state = viewModel.movieState.collectAsState()
+        val viewModel =
+            rememberScreenModel(MoviesTab.Tabs.MOVIES, factory = {
+                MoviesScreenModel()
+            })
         val movieFilterState = viewModel.movieFilterState.collectAsState()
+        TabNavigator(NowPlayingMovieScreen, tabDisposable = {
+            TabDisposable(
+                navigator = it,
+                tabs =
+                    listOf(
+                        NowPlayingMovieScreen,
+                        UpcomingMovieScreen,
+                        PopularMovieScreen,
+                        TopRatedMovieScreen,
+                    ),
+            )
+        }) { tabNavigator ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                val stateFilter = movieFilterState.value as MovieFilterState.Success
+                movieFilterChips(
+                    stateFilter.selectedChip,
+                    stateFilter.chipItemList,
+                ) { selectedIndex ->
+                    viewModel.onChipSelected(selectedIndex)
+                    when (chipList[selectedIndex]) {
+                        NOW_PLAYING_MOVIES -> {
+                            tabNavigator.current = NowPlayingMovieScreen
+                        }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            movieFilterChips(movieFilterState, viewModel)
-            when (val result = state.value) {
-                is MovieListScreenState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
+                        UPCOMING_MOVIES -> {
+                            tabNavigator.current = UpcomingMovieScreen
+                        }
 
-                is MovieListScreenState.Success -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        LazyVerticalGrid(
-                            state = rememberLazyGridState(),
-                            columns = GridCells.Fixed(windowSizeClass.getGridColumn()),
-                            contentPadding = PaddingValues(8.dp),
-                        ) {
-                            items(result.movieList) { movie ->
-                                movieRow(
-                                    MoviesTab.Tabs.IMAGE_BASE_URL + movie.posterPath,
-                                    movie.title,
-                                )
-                            }
+                        POPULAR_MOVIES -> {
+                            tabNavigator.current = PopularMovieScreen
+                        }
+
+                        TOP_RATED_MOVIES -> {
+                            tabNavigator.current = TopRatedMovieScreen
                         }
                     }
                 }
-
-                is MovieListScreenState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = result.message)
-                    }
-                }
+                CurrentTab()
             }
         }
     }
 
     @Composable
     private fun movieFilterChips(
-        movieFilterState: State<MovieFilterState>, viewModel: MoviesScreenModel
+        selectedChip: Int,
+        chipItemList: List<String>,
+        onClick: (index: Int) -> Unit,
     ) {
-        movieFilterState.value.let {
-            if (it is MovieFilterState.Success) {
-                movieListScrollableChips(selectedChip = it.selectedChip,
-                    chipItemList = it.chipItemList,
-                    onClick = { index ->
-                        viewModel.onChipSelected(index)
-                    })
-            }
-        }
-    }
-
-    @Composable
-    private fun movieRow(imageUrl: String?, title: String) {
-        var painter: Painter? = null
-        imageUrl?.let {
-            painter = rememberImagePainter(url = imageUrl, filterQuality = FilterQuality.Medium)
-        }
-        Row(Modifier.padding(8.dp)) {
-            painter?.let {
-                MediaCard(
-                    Modifier,
-                    title,
-                    it,
-                )
-            }
+        Column {
+            movieListScrollableChips(
+                selectedChip = selectedChip,
+                chipItemList = chipItemList,
+                onClick = { index ->
+                    onClick.invoke(index)
+                },
+            )
         }
     }
 }
-
