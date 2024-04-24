@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
+package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,9 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.core.getGridColumn
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.NINTH_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.SIXTH_INDEX
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

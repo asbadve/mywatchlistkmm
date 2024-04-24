@@ -13,7 +13,7 @@ import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.TOP_RATED_API_PATH
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.screenContent
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.screenContent
 import io.github.aakira.napier.log
 
 @ExperimentalMaterial3WindowSizeClassApi
