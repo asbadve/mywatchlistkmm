@@ -191,7 +191,7 @@ private fun topAppBar(windowSize: WindowSize) {
 
 private fun getWindowSize(windowSizeClass: WindowSizeClass) =
     WindowSize.basedOnWindowSizeClass(
-        windowSizeClass.widthSizeClass.toString(),
+        windowSizeClass.widthSizeClass,
     )
 
 internal expect fun openUrl(url: String?)

@@ -8,7 +8,7 @@ data class MoviePageResult(
     @SerialName("page") var page: Int,
     @SerialName("results") var list: List<Movie>?,
     @SerialName("total_results") var totalResults: Int?,
-    @SerialName("total_pages") var totalPages: Int?,
+    @SerialName("total_pages") var totalPages: Int,
 )
 
 @Serializable

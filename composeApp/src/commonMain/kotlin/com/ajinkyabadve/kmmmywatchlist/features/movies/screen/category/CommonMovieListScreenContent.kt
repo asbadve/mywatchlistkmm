@@ -32,9 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.core.getGridColumn
+import com.ajinkyabadve.kmmmywatchlist.core.getHorizontalPadding
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.NINTH_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.SIXTH_INDEX
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.THIRD_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import kotlinx.coroutines.CoroutineScope
@@ -51,10 +52,10 @@ fun screenContent(
     val shouldStartPaginate =
         remember {
             derivedStateOf {
-                viewModel.canPaginate && (
+                (
                     lazyColumnListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                        ?: -NINTH_INDEX
-                ) >= (lazyColumnListState.layoutInfo.totalItemsCount - SIXTH_INDEX)
+                        ?: -SIXTH_INDEX
+                ) >= (lazyColumnListState.layoutInfo.totalItemsCount - THIRD_INDEX)
             }
         }
     LaunchedEffect(key1 = shouldStartPaginate.value) {
@@ -63,6 +64,7 @@ fun screenContent(
         }
     }
     LazyVerticalGrid(
+        modifier = Modifier.padding(horizontal = windowSizeClass.getHorizontalPadding()),
         state = lazyColumnListState,
         columns = GridCells.Fixed(windowSizeClass.getGridColumn()),
         contentPadding = PaddingValues(8.dp),

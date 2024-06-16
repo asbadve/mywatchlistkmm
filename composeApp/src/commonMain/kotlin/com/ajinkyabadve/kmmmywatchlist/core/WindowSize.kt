@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.core
 
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -12,11 +13,10 @@ enum class WindowSize {
 
     // Factory method that creates an instance of the class based on window width
     companion object {
-
-        fun basedOnWindowSizeClass(windowWidthType: String): WindowSize {
+        fun basedOnWindowSizeClass(windowWidthType: WindowWidthSizeClass): WindowSize {
             return when (windowWidthType) {
-                "WindowWidthSizeClass.Compact" -> COMPACT
-                "WindowWidthSizeClass.Medium" -> MEDIUM
+                WindowWidthSizeClass.Compact -> COMPACT
+                WindowWidthSizeClass.Medium -> MEDIUM
                 else -> EXPANDED
             }
         }
@@ -32,7 +32,7 @@ enum class WindowSize {
 }
 
 fun WindowSizeClass.getGridColumn(): Int {
-    return when (WindowSize.basedOnWindowSizeClass(widthSizeClass.toString())) {
+    return when (WindowSize.basedOnWindowSizeClass(this.widthSizeClass)) {
         WindowSize.COMPACT -> {
             2
         }
@@ -43,6 +43,22 @@ fun WindowSizeClass.getGridColumn(): Int {
 
         WindowSize.MEDIUM -> {
             3
+        }
+    }
+}
+
+fun WindowSizeClass.getHorizontalPadding(): Dp {
+    return when (WindowSize.basedOnWindowSizeClass(this.widthSizeClass)) {
+        WindowSize.COMPACT -> {
+            0.dp
+        }
+
+        WindowSize.EXPANDED -> {
+            50.dp
+        }
+
+        WindowSize.MEDIUM -> {
+            0.dp
         }
     }
 }

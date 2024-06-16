@@ -24,7 +24,7 @@ class MovieListScreenModel(
     internal val movieList = mutableStateListOf<Movie>()
 
     private var page by mutableStateOf(1)
-    var canPaginate by mutableStateOf(false)
+    private var canPaginate by mutableStateOf(false)
     var listState by mutableStateOf(ListState.IDLE)
 
     init {
@@ -40,7 +40,7 @@ class MovieListScreenModel(
                 try {
                     val response = movieRepository.getMovies(page, movieFetchType)
                     response.list?.let {
-                        canPaginate = response.page <= response.totalPages!!
+                        canPaginate = response.page <= response.totalPages
                         if (isFirstPage()) {
                             movieList.clear()
                             movieList.addAll(it)

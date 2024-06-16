@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_secondaryContainer
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_secondaryContainer
 
-
+@Suppress("ktlint:standard:function-naming", "LongParameterList", "FunctionNaming")
 @Composable
 fun SearchBox(
     modifier: Modifier = Modifier,
@@ -60,6 +60,7 @@ fun SearchBox(
     )
 }
 
+@Suppress("ktlint:standard:function-naming", "LongParameterList", "FunctionNaming")
 @Composable
 private fun InternalSearchBox(
     shape: Shape,
@@ -71,30 +72,30 @@ private fun InternalSearchBox(
     onClick: () -> Unit,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-
-    ) {
+) {
     Column(
         verticalArrangement = Arrangement.Center,
-        modifier = modifier.height(45.dp)
-            .wrapContentSize(Alignment.CenterStart)
-            .wrapContentWidth()
-            .clickable(
-                onClick = onClick,
-                enabled = enabled,
-                role = Role.Button,
-                interactionSource = interactionSource,
-                indication = rememberRipple(
-                    bounded = true,
-                ),
-            ),
+        modifier =
+            modifier.height(45.dp)
+                .wrapContentSize(Alignment.CenterStart)
+                .wrapContentWidth(),
     ) {
         BoxWithConstraints(
             contentAlignment = Alignment.CenterStart,
-            modifier = modifier.fillMaxHeight()
-                .clip(shape)
-                .background(
-                    if (isSystemInDarkTheme()) md_theme_dark_secondaryContainer else md_theme_light_secondaryContainer
-                ),
+            modifier =
+                modifier.fillMaxHeight()
+                    .clip(shape)
+                    .background(getBackgroundColor(isSystemInDarkTheme()), shape)
+                    .clickable(
+                        onClick = onClick,
+                        enabled = enabled,
+                        role = Role.Button,
+                        interactionSource = interactionSource,
+                        indication =
+                            rememberRipple(
+                                bounded = true,
+                            ),
+                    ),
         ) {
             Row(
                 modifier = Modifier,
@@ -111,7 +112,7 @@ private fun InternalSearchBox(
                 }
                 Text(
                     hint ?: "",
-                    modifier = Modifier.padding(start = 0.dp, end = 16.dp),
+                    modifier = Modifier.padding(start = 0.dp, end = 16.dp).align(Alignment.CenterVertically),
                     maxLines = 1,
                     fontSize = 16.sp,
                     overflow = TextOverflow.Ellipsis,
@@ -120,3 +121,10 @@ private fun InternalSearchBox(
         }
     }
 }
+
+private fun getBackgroundColor(isDark: Boolean) =
+    if (isDark) {
+        md_theme_dark_secondaryContainer
+    } else {
+        md_theme_light_secondaryContainer
+    }

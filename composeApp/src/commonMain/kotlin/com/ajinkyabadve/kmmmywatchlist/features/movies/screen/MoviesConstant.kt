@@ -11,8 +11,8 @@ object MoviesConstant {
     const val POPULAR_API_PATH = "popular"
     const val TOP_RATED_API_PATH = "top_rated"
 
-    const val NINTH_INDEX = 9
     const val SIXTH_INDEX = 6
+    const val THIRD_INDEX = 3
 
     val chipList =
         listOf(
