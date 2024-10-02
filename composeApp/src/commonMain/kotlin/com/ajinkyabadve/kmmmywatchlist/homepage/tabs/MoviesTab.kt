@@ -13,9 +13,7 @@ import cafe.adriel.voyager.navigator.tab.TabOptions
 import cafe.adriel.voyager.transitions.SlideTransition
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesScreen
 
-
 object MoviesTab : Tab {
-
     override val options: TabOptions
         @Composable
         get() {
@@ -24,10 +22,9 @@ object MoviesTab : Tab {
                 TabOptions(
                     index = 0u,
                     title = "Home",
-                    icon = icon
+                    icon = icon,
                 )
             }
-
         }
 
     @Composable
@@ -35,7 +32,7 @@ object MoviesTab : Tab {
         val tabTitle = options.title
         LifecycleEffect(
             onStarted = { print("NavigatorStart tab $tabTitle") },
-            onDisposed = { print("NavigatorDispose tab $tabTitle") }
+            onDisposed = { print("NavigatorDispose tab $tabTitle") },
         )
 
         Navigator(screen = MoviesScreen()) {
@@ -48,11 +45,6 @@ object MoviesTab : Tab {
     data class NavItem(val title: String, val icon: Painter)
 
     object Tabs {
-        const val MOVIES = "Movies"
-        const val TV_SHOWS = "Tv shows"
-        const val PERSON = "Person"
-        const val DISCOVER = "Discover"
-        const val FAV = "My Fav"
         const val IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w185/"
     }
 }

@@ -22,14 +22,14 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.nowplayin
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.popular.PopularMovieScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.toprated.TopRatedMovieScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.upcoming.UpcomingMovieScreen
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.AppTabs
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class MoviesScreen : Screen {
     @Composable
     override fun Content() {
         val viewModel =
-            rememberScreenModel(MoviesTab.Tabs.MOVIES, factory = {
+            rememberScreenModel(AppTabs.MOVIES, factory = {
                 MoviesScreenModel()
             })
         val movieFilterState = viewModel.movieFilterState.collectAsState()

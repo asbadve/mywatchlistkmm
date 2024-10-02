@@ -11,8 +11,19 @@ enum class WindowSize {
     EXPANDED,
     ;
 
+    fun isCompact() = this == COMPACT
+
+    fun isMedium() = this == MEDIUM
+
+    fun isExpanded() = this == EXPANDED
+
     // Factory method that creates an instance of the class based on window width
     companion object {
+        fun getWindowSize(windowSizeClass: WindowSizeClass) =
+            basedOnWindowSizeClass(
+                windowSizeClass.widthSizeClass,
+            )
+
         fun basedOnWindowSizeClass(windowWidthType: WindowWidthSizeClass): WindowSize {
             return when (windowWidthType) {
                 WindowWidthSizeClass.Compact -> COMPACT

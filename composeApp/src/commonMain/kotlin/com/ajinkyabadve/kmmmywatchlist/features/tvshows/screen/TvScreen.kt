@@ -24,9 +24,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
-import com.ajinkyabadve.kmmmywatchlist.core.getGridColumn
 import com.ajinkyabadve.kmmmywatchlist.design.movie.MediaCard
 import com.ajinkyabadve.kmmmywatchlist.design.movie.movieListScrollableChips
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.AppTabs
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.seiko.imageloader.rememberImagePainter
 
@@ -35,20 +35,22 @@ class TvScreen : Screen {
     @Composable
     override fun Content() {
         val windowSizeClass = calculateWindowSizeClass()
-        val viewModel = rememberScreenModel(MoviesTab.Tabs.TV_SHOWS, factory = {
-            TvScreenModel()
-        })
+        val viewModel =
+            rememberScreenModel(AppTabs.TV_SHOWS, factory = {
+                TvScreenModel()
+            })
         val state = viewModel.tvState.collectAsState()
         val tvFilterStateState = viewModel.tvFilterState.collectAsState()
 
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             tvFilterChips(tvFilterStateState, viewModel)
             when (val result = state.value) {
                 is TvListScreenState.Loading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
@@ -56,11 +58,12 @@ class TvScreen : Screen {
 
                 is TvListScreenState.Success -> {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         LazyVerticalGrid(
                             state = rememberLazyGridState(),
-                            columns = GridCells.Fixed(windowSizeClass.getGridColumn()),
+//                            columns = GridCells.Fixed(windowSizeClass.getGridColumn()),
+                            columns = GridCells.Adaptive(minSize = 210.dp),
                             contentPadding = PaddingValues(8.dp),
                         ) {
                             items(result.movieList) { movie ->
@@ -75,33 +78,39 @@ class TvScreen : Screen {
 
                 is TvListScreenState.Error -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(text = result.message)
                     }
                 }
             }
         }
-
     }
 
     @Composable
     private fun tvFilterChips(
-        tvFilterStateState: State<TvFilterState>, viewModel: TvScreenModel
+        tvFilterStateState: State<TvFilterState>,
+        viewModel: TvScreenModel,
     ) {
         tvFilterStateState.value.let {
             if (it is TvFilterState.Success) {
-                movieListScrollableChips(selectedChip = it.selectedChip,
+                movieListScrollableChips(
+                    selectedChip = it.selectedChip,
                     chipItemList = it.chipItemList,
                     onClick = { index ->
                         viewModel.onChipSelected(index)
-                    })
+                    },
+                )
             }
         }
     }
 
     @Composable
-    private fun tvRow(imageUrl: String?, title: String) {
+    private fun tvRow(
+        imageUrl: String?,
+        title: String,
+    ) {
         var painter: Painter? = null
         imageUrl?.let {
             painter = rememberImagePainter(url = imageUrl, filterQuality = FilterQuality.Medium)

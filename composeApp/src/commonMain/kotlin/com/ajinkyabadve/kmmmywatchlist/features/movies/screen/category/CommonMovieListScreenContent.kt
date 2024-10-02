@@ -29,10 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.ajinkyabadve.kmmmywatchlist.core.getGridColumn
-import com.ajinkyabadve.kmmmywatchlist.core.getHorizontalPadding
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.SIXTH_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.THIRD_INDEX
@@ -64,15 +61,15 @@ fun screenContent(
         }
     }
     LazyVerticalGrid(
-        modifier = Modifier.padding(horizontal = windowSizeClass.getHorizontalPadding()),
         state = lazyColumnListState,
-        columns = GridCells.Fixed(windowSizeClass.getGridColumn()),
+        columns = GridCells.Adaptive(minSize = 200.dp),
         contentPadding = PaddingValues(8.dp),
     ) {
         items(movies) {
             mediaMovieRow(
                 MoviesTab.Tabs.IMAGE_BASE_URL + it.posterPath,
                 it.title,
+                modifier = Modifier,
             )
         }
         listStates(
@@ -205,7 +202,7 @@ private fun pageLoadingState() {
     ) {
         Text(text = "Pagination Loading")
 
-        CircularProgressIndicator(color = Color.Black)
+        CircularProgressIndicator()
     }
 }
 
@@ -223,6 +220,6 @@ private fun firstLoadingState() {
             text = "Refresh Loading",
         )
 
-        CircularProgressIndicator(color = Color.Black)
+        CircularProgressIndicator()
     }
 }

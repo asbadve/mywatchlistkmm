@@ -5,6 +5,7 @@ package com.ajinkyabadve.kmmmywatchlist
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,7 +25,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,6 +35,7 @@ import cafe.adriel.voyager.navigator.tab.TabDisposable
 import cafe.adriel.voyager.navigator.tab.TabNavigator
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.AppTabs
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.TvShowsTab
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
@@ -48,7 +49,7 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 internal fun App() =
     AppTheme {
-        val windowSize = getWindowSize(calculateWindowSizeClass())
+        val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass())
         TabNavigator(MoviesTab, tabDisposable = {
             TabDisposable(
                 navigator = it,
@@ -82,68 +83,61 @@ private fun appScreenContent(
                 .background(if (isSystemInDarkTheme()) md_theme_dark_surface else md_theme_light_surface),
     ) {
         if (windowSize == WindowSize.EXPANDED) {
-            NavigationRail(content = {
-                Spacer(Modifier.weight(1f))
-                NavigationRailItem(
-                    modifier = Modifier.padding(8.dp),
-                    icon = {
-                        Icon(
-                            painterResource("baseline_movie_24.xml"),
-                            contentDescription = MoviesTab.Tabs.MOVIES,
-                        )
-                    },
-                    label = { Text(MoviesTab.Tabs.MOVIES) },
-                    selected = tabNavigator.current.key == MoviesTab.key,
-                    onClick = { tabNavigator.current = MoviesTab },
-                )
-                Spacer(Modifier.weight(1f))
-                NavigationRailItem(
-                    modifier = Modifier.padding(8.dp),
-                    icon = {
-                        Icon(
-                            painterResource("baseline_tv_24.xml"),
-                            contentDescription = MoviesTab.Tabs.TV_SHOWS,
-                        )
-                    },
-                    label = { Text(MoviesTab.Tabs.TV_SHOWS) },
-                    selected = tabNavigator.current.key == TvShowsTab.key,
-                    onClick = { tabNavigator.current = TvShowsTab },
-                )
-                Spacer(Modifier.weight(1f))
-            })
+            NavigationRail(
+                content = navigationRailContent(tabNavigator),
+            )
         }
-        Column {
-            if (windowSize == WindowSize.EXPANDED || windowSize == WindowSize.MEDIUM) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    SearchBox(
-                        hint = "Search Movies, Tv shows, Person",
-                        modifier = Modifier.wrapContentHeight(),
-                    ) { }
-                }
-            }
-            CurrentTab()
-        }
+        CurrentTab()
     }
 }
+
+private fun navigationRailContent(tabNavigator: TabNavigator): @Composable
+(ColumnScope.() -> Unit) =
+    {
+        Spacer(Modifier.weight(1f))
+        NavigationRailItem(
+            modifier = Modifier.padding(8.dp),
+            icon = {
+                Icon(
+                    painterResource("baseline_movie_24.xml"),
+                    contentDescription = AppTabs.MOVIES,
+                )
+            },
+            label = { Text(AppTabs.MOVIES) },
+            selected = tabNavigator.current.key == MoviesTab.key,
+            onClick = { tabNavigator.current = MoviesTab },
+        )
+        Spacer(Modifier.weight(1f))
+        NavigationRailItem(
+            modifier = Modifier.padding(8.dp),
+            icon = {
+                Icon(
+                    painterResource("baseline_tv_24.xml"),
+                    contentDescription = AppTabs.TV_SHOWS,
+                )
+            },
+            label = { Text(AppTabs.TV_SHOWS) },
+            selected = tabNavigator.current.key == TvShowsTab.key,
+            onClick = { tabNavigator.current = TvShowsTab },
+        )
+        Spacer(Modifier.weight(1f))
+    }
 
 @Composable
 private fun bottomAppBar(
     windowSize: WindowSize,
     tabNavigator: TabNavigator,
 ) {
-    if (windowSize == WindowSize.COMPACT || windowSize == WindowSize.MEDIUM) {
+    if (windowSize.isCompact() || windowSize.isMedium()) {
         NavigationBar {
             NavigationBarItem(
                 icon = {
                     Icon(
                         painterResource("baseline_movie_24.xml"),
-                        contentDescription = MoviesTab.Tabs.MOVIES,
+                        contentDescription = AppTabs.MOVIES,
                     )
                 },
-                label = { Text(MoviesTab.Tabs.MOVIES) },
+                label = { Text(AppTabs.MOVIES) },
                 selected = tabNavigator.current.key == MoviesTab.key, // selectedNavItem == index
                 onClick = { tabNavigator.current = MoviesTab },
             )
@@ -152,10 +146,10 @@ private fun bottomAppBar(
                 icon = {
                     Icon(
                         painterResource("baseline_tv_24.xml"),
-                        contentDescription = MoviesTab.Tabs.TV_SHOWS,
+                        contentDescription = AppTabs.TV_SHOWS,
                     )
                 },
-                label = { Text(MoviesTab.Tabs.TV_SHOWS) },
+                label = { Text(AppTabs.TV_SHOWS) },
                 selected = tabNavigator.current.key == TvShowsTab.key, // selectedNavItem == index
                 onClick = { tabNavigator.current = TvShowsTab },
             )
@@ -169,29 +163,28 @@ private fun topAppBar(windowSize: WindowSize) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (windowSize == WindowSize.COMPACT) {
-            TopAppBar(
-                title = {
-                    Row(
+        TopAppBar(
+            title = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    SearchBox(
                         modifier =
-                            Modifier.fillMaxWidth()
-                                .padding(start = 0.dp, 16.dp, 16.dp, 16.dp),
-                    ) {
-                        SearchBox(
-                            modifier = Modifier.fillMaxWidth(),
-                            hint = "Search for Movies & Tv shows",
-                            onClick = {},
-                        )
-                    }
-                },
-            )
-        }
+                            if (windowSize.isExpanded() || windowSize.isMedium()) {
+                                Modifier.wrapContentHeight()
+                                    .align(Alignment.CenterHorizontally)
+                            } else {
+                                Modifier.fillMaxWidth().padding(end = 8.dp).wrapContentHeight()
+                                    .align(Alignment.CenterHorizontally)
+                            },
+                        hint = "Search for Movies & Tv shows",
+                        onClick = {},
+                    )
+                }
+            },
+        )
     }
 }
-
-private fun getWindowSize(windowSizeClass: WindowSizeClass) =
-    WindowSize.basedOnWindowSizeClass(
-        windowSizeClass.widthSizeClass,
-    )
 
 internal expect fun openUrl(url: String?)

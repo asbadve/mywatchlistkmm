@@ -30,7 +30,7 @@ kotlin {
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach {
         it.binaries.framework {
             baseName = "ComposeApp"
@@ -85,6 +85,7 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.sqlDelight.driver.android)
                 implementation(libs.androidx.window)
+                implementation(libs.androidx.ui.tooling.preview.android)
             }
         }
 
@@ -94,6 +95,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.sqlDelight.driver.sqlite)
+                implementation(libs.androidx.ui.tooling.preview.desktop)
             }
         }
 
@@ -118,7 +120,6 @@ kotlin {
                 implementation(libs.sqlDelight.driver.native)
             }
         }
-
     }
 }
 

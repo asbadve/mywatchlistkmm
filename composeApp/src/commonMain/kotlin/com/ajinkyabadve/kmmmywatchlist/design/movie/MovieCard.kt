@@ -2,16 +2,19 @@ package com.ajinkyabadve.kmmmywatchlist.design.movie
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
@@ -28,36 +31,49 @@ fun MediaCard(
     accessibilityContentDescription: String? = null,
 ) {
     Card(
-        modifier = modifier
-            .width(210.dp)
-            .fillMaxHeight()
-            .semantics(mergeDescendants = true, properties = {
-                contentDescription =
-                    accessibilityContentDescription ?: "$movieTitle, double tap to activate"
-            }),
+        modifier =
+            modifier
+                .aspectRatio(2 / 3f)
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true, properties = {
+                    contentDescription =
+                        accessibilityContentDescription ?: "$movieTitle, double tap to activate"
+                }),
         border = BorderStroke(1.0.dp, "#44483E".toColor()), //
         shape = RoundedCornerShape(4.dp),
     ) {
-        Column {
+        Box(modifier = Modifier.fillMaxSize()) {
             Image(
-                modifier = modifier
-                    .width(210.dp)
-                    .height(275.dp),
+                modifier = modifier.fillMaxSize(),
                 painter = painter,
                 contentScale = ContentScale.Crop,
                 contentDescription = null,
             )
+
             Text(
                 text = movieTitle,
-                modifier = modifier.fillMaxHeight().padding(8.dp).semantics(mergeDescendants = true) {},
-                maxLines = 2,
-                minLines = 2,
+                maxLines = 1,
+                minLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics(mergeDescendants = true) {}
+                        .background(
+                            Brush.verticalGradient(
+                                0F to Color.Transparent,
+                                .5F to Color.Black.copy(alpha = 0.5F),
+                                1F to Color.Black.copy(alpha = 0.8F),
+                            ),
+                        )
+                        .padding(8.dp)
+                        .align(Alignment.BottomStart),
             )
         }
     }
 }
-//TODO move to appropriate class or find another solution
+
+// TODO move to appropriate class or find another solution
 private fun String.toColor(): Color = Color(this.removePrefix("#").toLong(16) or 0x00000000FF000000)
 
 // @Preview(name = "Light Mode")

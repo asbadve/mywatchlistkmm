@@ -1,6 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -14,15 +14,18 @@ import com.seiko.imageloader.rememberImagePainter
 fun mediaMovieRow(
     imageUrl: String?,
     title: String,
+    modifier: Modifier,
 ) {
     var painter: Painter? = null
     imageUrl?.let {
         painter = rememberImagePainter(url = imageUrl, filterQuality = FilterQuality.Medium)
     }
-    Row(Modifier.padding(8.dp)) {
+    Box(
+        modifier.padding(8.dp),
+    ) {
         painter?.let {
             MediaCard(
-                Modifier,
+                modifier,
                 title,
                 it,
             )

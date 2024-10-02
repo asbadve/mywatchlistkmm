@@ -1,0 +1,6 @@
+# https://editorconfig.org
+# work on it for customer ktlint rules
+root = true
+
+[*.{kt,kts}]
+ktlint_function_naming_ignore_when_annotated_with = Composable
