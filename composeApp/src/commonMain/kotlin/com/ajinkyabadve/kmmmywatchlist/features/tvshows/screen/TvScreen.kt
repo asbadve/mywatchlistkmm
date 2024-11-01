@@ -26,7 +26,7 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import com.ajinkyabadve.kmmmywatchlist.design.movie.MediaCard
 import com.ajinkyabadve.kmmmywatchlist.design.movie.movieListScrollableChips
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.AppTabs
+import com.ajinkyabadve.kmmmywatchlist.homepage.model.AppTabs
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.seiko.imageloader.rememberImagePainter
 
@@ -121,6 +121,7 @@ class TvScreen : Screen {
                     Modifier,
                     title,
                     it,
+                    onClick = {},
                 )
             }
         }

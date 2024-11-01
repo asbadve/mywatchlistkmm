@@ -15,6 +15,7 @@ fun mediaMovieRow(
     imageUrl: String?,
     title: String,
     modifier: Modifier,
+    onClick: () -> Unit,
 ) {
     var painter: Painter? = null
     imageUrl?.let {
@@ -28,6 +29,7 @@ fun mediaMovieRow(
                 modifier,
                 title,
                 it,
+                onClick = onClick,
             )
         }
     }

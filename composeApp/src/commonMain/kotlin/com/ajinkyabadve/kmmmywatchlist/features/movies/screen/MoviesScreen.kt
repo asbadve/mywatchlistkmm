@@ -22,7 +22,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.nowplayin
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.popular.PopularMovieScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.toprated.TopRatedMovieScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.upcoming.UpcomingMovieScreen
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.AppTabs
+import com.ajinkyabadve.kmmmywatchlist.homepage.model.AppTabs
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class MoviesScreen : Screen {

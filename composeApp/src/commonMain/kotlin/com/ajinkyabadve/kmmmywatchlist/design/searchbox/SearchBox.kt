@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,10 +114,22 @@ private fun InternalSearchBox(
                 }
                 Text(
                     hint ?: "",
-                    modifier = Modifier.padding(start = 0.dp, end = 16.dp).align(Alignment.CenterVertically),
+                    modifier =
+                        Modifier.padding(start = 0.dp, end = 16.dp)
+                            .align(Alignment.CenterVertically),
                     maxLines = 1,
                     fontSize = 16.sp,
                     overflow = TextOverflow.Ellipsis,
+                    style =
+                        TextStyle(
+                            fontSize = 16.sp,
+                            lineHeight = 22.sp,
+                            lineHeightStyle =
+                                LineHeightStyle(
+                                    alignment = LineHeightStyle.Alignment.Proportional,
+                                    trim = LineHeightStyle.Trim.None,
+                                ),
+                        ),
                 )
             }
         }

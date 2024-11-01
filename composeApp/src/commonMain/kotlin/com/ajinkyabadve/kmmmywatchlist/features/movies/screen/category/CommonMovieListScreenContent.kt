@@ -35,6 +35,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.SIX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.THIRD_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -62,7 +63,7 @@ fun screenContent(
     }
     LazyVerticalGrid(
         state = lazyColumnListState,
-        columns = GridCells.Adaptive(minSize = 200.dp),
+        columns = GridCells.Adaptive(minSize = 150.dp),
         contentPadding = PaddingValues(8.dp),
     ) {
         items(movies) {
@@ -70,6 +71,9 @@ fun screenContent(
                 MoviesTab.Tabs.IMAGE_BASE_URL + it.posterPath,
                 it.title,
                 modifier = Modifier,
+                onClick = {
+                    Napier.d { "title" + it.title }
+                },
             )
         }
         listStates(

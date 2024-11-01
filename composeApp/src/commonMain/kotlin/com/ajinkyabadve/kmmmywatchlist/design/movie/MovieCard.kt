@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,12 +24,32 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediaCard(
     modifier: Modifier = Modifier,
     movieTitle: String,
     painter: Painter,
     accessibilityContentDescription: String? = null,
+    onClick: () -> Unit,
+) {
+    InternalMediaCard(
+        modifier = modifier,
+        accessibilityContentDescription = accessibilityContentDescription,
+        movieTitle = movieTitle,
+        onClick = onClick,
+        painter = painter,
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun InternalMediaCard(
+    modifier: Modifier,
+    accessibilityContentDescription: String?,
+    movieTitle: String,
+    onClick: () -> Unit,
+    painter: Painter,
 ) {
     Card(
         modifier =
@@ -41,6 +62,7 @@ fun MediaCard(
                 }),
         border = BorderStroke(1.0.dp, "#44483E".toColor()), //
         shape = RoundedCornerShape(4.dp),
+        onClick = onClick,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Image(

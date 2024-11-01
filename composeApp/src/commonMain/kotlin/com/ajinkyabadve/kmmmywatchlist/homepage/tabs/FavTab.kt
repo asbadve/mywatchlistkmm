@@ -11,9 +11,9 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import cafe.adriel.voyager.transitions.SlideTransition
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesScreen
+import com.ajinkyabadve.kmmmywatchlist.features.favorite.screen.FavoriteScreen
 
-object MoviesTab : Tab {
+object FavTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
@@ -21,7 +21,7 @@ object MoviesTab : Tab {
             return remember {
                 TabOptions(
                     index = 0u,
-                    title = "movies",
+                    title = "Home",
                     icon = icon,
                 )
             }
@@ -35,7 +35,7 @@ object MoviesTab : Tab {
             onDisposed = { print("NavigatorDispose tab $tabTitle") },
         )
 
-        Navigator(screen = MoviesScreen()) {
+        Navigator(screen = FavoriteScreen()) {
             SlideTransition(it) { screen ->
                 screen.Content()
             }

@@ -35,8 +35,13 @@ import cafe.adriel.voyager.navigator.tab.TabDisposable
 import cafe.adriel.voyager.navigator.tab.TabNavigator
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.AppTabs
+import com.ajinkyabadve.kmmmywatchlist.homepage.model.AppTabs
+import com.ajinkyabadve.kmmmywatchlist.homepage.model.HomeNavigation
+import com.ajinkyabadve.kmmmywatchlist.homepage.model.TabNavigation
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.FavTab
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.PersonTab
+import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.TrendingTab
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.TvShowsTab
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_surface
@@ -50,22 +55,35 @@ import org.jetbrains.compose.resources.painterResource
 internal fun App() =
     AppTheme {
         val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass())
-        TabNavigator(MoviesTab, tabDisposable = {
-            TabDisposable(
-                navigator = it,
-                tabs = listOf(MoviesTab, TvShowsTab),
-            )
-        }) { tabNavigator ->
+        val navigationList = TabNavigation.getNavigation()
+        TabNavigator(
+            tab = TrendingTab,
+            tabDisposable = {
+                TabDisposable(
+                    navigator = it,
+                    tabs = AppTabs.getTabs(),
+                )
+            },
+        ) { tabNavigator ->
             Scaffold(
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
                 topBar = {
                     topAppBar(windowSize)
                 },
                 bottomBar = {
-                    bottomAppBar(windowSize, tabNavigator)
+                    bottomNavigation(
+                        windowSize = windowSize,
+                        tabNavigator = tabNavigator,
+                        navigationList = navigationList,
+                    )
                 },
             ) { innerPadding ->
-                appScreenContent(innerPadding, windowSize, tabNavigator)
+                appScreenContent(
+                    innerPadding = innerPadding,
+                    windowSize = windowSize,
+                    tabNavigator = tabNavigator,
+                    navigationList = navigationList,
+                )
             }
         }
     }
@@ -75,6 +93,7 @@ private fun appScreenContent(
     innerPadding: PaddingValues,
     windowSize: WindowSize,
     tabNavigator: TabNavigator,
+    navigationList: List<HomeNavigation>,
 ) {
     Row(
         verticalAlignment = Alignment.Top,
@@ -84,76 +103,14 @@ private fun appScreenContent(
     ) {
         if (windowSize == WindowSize.EXPANDED) {
             NavigationRail(
-                content = navigationRailContent(tabNavigator),
+                content =
+                    navigationRailContent(
+                        tabNavigator = tabNavigator,
+                        navigationList = navigationList,
+                    ),
             )
         }
         CurrentTab()
-    }
-}
-
-private fun navigationRailContent(tabNavigator: TabNavigator): @Composable
-(ColumnScope.() -> Unit) =
-    {
-        Spacer(Modifier.weight(1f))
-        NavigationRailItem(
-            modifier = Modifier.padding(8.dp),
-            icon = {
-                Icon(
-                    painterResource("baseline_movie_24.xml"),
-                    contentDescription = AppTabs.MOVIES,
-                )
-            },
-            label = { Text(AppTabs.MOVIES) },
-            selected = tabNavigator.current.key == MoviesTab.key,
-            onClick = { tabNavigator.current = MoviesTab },
-        )
-        Spacer(Modifier.weight(1f))
-        NavigationRailItem(
-            modifier = Modifier.padding(8.dp),
-            icon = {
-                Icon(
-                    painterResource("baseline_tv_24.xml"),
-                    contentDescription = AppTabs.TV_SHOWS,
-                )
-            },
-            label = { Text(AppTabs.TV_SHOWS) },
-            selected = tabNavigator.current.key == TvShowsTab.key,
-            onClick = { tabNavigator.current = TvShowsTab },
-        )
-        Spacer(Modifier.weight(1f))
-    }
-
-@Composable
-private fun bottomAppBar(
-    windowSize: WindowSize,
-    tabNavigator: TabNavigator,
-) {
-    if (windowSize.isCompact() || windowSize.isMedium()) {
-        NavigationBar {
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        painterResource("baseline_movie_24.xml"),
-                        contentDescription = AppTabs.MOVIES,
-                    )
-                },
-                label = { Text(AppTabs.MOVIES) },
-                selected = tabNavigator.current.key == MoviesTab.key, // selectedNavItem == index
-                onClick = { tabNavigator.current = MoviesTab },
-            )
-
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        painterResource("baseline_tv_24.xml"),
-                        contentDescription = AppTabs.TV_SHOWS,
-                    )
-                },
-                label = { Text(AppTabs.TV_SHOWS) },
-                selected = tabNavigator.current.key == TvShowsTab.key, // selectedNavItem == index
-                onClick = { tabNavigator.current = TvShowsTab },
-            )
-        }
     }
 }
 
@@ -188,3 +145,110 @@ private fun topAppBar(windowSize: WindowSize) {
 }
 
 internal expect fun openUrl(url: String?)
+
+private fun navigationRailContent(
+    tabNavigator: TabNavigator,
+    navigationList: List<HomeNavigation>,
+): @Composable
+(ColumnScope.() -> Unit) =
+    {
+        Spacer(Modifier.weight(1f))
+        navigationList.forEachIndexed { index, homeNavigation ->
+            NavigationRailItem(
+                modifier = Modifier.padding(8.dp),
+                icon = {
+                    Icon(
+                        painterResource(homeNavigation.painterRes),
+                        contentDescription = homeNavigation.iconContentDescription,
+                    )
+                },
+                label = { Text(homeNavigation.label) },
+                selected = isTabSelected(tabNavigator = tabNavigator, label = homeNavigation.label),
+                onClick = onNavigationClick(homeNavigation, tabNavigator),
+            )
+            if (index != 0 || index != navigationList.size - 1) {
+                Spacer(Modifier.weight(1f))
+            }
+        }
+        Spacer(Modifier.weight(1f))
+    }
+
+@Composable
+private fun bottomNavigation(
+    windowSize: WindowSize,
+    tabNavigator: TabNavigator,
+    navigationList: List<HomeNavigation>,
+) {
+    if (windowSize.isCompact() || windowSize.isMedium()) {
+        NavigationBar {
+            navigationList.forEachIndexed { index, homeNavigation ->
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            painterResource(homeNavigation.painterRes),
+                            contentDescription = homeNavigation.iconContentDescription,
+                        )
+                    },
+                    label = { Text(homeNavigation.label) },
+                    selected = isTabSelected(tabNavigator, homeNavigation.label),
+                    onClick = onNavigationClick(homeNavigation, tabNavigator),
+                )
+            }
+        }
+    }
+}
+
+private fun onNavigationClick(
+    homeNavigation: HomeNavigation,
+    tabNavigator: TabNavigator,
+): () -> Unit =
+    when (homeNavigation.label) {
+        AppTabs.MOVIES -> {
+            {
+                tabNavigator.current = MoviesTab
+            }
+        }
+
+        AppTabs.TV_SHOWS -> {
+            {
+                tabNavigator.current = TvShowsTab
+            }
+        }
+
+        AppTabs.PERSON -> {
+            {
+                tabNavigator.current = PersonTab
+            }
+        }
+
+        AppTabs.TRENDING -> {
+            {
+                tabNavigator.current = TrendingTab
+            }
+        }
+
+        AppTabs.FAV -> {
+            {
+                tabNavigator.current = FavTab
+            }
+        }
+
+        else -> {
+            throw IllegalArgumentException("Handle navigation click item" + homeNavigation.label)
+        }
+    }
+
+fun isTabSelected(
+    tabNavigator: TabNavigator,
+    label: String,
+): Boolean =
+    when (label) {
+        AppTabs.MOVIES -> tabNavigator.current.key == MoviesTab.key
+        AppTabs.TV_SHOWS -> tabNavigator.current.key == TvShowsTab.key
+        AppTabs.PERSON -> tabNavigator.current.key == PersonTab.key
+        AppTabs.TRENDING -> tabNavigator.current.key == TrendingTab.key
+        AppTabs.FAV -> tabNavigator.current.key == FavTab.key
+        else -> {
+            false
+        }
+    }
