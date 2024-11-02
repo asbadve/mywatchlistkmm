@@ -1,33 +1,35 @@
 [versions]
 
+componentsResources = "1.7.0"
 kamelImage = "0.7.3"
-kotlin = "1.9.20"
+kotlin = "2.0.0"
 agp = "8.1.4"
-compose = "1.5.10"
+compose = "1.7.0"
 androidx-appcompat = "1.7.0"
-androidx-activityCompose = "1.9.2"
-compose-uitooling = "1.7.2"
+androidx-activityCompose = "1.9.3"
+compose-uitooling = "1.7.5"
 ktorVersion = "2.2.1"
 voyager = "1.0.0"
 composeImageLoader = "1.6.7"
 napier = "2.6.1"
 buildConfig = "4.1.2"
-kotlinx-coroutines = "1.7.3"
+kotlinx-coroutines = "1.8.0"
 ktor = "2.3.4"
 composeIcons = "1.1.0"
 kotlinx-serialization = "1.6.0"
-kotlinx-datetime = "0.4.1"
+kotlinx-datetime = "0.6.0"
 multiplatformSettings = "1.0.0"
 koin = "3.4.3"
 sqlDelight = "2.0.0"
 okio = "3.5.0"
 uiToolingPreviewDesktop = "1.7.0"
-uiToolingPreviewAndroid = "1.7.2"
+uiToolingPreviewAndroid = "1.7.5"
 
 [libraries]
 
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
 androidx-activityCompose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
+components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "componentsResources" }
 compose-uitooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose-uitooling" }
 kamel-image = { module = "media.kamel:kamel-image", version.ref = "kamelImage" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktorVersion" }
@@ -59,7 +61,7 @@ sqlDelight-driver-native = { module = "app.cash.sqldelight:native-driver", versi
 sqlDelight-driver-js = { module = "app.cash.sqldelight:web-worker-driver", version.ref = "sqlDelight" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
-androidx-window = { group = "androidx.window", name = "window", version = "1.1.0" }
+androidx-window = { group = "androidx.window", name = "window", version = "1.3.0" }
 androidx-ui-tooling-preview-desktop = { group = "androidx.compose.ui", name = "ui-tooling-preview-desktop", version.ref = "uiToolingPreviewDesktop" }
 androidx-ui-tooling-preview-android = { group = "androidx.compose.ui", name = "ui-tooling-preview-android", version.ref = "uiToolingPreviewAndroid" }
 
@@ -71,3 +73,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 buildConfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildConfig" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

@@ -7,10 +7,12 @@ plugins {
     alias(libs.plugins.buildConfig)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.sqlDelight)
+    alias(libs.plugins.compose.compiler)
 }
 
 @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
 kotlin {
+    tasks.create("testClasses")
     targetHierarchy.default()
     androidTarget {
         compilations.all {
@@ -47,7 +49,8 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation("dev.chrisbanes.material3:material3-window-size-class-multiplatform:0.3.2")
-                implementation(compose.runtime)
+                implementation(libs.components.resources)
+                api(compose.runtime)
                 implementation(compose.material3)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
@@ -165,6 +168,7 @@ compose.experimental {
 buildConfig {
     // BuildConfig configuration here.
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
+    packageName = "kotlinproject.composeapp" // in lowercase! this is due to known issue
     buildConfigField("String", "TMDB_API_KEY", provider { "${project.properties["MY_WATCH_LIST_TMDB_API_KEY"]}" })
 }
 

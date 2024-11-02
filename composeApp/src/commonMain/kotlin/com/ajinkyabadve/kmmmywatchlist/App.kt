@@ -1,4 +1,8 @@
-@file:OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+@file:OptIn(
+    ExperimentalMaterial3WindowSizeClassApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3WindowSizeClassApi::class,
+)
 
 package com.ajinkyabadve.kmmmywatchlist
 
@@ -48,9 +52,6 @@ import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_surface
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_surface
 import org.jetbrains.compose.resources.painterResource
 
-@Suppress("ktlint:standard:function-naming", "detekt:FunctionNaming")
-@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
-@ExperimentalMaterial3Api
 @Composable
 internal fun App() =
     AppTheme {
@@ -115,7 +116,6 @@ private fun appScreenContent(
 }
 
 @Composable
-@ExperimentalMaterial3Api
 private fun topAppBar(windowSize: WindowSize) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -158,7 +158,7 @@ private fun navigationRailContent(
                 modifier = Modifier.padding(8.dp),
                 icon = {
                     Icon(
-                        painterResource(homeNavigation.painterRes),
+                        painterResource(homeNavigation.drawableResource),
                         contentDescription = homeNavigation.iconContentDescription,
                     )
                 },
@@ -185,7 +185,7 @@ private fun bottomNavigation(
                 NavigationBarItem(
                     icon = {
                         Icon(
-                            painterResource(homeNavigation.painterRes),
+                            painterResource(homeNavigation.drawableResource!!),
                             contentDescription = homeNavigation.iconContentDescription,
                         )
                     },
