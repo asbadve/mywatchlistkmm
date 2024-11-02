@@ -17,3 +17,5 @@ Pods/
 composeApp/build/*
 .gradle/*
 /screenshots/*
+/.kotlin/metadata/*
+/.kotlin/errors/*
