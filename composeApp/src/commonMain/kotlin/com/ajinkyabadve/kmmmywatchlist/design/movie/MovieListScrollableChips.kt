@@ -19,10 +19,11 @@ import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_surface
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_surface
 
 @Composable
-fun movieListScrollableChips(
+fun scrollableChips(
     selectedChip: Int,
     chipItemList: List<String>,
     onClick: (index: Int) -> Unit,
+    isLoadingState: Boolean = false,
 ) {
     val selectionColor: @Composable (Boolean) -> Color = { selection ->
         if (selection) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
@@ -34,15 +35,24 @@ fun movieListScrollableChips(
     ) {
         itemsIndexed(chipItemList) { index, item ->
             ElevatedAssistChip(
-                onClick = { onClick(index) },
+                onClick = { if (!isLoadingState) onClick(index) },
                 label = { Text(item) },
                 colors =
-                    AssistChipDefaults.assistChipColors(
-                        containerColor =
-                            selectionColor(
-                                selectedChip == index,
-                            ),
-                    ),
+                    if (isLoadingState) {
+                        AssistChipDefaults.assistChipColors(
+                            containerColor =
+                                selectionColor(
+                                    false,
+                                ),
+                        )
+                    } else {
+                        AssistChipDefaults.assistChipColors(
+                            containerColor =
+                                selectionColor(
+                                    selectedChip == index,
+                                ),
+                        )
+                    },
                 shape = RoundedCornerShape(16.dp),
             )
         }

@@ -14,7 +14,7 @@ object MoviesConstant {
     const val SIXTH_INDEX = 6
     const val THIRD_INDEX = 3
 
-    val chipList =
+    val movieChipList =
         listOf(
             NOW_PLAYING_MOVIES,
             UPCOMING_MOVIES,

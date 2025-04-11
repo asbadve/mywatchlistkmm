@@ -5,12 +5,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
 class MoviesScreenModel : ScreenModel {
-    internal val movieFilterState = MutableStateFlow<MovieFilterState>(
-        MovieFilterState.Success(
-            selectedChip = 0,
-            chipItemList = MoviesConstant.chipList
+    internal val movieFilterState =
+        MutableStateFlow<MovieFilterState>(
+            MovieFilterState.Success(
+                selectedChip = 0,
+                chipItemList = MoviesConstant.movieChipList,
+            ),
         )
-    )
 
     override fun onDispose() {
         super.onDispose()
@@ -18,10 +19,7 @@ class MoviesScreenModel : ScreenModel {
 
     fun onChipSelected(selectedChipIndex: Int) {
         movieFilterState.update {
-            MovieFilterState.Success(selectedChipIndex, MoviesConstant.chipList)
+            MovieFilterState.Success(selectedChipIndex, MoviesConstant.movieChipList)
         }
     }
-
 }
-
-

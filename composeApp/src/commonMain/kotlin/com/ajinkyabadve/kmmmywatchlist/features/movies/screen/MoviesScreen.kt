@@ -12,12 +12,12 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.tab.CurrentTab
 import cafe.adriel.voyager.navigator.tab.TabDisposable
 import cafe.adriel.voyager.navigator.tab.TabNavigator
-import com.ajinkyabadve.kmmmywatchlist.design.movie.movieListScrollableChips
+import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.NOW_PLAYING_MOVIES
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.POPULAR_MOVIES
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.TOP_RATED_MOVIES
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.UPCOMING_MOVIES
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.chipList
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.movieChipList
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.nowplaying.NowPlayingMovieScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.popular.PopularMovieScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.toprated.TopRatedMovieScreen
@@ -54,7 +54,7 @@ class MoviesScreen : Screen {
                     stateFilter.chipItemList,
                 ) { selectedIndex ->
                     viewModel.onChipSelected(selectedIndex)
-                    when (chipList[selectedIndex]) {
+                    when (movieChipList[selectedIndex]) {
                         NOW_PLAYING_MOVIES -> {
                             tabNavigator.current = NowPlayingMovieScreen
                         }
@@ -84,7 +84,7 @@ class MoviesScreen : Screen {
         onClick: (index: Int) -> Unit,
     ) {
         Column {
-            movieListScrollableChips(
+            scrollableChips(
                 selectedChip = selectedChip,
                 chipItemList = chipItemList,
                 onClick = { index ->

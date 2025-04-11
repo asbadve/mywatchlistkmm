@@ -185,7 +185,7 @@ private fun bottomNavigation(
                 NavigationBarItem(
                     icon = {
                         Icon(
-                            painterResource(homeNavigation.drawableResource!!),
+                            painterResource(homeNavigation.drawableResource),
                             contentDescription = homeNavigation.iconContentDescription,
                         )
                     },

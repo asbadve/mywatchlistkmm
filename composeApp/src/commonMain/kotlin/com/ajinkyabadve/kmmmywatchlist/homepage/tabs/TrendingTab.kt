@@ -11,7 +11,8 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import cafe.adriel.voyager.transitions.SlideTransition
-import com.ajinkyabadve.kmmmywatchlist.features.discover.screen.TrendingScreen
+import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreen
+import com.ajinkyabadve.kmmmywatchlist.homepage.model.AppTabs.TRENDING
 
 object TrendingTab : Tab {
     override val options: TabOptions
@@ -20,8 +21,8 @@ object TrendingTab : Tab {
             val icon = rememberVectorPainter(Icons.Default.Home)
             return remember {
                 TabOptions(
-                    index = 0u,
-                    title = "Trending",
+                    index = 40u,
+                    title = TRENDING,
                     icon = icon,
                 )
             }

@@ -12,8 +12,7 @@ import cafe.adriel.voyager.navigator.tab.TabOptions
 import cafe.adriel.voyager.transitions.SlideTransition
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvScreen
 
-object TvShowsTab : Tab {
-
+internal object TvShowsTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
@@ -23,18 +22,17 @@ object TvShowsTab : Tab {
                 TabOptions(
                     index = 1u,
                     title = "Tv shows",
-                    icon = icon
+                    icon = icon,
                 )
             }
-
         }
 
     @Composable
     override fun Content() {
-        val tabTitle = MoviesTab.options.title
+        val tabTitle = options.title
         LifecycleEffect(
             onStarted = { print("NavigatorStart tab $tabTitle") },
-            onDisposed = { print("NavigatorDispose tab $tabTitle") }
+            onDisposed = { print("NavigatorDispose tab $tabTitle") },
         )
 
         Navigator(screen = TvScreen()) {

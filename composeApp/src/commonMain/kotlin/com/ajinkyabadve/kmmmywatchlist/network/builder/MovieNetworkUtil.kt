@@ -22,3 +22,17 @@ fun HttpRequestBuilder.mediaHttpBuilder(
         parameters.append(PAGE, pageNumber)
     }
 }
+
+fun HttpRequestBuilder.trendingMediaHttpBuilder(
+    timeWindow: String,
+    mediaType: String, // movie/tv/people/all
+    path: String, // trending
+) {
+    url {
+        protocol = URLProtocol.HTTPS
+        host = HOST
+        trailingQuery = true
+        encodedPath = "$path/$mediaType/$timeWindow"
+        parameters.append(API_KEY, BuildConfig.TMDB_API_KEY)
+    }
+}

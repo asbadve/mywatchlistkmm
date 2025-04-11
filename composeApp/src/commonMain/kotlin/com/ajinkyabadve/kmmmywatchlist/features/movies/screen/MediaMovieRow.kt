@@ -16,21 +16,36 @@ fun mediaMovieRow(
     title: String,
     modifier: Modifier,
     onClick: () -> Unit,
+    isLoadingState: Boolean = false,
 ) {
-    var painter: Painter? = null
-    imageUrl?.let {
-        painter = rememberImagePainter(url = imageUrl, filterQuality = FilterQuality.Medium)
-    }
-    Box(
-        modifier.padding(8.dp),
-    ) {
-        painter?.let {
+    if (isLoadingState) {
+        Box(
+            modifier.padding(8.dp),
+        ) {
             MediaCard(
-                modifier,
-                title,
-                it,
+                modifier = modifier,
+                movieTitle = title,
+                painter = null,
                 onClick = onClick,
+                isLoadingState = true,
             )
+        }
+    } else {
+        var painter: Painter? = null
+        imageUrl?.let {
+            painter = rememberImagePainter(url = imageUrl, filterQuality = FilterQuality.Medium)
+        }
+        Box(
+            modifier.padding(8.dp),
+        ) {
+            painter?.let {
+                MediaCard(
+                    modifier = modifier,
+                    movieTitle = title,
+                    painter = it,
+                    onClick = onClick,
+                )
+            }
         }
     }
 }

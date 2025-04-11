@@ -23,23 +23,39 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ajinkyabadve.kmmmywatchlist.design.util.addShimmerLoadingAnimation
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediaCard(
     modifier: Modifier = Modifier,
     movieTitle: String,
-    painter: Painter,
+    painter: Painter?,
     accessibilityContentDescription: String? = null,
     onClick: () -> Unit,
+    isLoadingState: Boolean = false,
 ) {
-    InternalMediaCard(
-        modifier = modifier,
-        accessibilityContentDescription = accessibilityContentDescription,
-        movieTitle = movieTitle,
-        onClick = onClick,
-        painter = painter,
-    )
+    if (isLoadingState) {
+        Box(
+            modifier =
+                modifier
+                    .aspectRatio(2 / 3f)
+                    .fillMaxWidth()
+                    .semantics(mergeDescendants = true, properties = {
+                        contentDescription =
+                            accessibilityContentDescription ?: "$movieTitle, double tap to activate"
+                    }).addShimmerLoadingAnimation(),
+        )
+    } else {
+        painter?.let {
+            InternalMediaCard(
+                modifier = modifier,
+                accessibilityContentDescription = accessibilityContentDescription,
+                movieTitle = movieTitle,
+                onClick = onClick,
+                painter = painter,
+            )
+        }
+    }
 }
 
 @Composable

@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import com.ajinkyabadve.kmmmywatchlist.design.movie.MediaCard
-import com.ajinkyabadve.kmmmywatchlist.design.movie.movieListScrollableChips
+import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.homepage.model.AppTabs
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.seiko.imageloader.rememberImagePainter
@@ -95,7 +95,7 @@ class TvScreen : Screen {
     ) {
         tvFilterStateState.value.let {
             if (it is TvFilterState.Success) {
-                movieListScrollableChips(
+                scrollableChips(
                     selectedChip = it.selectedChip,
                     chipItemList = it.chipItemList,
                     onClick = { index ->
