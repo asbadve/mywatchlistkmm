@@ -9,8 +9,8 @@ import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.baseline_favorite_24
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
 import mywatchlist.composeapp.generated.resources.baseline_person_24
+import mywatchlist.composeapp.generated.resources.baseline_trending_24
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
-import mywatchlist.composeapp.generated.resources.trending_up_24
 import org.jetbrains.compose.resources.DrawableResource
 
 data class HomeNavigation(
@@ -24,7 +24,7 @@ object TabNavigation {
     fun getNavigation(): List<HomeNavigation> {
         return listOf(
             HomeNavigation(
-                drawableResource = Res.drawable.trending_up_24,
+                drawableResource = Res.drawable.baseline_trending_24,
                 label = AppTabs.TRENDING,
                 selected = false,
                 iconContentDescription = AppTabs.TRENDING,
