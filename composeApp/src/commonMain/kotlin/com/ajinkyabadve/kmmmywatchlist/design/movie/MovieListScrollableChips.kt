@@ -26,7 +26,7 @@ fun scrollableChips(
     isLoadingState: Boolean = false,
 ) {
     val selectionColor: @Composable (Boolean) -> Color = { selection ->
-        if (selection) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+        if (selection) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     }
     LazyRow(
         modifier = Modifier.background(if (isSystemInDarkTheme()) md_theme_dark_surface else md_theme_light_surface),
