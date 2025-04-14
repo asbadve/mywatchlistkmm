@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_secondaryContainer
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_surface
+import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_secondaryContainer
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_surface
 
 @Composable
@@ -26,7 +28,7 @@ fun scrollableChips(
     isLoadingState: Boolean = false,
 ) {
     val selectionColor: @Composable (Boolean) -> Color = { selection ->
-        if (selection) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        if (selection) MaterialTheme.colorScheme.primaryContainer else getBackgroundColor(isSystemInDarkTheme())
     }
     LazyRow(
         modifier = Modifier.background(if (isSystemInDarkTheme()) md_theme_dark_surface else md_theme_light_surface),
@@ -58,3 +60,10 @@ fun scrollableChips(
         }
     }
 }
+
+private fun getBackgroundColor(isDark: Boolean) =
+    if (isDark) {
+        md_theme_dark_secondaryContainer
+    } else {
+        md_theme_light_secondaryContainer
+    }
