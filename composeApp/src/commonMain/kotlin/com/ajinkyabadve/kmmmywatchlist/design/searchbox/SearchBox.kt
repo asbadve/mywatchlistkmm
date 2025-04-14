@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_secondaryContainer
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_secondaryContainer
 
+// TODO: Use the latest https://developer.android.com/reference/kotlin/androidx/compose/material3/package-summary#SearchBar(androidx.compose.material3.SearchBarState,kotlin.Function0,androidx.compose.ui.Modifier,androidx.compose.ui.graphics.Shape,androidx.compose.material3.SearchBarColors,androidx.compose.ui.unit.Dp,androidx.compose.ui.unit.Dp)
 @Suppress("ktlint:standard:function-naming", "LongParameterList", "FunctionNaming")
 @Composable
 fun SearchBox(
