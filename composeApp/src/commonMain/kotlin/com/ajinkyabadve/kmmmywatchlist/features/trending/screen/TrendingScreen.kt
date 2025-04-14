@@ -272,7 +272,6 @@ class TrendingScreen : Screen {
                 Modifier.padding(
                     start = 24.dp,
                     top = 0.dp,
-                    end = 24.dp,
                     bottom = 0.dp,
                 ),
             verticalAlignment = Alignment.CenterVertically,
@@ -280,7 +279,7 @@ class TrendingScreen : Screen {
             Text(
                 modifier = Modifier.padding(end = 8.dp),
                 text = chipsHeading,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
             )
 
             scrollableChips(
