@@ -1,7 +1,6 @@
 @file:OptIn(
     ExperimentalMaterial3WindowSizeClassApi::class,
     ExperimentalMaterial3Api::class,
-    ExperimentalMaterial3WindowSizeClassApi::class,
 )
 
 package com.ajinkyabadve.kmmmywatchlist
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -180,7 +180,7 @@ private fun bottomNavigation(
     navigationList: List<HomeNavigation>,
 ) {
     if (windowSize.isCompact() || windowSize.isMedium()) {
-        NavigationBar {
+        NavigationBar(windowInsets = WindowInsets.navigationBars) {
             navigationList.forEachIndexed { index, homeNavigation ->
                 NavigationBarItem(
                     icon = {
