@@ -236,13 +236,14 @@ class TrendingScreen : Screen {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun trendingMediaCarousel(mediaTrendResult: List<Movie>) {
         val state = rememberCarouselState { mediaTrendResult.count() }
         HorizontalMultiBrowseCarousel(
             state = state,
             modifier = Modifier.fillMaxWidth(),
-            preferredItemWidth = 186.dp,
+            preferredItemWidth = 200.dp,
             flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(state = state),
             itemSpacing = 8.dp,
             contentPadding = PaddingValues(horizontal = 16.dp),

@@ -2,14 +2,15 @@
 
 componentsResources = "1.7.0"
 kamelImage = "0.7.3"
-kotlin = "2.0.0"
-agp = "8.1.4"
+kotlin = "2.0.10"
+agp = "8.9.1"
 compose = "1.7.0"
 androidx-appcompat = "1.7.0"
-androidx-activityCompose = "1.9.3"
-compose-uitooling = "1.7.5"
+androidx-activityCompose = "1.10.1"
+compose-uitooling = "1.7.8"
 ktorVersion = "2.2.1"
-voyager = "1.0.0"
+material3WindowSizeClass = "1.7.3"
+voyager = "1.0.1"
 composeImageLoader = "1.6.7"
 napier = "2.6.1"
 buildConfig = "4.1.2"
@@ -23,7 +24,8 @@ koin = "3.4.3"
 sqlDelight = "2.0.0"
 okio = "3.5.0"
 uiToolingPreviewDesktop = "1.7.0"
-uiToolingPreviewAndroid = "1.7.5"
+uiToolingPreviewAndroid = "1.7.8"
+material3WindowSizeClassAndroid = "1.3.2"
 
 [libraries]
 
@@ -34,6 +36,7 @@ compose-uitooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "
 kamel-image = { module = "media.kamel:kamel-image", version.ref = "kamelImage" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktorVersion" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorVersion" }
+material3-window-size-class1 = { module = "org.jetbrains.compose.material3:material3-window-size-class", version.ref = "material3WindowSizeClass" }
 voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyager" }
 voyager-screenModel = { module = "cafe.adriel.voyager:voyager-screenmodel", version.ref = "voyager" }
 voyager-bottomSheetNavigator = { module = "cafe.adriel.voyager:voyager-bottom-sheet-navigator", version.ref = "voyager" }
@@ -64,6 +67,7 @@ okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", versio
 androidx-window = { group = "androidx.window", name = "window", version = "1.3.0" }
 androidx-ui-tooling-preview-desktop = { group = "androidx.compose.ui", name = "ui-tooling-preview-desktop", version.ref = "uiToolingPreviewDesktop" }
 androidx-ui-tooling-preview-android = { group = "androidx.compose.ui", name = "ui-tooling-preview-android", version.ref = "uiToolingPreviewAndroid" }
+androidx-material3-window-size-class1-android = { group = "androidx.compose.material3", name = "material3-window-size-class-android", version.ref = "material3WindowSizeClassAndroid" }
 
 [plugins]
 

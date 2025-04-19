@@ -21,7 +21,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -41,8 +40,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun screenContent(
-    viewModel: MovieListScreenModel,
-    windowSizeClass: WindowSizeClass,
+    viewModel: MovieListScreenModel
 ) {
     val movies = viewModel.movieList
     val lazyColumnListState = rememberLazyGridState()

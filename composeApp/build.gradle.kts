@@ -48,7 +48,7 @@ kotlin {
         }
         val commonMain by getting {
             dependencies {
-                implementation("dev.chrisbanes.material3:material3-window-size-class-multiplatform:0.3.2")
+                implementation(libs.material3.window.size.class1)
                 implementation(libs.components.resources)
                 api(compose.runtime)
                 implementation(compose.material3)
@@ -128,7 +128,7 @@ kotlin {
 
 android {
     namespace = "com.ajinkyabadve.kmmmywatchlist"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24
@@ -147,6 +147,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+}
+dependencies {
+    implementation(libs.androidx.material3.window.size.class1.android)
 }
 
 compose.desktop {

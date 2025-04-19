@@ -3,7 +3,6 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.nowplayi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -38,9 +37,7 @@ object NowPlayingMovieScreen : Tab {
             onStarted = { log { "onStarted" } },
             onDisposed = { log { "onDisposed" } },
         )
-        val windowSizeClass = calculateWindowSizeClass()
-
-        screenContent(getViewModel(NOW_PLAYING_API_PATH), windowSizeClass)
+        screenContent(getViewModel(NOW_PLAYING_API_PATH))
     }
 
     @Composable

@@ -12,8 +12,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -31,10 +29,8 @@ import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import com.seiko.imageloader.rememberImagePainter
 
 class TvScreen : Screen {
-    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
     override fun Content() {
-        val windowSizeClass = calculateWindowSizeClass()
         val viewModel =
             rememberScreenModel(AppTabs.TV_SHOWS, factory = {
                 TvScreenModel()
@@ -62,8 +58,7 @@ class TvScreen : Screen {
                     ) {
                         LazyVerticalGrid(
                             state = rememberLazyGridState(),
-//                            columns = GridCells.Fixed(windowSizeClass.getGridColumn()),
-                            columns = GridCells.Adaptive(minSize = 210.dp),
+                            columns = GridCells.Adaptive(minSize = 150.dp),
                             contentPadding = PaddingValues(8.dp),
                         ) {
                             items(result.movieList) { movie ->

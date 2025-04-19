@@ -1,5 +1,4 @@
 @file:OptIn(
-    ExperimentalMaterial3WindowSizeClassApi::class,
     ExperimentalMaterial3Api::class,
 )
 
@@ -28,8 +27,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,9 +51,9 @@ import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_surface
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-internal fun App() =
+internal fun App(calculateWindowSizeClass: WindowSizeClass) =
     AppTheme {
-        val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass())
+        val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
         val navigationList = TabNavigation.getNavigation()
         TabNavigator(
             tab = TrendingTab,
@@ -115,6 +113,7 @@ private fun appScreenContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun topAppBar(windowSize: WindowSize) {
     Column(

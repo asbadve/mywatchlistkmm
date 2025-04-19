@@ -3,7 +3,6 @@ package com.ajinkyabadve.kmmmywatchlist.design.movie
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +25,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.design.util.addShimmerLoadingAnimation
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_onSurface
-import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_light_onSurface
 
 @Composable
 fun MediaCard(
@@ -80,7 +78,7 @@ private fun InternalMediaCard(
                         accessibilityContentDescription ?: "$movieTitle, double tap to activate"
                 }),
         border = BorderStroke(1.0.dp, "#44483E".toColor()), //
-        shape = RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(8.dp),
         onClick = onClick,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -93,7 +91,7 @@ private fun InternalMediaCard(
 
             Text(
                 text = movieTitle,
-                color =if (isSystemInDarkTheme()) md_theme_light_onSurface else md_theme_dark_onSurface,
+                color = md_theme_dark_onSurface,
                 maxLines = 1,
                 minLines = 1,
                 overflow = TextOverflow.Ellipsis,
