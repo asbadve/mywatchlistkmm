@@ -77,11 +77,8 @@ private fun InternalSearchBox(
 ) {
     Column(
         verticalArrangement = Arrangement.Center,
-        modifier =
-            Modifier
-                .wrapContentSize(Alignment.CenterStart)
-                .fillMaxWidth()
-                .padding(end = 16.dp)
+        modifier = modifier
+            .padding(end = 16.dp)
     ) {
         BoxWithConstraints(
             contentAlignment = Alignment.CenterStart,

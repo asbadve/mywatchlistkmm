@@ -19,11 +19,19 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.PermanentDrawerSheet
+import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -59,6 +67,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavHostController
 import bottomNavItems
 import cafe.adriel.voyager.navigator.tab.CurrentTab
 import cafe.adriel.voyager.navigator.tab.TabDisposable
@@ -107,68 +116,141 @@ fun MainAppScreen(windowSize: WindowSize) {
             adaptiveInfo
         )
     }
-    NavigationSuiteScaffold(
-        layoutType = layoutType,
-        navigationSuiteItems = {
-            bottomNavItems.forEachIndexed { index, screen ->
-                item(
-                    selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                    onClick = {
-                        navController.navigate(screen.route) {
-                            // Pop up to the start destination of the graph to
-                            // avoid building up a large stack of destinations
-                            // on the back stack as users select items
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            // Avoid multiple copies of the same destination when
-                            // reselecting the same item
-                            launchSingleTop = true
-                            // Restore state when reselecting a previously selected item
-                            restoreState = true
-                        }
-                    },
-                    icon = {
-                        Icon(
-                            painterResource(screen.icon),
-                            contentDescription = screen.label,
+
+    if (layoutType == NavigationSuiteType.NavigationDrawer) {
+        PermanentNavigationDrawer(
+            drawerContent = {
+                PermanentDrawerSheet(
+                    modifier = Modifier.width(280.dp),
+                    drawerContainerColor = MaterialTheme.colorScheme.background,
+                    drawerContentColor = MaterialTheme.colorScheme.onSurface,
+                    drawerShape = androidx.compose.ui.graphics.RectangleShape
+                ) {
+                    Spacer(Modifier.weight(1f))
+                    bottomNavItems.forEachIndexed { index, screen ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        NavigationDrawerItem(
+                            selected = selected,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = {
+                                Icon(
+                                    painterResource(screen.icon),
+                                    contentDescription = screen.label,
+                                )
+                            },
+                            label = { Text(screen.label) },
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp)
+                                .padding(vertical = 4.dp)
                         )
-                    },
-                    label = { Text(screen.label) },
-                    modifier = Modifier.padding(
-                        top = if (index == 0) 18.dp else 0.dp,
-                        bottom = if (index == bottomNavItems.size - 1) 18.dp else 0.dp
-                    )
-                )
-            }
-        },
-    ) {
-        Scaffold(
-            modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
-            topBar = {
-                topAppBar(windowSize)
-            },
-        ) { innerPadding -> // Content of the Scaffold
-            NavHost(
-                navController = navController,
-                startDestination = HomepageScreen.Trending.route,
-                modifier = Modifier.padding(innerPadding) // Apply padding from Scaffold
-            ) {
-                composable(HomepageScreen.Trending.route) { TrendingScreenTab() }
-                composable(HomepageScreen.Movies.route) {
-//                    MovieScreen()
-                    MovieScreenTabs(Modifier, onMovieSelected = {
-//                        navController.navigate(HomepageScreen.MovieDetail.route)
-                    })
+                    }
+                    Spacer(Modifier.weight(1f))
                 }
-                composable(HomepageScreen.Tvshows.route) { TvShowsScreenTab() }
-                composable(HomepageScreen.Person.route) { PersonScreenTab() }
-                composable(HomepageScreen.MyFav.route) { MyFavScreenTab() }
+            }
+        ) {
+            MainAppScaffoldContent(windowSize, navController)
+        }
+    } else if (layoutType == NavigationSuiteType.NavigationRail) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            NavigationRail(
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
+                Spacer(Modifier.weight(1f))
+                bottomNavItems.forEachIndexed { index, screen ->
+                    val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    NavigationRailItem(
+                        selected = selected,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                painterResource(screen.icon),
+                                contentDescription = screen.label,
+                            )
+                        },
+                        label = { Text(screen.label) },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                MainAppScaffoldContent(windowSize, navController)
             }
         }
-
+    } else {
+        NavigationSuiteScaffold(
+            layoutType = layoutType,
+            navigationSuiteItems = {
+                bottomNavItems.forEachIndexed { index, screen ->
+                    item(
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                painterResource(screen.icon),
+                                contentDescription = screen.label,
+                            )
+                        },
+                        label = { Text(screen.label) }
+                    )
+                }
+            },
+        ) {
+            MainAppScaffoldContent(windowSize, navController)
+        }
     }
+}
 
+@Composable
+private fun MainAppScaffoldContent(
+    windowSize: WindowSize,
+    navController: NavHostController,
+) {
+    Scaffold(
+        topBar = {
+            topAppBar(windowSize)
+        },
+    ) { innerPadding -> // Content of the Scaffold
+        NavHost(
+            navController = navController,
+            startDestination = HomepageScreen.Trending.route,
+            modifier = Modifier.padding(innerPadding) // Apply padding from Scaffold
+        ) {
+            composable(HomepageScreen.Trending.route) { TrendingScreenTab() }
+            composable(HomepageScreen.Movies.route) {
+                MovieScreenTabs(Modifier, onMovieSelected = {
+                })
+            }
+            composable(HomepageScreen.Tvshows.route) { TvShowsScreenTab() }
+            composable(HomepageScreen.Person.route) { PersonScreenTab() }
+            composable(HomepageScreen.MyFav.route) { MyFavScreenTab() }
+        }
+    }
 }
 
 @Composable
@@ -250,20 +332,16 @@ private fun topAppBar(windowSize: WindowSize) {
             actionIconContentColor = TopAppBarDefaults.topAppBarColors().actionIconContentColor,
         ),
         title = {
-            SearchBox(
-                modifier = Modifier,
-//                        modifier =
-//                            if (windowSize.isExpanded() || windowSize.isMedium()) {
-//                                Modifier.wrapContentHeight()
-//                                    .align(Alignment.CenterHorizontally)
-//                            } else {
-//                                Modifier.fillMaxWidth().padding(end = 8.dp).wrapContentHeight()
-//                                    .align(Alignment.CenterHorizontally)
-//                            },
-                hint = "Search for Movies & Tv shows",
-                onClick = {},
-            )
-//                }
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                SearchBox(
+                    modifier = Modifier.fillMaxWidth(if (windowSize.isCompact()) 1f else 0.5f),
+                    hint = "Search for Movies & Tv shows",
+                    onClick = {},
+                )
+            }
         },
     )
 //    }
