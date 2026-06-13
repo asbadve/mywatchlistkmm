@@ -13,12 +13,10 @@ plugins {
 @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
 kotlin {
     tasks.create("testClasses")
-    targetHierarchy.default()
+    kotlin.applyDefaultHierarchyTemplate()
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
         }
     }
 
@@ -48,12 +46,21 @@ kotlin {
         }
         val commonMain by getting {
             dependencies {
+                implementation(libs.lifecycle.viewmodel.compose)
+                implementation(libs.material3.adaptive.navigation.suite)
+                implementation(libs.adaptive)
+                implementation(libs.adaptive.layout)
+                implementation(libs.adaptive.navigation)
+                implementation(libs.material.icons.core)
                 implementation(libs.material3.window.size.class1)
+                implementation(libs.material.navigation)
                 implementation(libs.components.resources)
                 api(compose.runtime)
                 implementation(compose.material3)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
+//                implementation(libs.compose.ui.tooling.preview)
+                implementation(compose.components.uiToolingPreview)
                 implementation(libs.voyager.navigator)
                 implementation(libs.voyager.screenModel)
                 implementation(libs.voyager.tabNavigator)
@@ -70,6 +77,7 @@ kotlin {
                 implementation(libs.koin.core)
                 implementation(libs.ktor.serialization.kotlinx.json)
                 implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.navigation.compose)
             }
         }
 
@@ -94,6 +102,7 @@ kotlin {
 
         val desktopMain by getting {
             dependencies {
+                implementation(libs.kotlinx.coroutines.swing)
                 implementation(compose.desktop.common)
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.okhttp)

@@ -8,11 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -79,14 +78,17 @@ private fun InternalSearchBox(
     Column(
         verticalArrangement = Arrangement.Center,
         modifier =
-            modifier.height(45.dp)
+            Modifier
                 .wrapContentSize(Alignment.CenterStart)
-                .wrapContentWidth(),
+                .fillMaxWidth()
+                .padding(end = 16.dp)
     ) {
         BoxWithConstraints(
             contentAlignment = Alignment.CenterStart,
             modifier =
-                modifier.fillMaxHeight()
+                Modifier
+                    .height(45.dp)
+                    .fillMaxWidth()
                     .clip(shape)
                     .background(getBackgroundColor(isSystemInDarkTheme()), shape)
                     .clickable(

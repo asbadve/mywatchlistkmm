@@ -19,3 +19,4 @@ composeApp/build/*
 /screenshots/*
 /.kotlin/metadata/*
 /.kotlin/errors/*
+/patch/*
