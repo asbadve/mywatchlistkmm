@@ -84,6 +84,7 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
 
@@ -99,6 +100,10 @@ kotlin {
                 implementation(libs.androidx.ui.tooling.preview.android)
             }
         }
+        val androidUnitTest by getting {
+            dependencies {
+            }
+        }
 
         val desktopMain by getting {
             dependencies {
@@ -108,6 +113,11 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.sqlDelight.driver.sqlite)
                 implementation(libs.androidx.ui.tooling.preview.desktop)
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
             }
         }
 
@@ -193,3 +203,6 @@ sqldelight {
 //        }
     }
 }
+
+
+

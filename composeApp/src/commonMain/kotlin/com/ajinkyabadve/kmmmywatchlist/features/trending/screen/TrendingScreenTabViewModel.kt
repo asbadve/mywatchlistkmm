@@ -8,16 +8,21 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.TIME_WINDOW_DAY
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.TIME_WINDOW_WEEK
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.trendingChipList
+import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrendingRepository
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrendingRepositoryImpl
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
+import io.ktor.utils.io.errors.IOException
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerializationException
+
 @OptIn(ExperimentalSerializationApi::class)
 class TrendingScreenTabViewModel(
-    private val trendingRepository: TrendingRepositoryImpl = TrendingRepositoryImpl(),
+    private val trendingRepository: TrendingRepository = TrendingRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -41,7 +46,6 @@ class TrendingScreenTabViewModel(
 
     private val _selectedTvChipIndex = MutableStateFlow(DEFAULT_SELECTED_CHIP)
     val selectedTvChipIndex = _selectedTvChipIndex
-
 
     private val _trendTvList = MutableStateFlow<List<Movie>>(listOf())
     val trendTvList = _trendTvList
@@ -70,6 +74,15 @@ class TrendingScreenTabViewModel(
     private val _isPeopleTrendLoading = MutableStateFlow(false)
     val isPeopleTrendLoading = _isPeopleTrendLoading
 
+    private val _movieTrendError = MutableStateFlow<String?>(null)
+    val movieTrendError = _movieTrendError
+
+    private val _tvTrendError = MutableStateFlow<String?>(null)
+    val tvTrendError = _tvTrendError
+
+    private val _peopleTrendError = MutableStateFlow<String?>(null)
+    val peopleTrendError = _peopleTrendError
+
     init {
         _isScreenLoading.value = true
         loadTrendingMedia(
@@ -90,30 +103,36 @@ class TrendingScreenTabViewModel(
         )
     }
 
+    private fun setErrorStateByMediaType(mediaType: String, message: String?) {
+        when (mediaType) {
+            MEDIA_TYPE_MOVIE -> _movieTrendError.value = message
+            MEDIA_TYPE_TV -> _tvTrendError.value = message
+            MEDIA_TYPE_PEOPLE -> _peopleTrendError.value = message
+        }
+    }
+
     private fun loadTrendingMedia(
         timeWindow: String,
         mediaType: String,
         isFirstLoad: Boolean,
     ) {
-        try {
-            viewModelScope.launch(Dispatchers.Main) {
-                if (isFirstLoad) {
-                    setScreenLoadingStateByMediaType(mediaType = mediaType, isLoading = true)
-                } else {
-                    setLoadingStateByMediaType(mediaType = mediaType, isLoading = true)
-                }
+        viewModelScope.launch(Dispatchers.Main) {
+            setErrorStateByMediaType(mediaType, null)
+            if (isFirstLoad) {
+                setScreenLoadingStateByMediaType(mediaType = mediaType, isLoading = true)
+            } else {
+                setLoadingStateByMediaType(mediaType = mediaType, isLoading = true)
+            }
+            try {
                 val movies =
-                    trendingRepository.getTrending(
-                        timeWindow,
-                        mediaType,
-                    ).list
+                    trendingRepository
+                        .getTrending(
+                            timeWindow,
+                            mediaType,
+                        ).list
                 _isScreenLoading.value = false
-                if (isFirstLoad) {
-                    setScreenLoadingStateByMediaType(mediaType = mediaType, isLoading = false)
-                } else {
-                    setLoadingStateByMediaType(mediaType = mediaType, isLoading = false)
-                }
                 movies?.let {
+                    setErrorStateByMediaType(mediaType, null)
                     when (mediaType) {
                         MEDIA_TYPE_MOVIE -> {
                             _trendMovieList.value = movies
@@ -131,11 +150,25 @@ class TrendingScreenTabViewModel(
                         }
                     }
                 } ?: run {
-                    // TODO: handle fail case
+                    setErrorStateByMediaType(mediaType, "No content found.")
+                }
+            } catch (e: HttpExceptions) {
+                setErrorStateByMediaType(mediaType, e.message)
+                Napier.d { "HTTP exception: " + e.message }
+            } catch (e: IOException) {
+                setErrorStateByMediaType(mediaType, "Network error. Please check your connection.")
+                Napier.d { "Network IO exception: " + e.message }
+            } catch (e: SerializationException) {
+                setErrorStateByMediaType(mediaType, "Failed to parse content.")
+                Napier.d { "Serialization exception: " + e.message }
+            } finally {
+                _isScreenLoading.value = false
+                if (isFirstLoad) {
+                    setScreenLoadingStateByMediaType(mediaType = mediaType, isLoading = false)
+                } else {
+                    setLoadingStateByMediaType(mediaType = mediaType, isLoading = false)
                 }
             }
-        } catch (e: Exception) {
-            Napier.d { "title" + e.message }
         }
     }
 
@@ -211,8 +244,8 @@ class TrendingScreenTabViewModel(
         )
     }
 
-    private fun getSelectedTimeWindow(selectedIndex: Int): String {
-        return when (selectedIndex) {
+    private fun getSelectedTimeWindow(selectedIndex: Int): String =
+        when (selectedIndex) {
             0 -> {
                 TIME_WINDOW_DAY
             }
@@ -225,7 +258,6 @@ class TrendingScreenTabViewModel(
                 TIME_WINDOW_DAY
             }
         }
-    }
 
     companion object {
         const val DEFAULT_SELECTED_CHIP = 0

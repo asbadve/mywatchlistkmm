@@ -12,7 +12,8 @@ This document contains core instructions, architectural decisions, and layout ru
 ---
 
 ## 2. Code Commits & Staging
-* **CRITICAL**: Do **NOT** commit, stage, or check in any modified files unless the user explicitly instructs you to do so. All code changes should remain local.
+* **CRITICAL**: Do **NOT** commit, stage, or check in any modified files unless the user explicitly instructs you to do so. All code changes should remain local. E.g., even if tests run successfully, never commit code without asking for explicit permission first.
+* **Test Before Committing**: Do **NOT** commit, stage, or check in the code before running the unit/integration tests successfully only for diff of the files and if the unit test file are availble to run to verify there are no failures.
 
 ---
 
@@ -61,3 +62,12 @@ This document contains core instructions, architectural decisions, and layout ru
 ## 6. Screenshot & System Theme Guidelines
 * **Clean Window Capture**: When capturing desktop screenshots, crop/capture only the desktop build window itself (it should not contain surrounding background app windows or desktop environments).
 * **Restore Dark Mode Default**: Whenever you toggle system themes (e.g., changing macOS appearance preferences between light and dark mode to capture light/dark theme screenshots), always revert the system theme back to the default macOS dark mode configuration immediately after capturing.
+
+---
+
+## 7. Unit Testing Guidelines
+* **MockK Properties**: Declare mock properties in unit tests using the `@MockK` annotation (e.g., `@MockK(relaxed = true) lateinit var mockRepository: TrendingRepository`) instead of inline mock initialization.
+* **Mocking Setup**: Perform MockK annotations initialization (`MockKAnnotations.init(this)`) and all common mock behaviors (such as `coEvery { ... } returns ...`) inside the `@BeforeTest` (or `@Before`) setup method.
+* **Avoid Production Constants**: Do **NOT** use actual constants imported from production classes inside unit tests (e.g., constants from `TrendingConstant`). Instead, redefine these constants inside a `private companion object` in the test class.
+* **Private Companion Objects**: The companion object inside test classes should be declared `private companion object` to restrict constant visibility.
+* **Common Test Constants**: Any common constants used in multiple test classes at the same feature level package should be moved to a shared test constants file (e.g., `TrendingTestConstants.kt`) rather than duplicated across companion objects.

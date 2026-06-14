@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -35,6 +36,18 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrendingSectionSt
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.ExperimentalSerializationApi
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 
 @OptIn(ExperimentalSerializationApi::class)
 @Composable
@@ -48,16 +61,19 @@ fun TrendingScreenTab(
     val movieTrendResult by viewModel.trendMovieList.collectAsState()
     val movieChipList by viewModel.trendMovieChipList.collectAsState()
     val movieChipSelected by viewModel.selectedMovieChipIndex.collectAsState()
+    val movieTrendError by viewModel.movieTrendError.collectAsState()
     val tvTrendScreenLoadingState by viewModel.isTvTrendScreenLoading.collectAsState()
     val tvTrendLoadingState by viewModel.isTvTrendLoading.collectAsState()
     val tvTrendResult by viewModel.trendTvList.collectAsState()
     val tvChipList by viewModel.trendTvChipList.collectAsState()
     val tvChipSelected by viewModel.selectedTvChipIndex.collectAsState()
+    val tvTrendError by viewModel.tvTrendError.collectAsState()
     val peopleTrendScreenLoadingState by viewModel.isPeopleTrendScreenLoading.collectAsState()
     val peopleTrendLoadingState by viewModel.isPeopleTrendLoading.collectAsState()
     val peopleTrendResult by viewModel.trendPeopleList.collectAsState()
     val peopleChipList by viewModel.trendPeopleChipList.collectAsState()
     val peopleChipSelected by viewModel.selectedPeopleChipIndex.collectAsState()
+    val peopleTrendError by viewModel.peopleTrendError.collectAsState()
 
     val sections =
         listOf(
@@ -69,6 +85,7 @@ fun TrendingScreenTab(
                 isScreenLoading = movieTrendScreenLoadingState,
                 isLoading = movieTrendLoadingState,
                 mediaList = movieTrendResult,
+                errorMessage = movieTrendError,
             ),
             TrendingSectionState(
                 title = "Trending Tv show",
@@ -78,6 +95,7 @@ fun TrendingScreenTab(
                 isScreenLoading = tvTrendScreenLoadingState,
                 isLoading = tvTrendLoadingState,
                 mediaList = tvTrendResult,
+                errorMessage = tvTrendError,
             ),
             TrendingSectionState(
                 title = "Trending People",
@@ -87,6 +105,7 @@ fun TrendingScreenTab(
                 isScreenLoading = peopleTrendScreenLoadingState,
                 isLoading = peopleTrendLoadingState,
                 mediaList = peopleTrendResult,
+                errorMessage = peopleTrendError,
             ),
         )
 
@@ -149,7 +168,14 @@ private fun TrendingSection(
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }
 
-    if (section.mediaList.isNotEmpty()) {
+    if (section.errorMessage != null) {
+        TrendingErrorState(
+            errorMessage = section.errorMessage,
+            onRetry = {
+                onChipSelected(section.selectedChipIndex, section.mediaType)
+            }
+        )
+    } else if (section.mediaList.isNotEmpty()) {
         TrendingMediaCarousel(section.mediaList)
     }
 }
@@ -226,5 +252,65 @@ private fun TrendingLoadingState() {
             onClick = {},
             isLoadingState = true,
         )
+    }
+}
+
+@Composable
+private fun TrendingErrorState(
+    errorMessage: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Couldn't Load Content",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            FilledTonalButton(
+                onClick = onRetry,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Retry")
+                }
+            }
+        }
     }
 }
