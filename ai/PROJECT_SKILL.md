@@ -7,6 +7,7 @@ This document contains core instructions, architectural decisions, and layout ru
 ## 1. Environment & Build Configuration
 * **Java Version**: Always use **Java 17** for compilation. Ensure compatible JDK setup across Android, Desktop, and iOS.
 * **Web Target**: The JS/Web target is currently parked due to signature mismatch issues. Do not spend time trying to compile it unless explicitly requested by the user.
+* **Android Target**: Always use the **android-cli** skill and the `android` command-line tool by Google for Android builds and environments diagnostics.
 
 ---
 
@@ -60,4 +61,3 @@ This document contains core instructions, architectural decisions, and layout ru
 ## 6. Screenshot & System Theme Guidelines
 * **Clean Window Capture**: When capturing desktop screenshots, crop/capture only the desktop build window itself (it should not contain surrounding background app windows or desktop environments).
 * **Restore Dark Mode Default**: Whenever you toggle system themes (e.g., changing macOS appearance preferences between light and dark mode to capture light/dark theme screenshots), always revert the system theme back to the default macOS dark mode configuration immediately after capturing.
-* **No Production Code Changes for Screenshot Tests**: Never modify production code (such as size classes, layout logic, or window size constraints) to force layout configurations or test settings during screenshot runs. All screenshot capturing and testing should be run independently and organically on the respective platforms/resolutions without altering source code.
