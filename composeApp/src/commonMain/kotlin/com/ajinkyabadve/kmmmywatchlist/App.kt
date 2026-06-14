@@ -81,11 +81,12 @@ fun MainAppScreen(windowSize: WindowSize) {
     val topRatedViewModel = remember { MovieListScreenModel(MoviesConstant.TOP_RATED_API_PATH) }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val layoutType = if (windowSize.isExpanded() && !adaptiveInfo.windowPosture.isTabletop) {
-        NavigationSuiteType.NavigationDrawer
-    } else {
-        NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
-    }
+    val layoutType =
+        if (windowSize.isExpanded() && !adaptiveInfo.windowPosture.isTabletop) {
+            NavigationSuiteType.NavigationDrawer
+        } else {
+            NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
+        }
 
     Row(modifier = Modifier.fillMaxSize()) {
         if (layoutType == NavigationSuiteType.NavigationDrawer) {
@@ -97,7 +98,7 @@ fun MainAppScreen(windowSize: WindowSize) {
             ) {
                 Column(
                     modifier = Modifier.fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     bottomNavItems.forEach { screen ->
                         val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
@@ -113,9 +114,10 @@ fun MainAppScreen(windowSize: WindowSize) {
                                 )
                             },
                             label = { Text(screen.label) },
-                            modifier = Modifier
-                                .padding(horizontal = NavigationConstants.NAVIGATION_DRAWER_ITEM_HORIZONTAL_PADDING)
-                                .padding(vertical = NavigationConstants.NAVIGATION_DRAWER_ITEM_VERTICAL_PADDING),
+                            modifier =
+                                Modifier
+                                    .padding(horizontal = NavigationConstants.NAVIGATION_DRAWER_ITEM_HORIZONTAL_PADDING)
+                                    .padding(vertical = NavigationConstants.NAVIGATION_DRAWER_ITEM_VERTICAL_PADDING),
                         )
                     }
                 }
@@ -128,7 +130,7 @@ fun MainAppScreen(windowSize: WindowSize) {
                 Column(
                     modifier = Modifier.fillMaxHeight(),
                     verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     bottomNavItems.forEach { screen ->
                         val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
@@ -205,7 +207,7 @@ private fun MainAppScaffoldContent(
                     }
                 }
             }
-        }
+        },
     ) { innerPadding ->
         NavHost(
             navController = navController,
@@ -220,7 +222,7 @@ private fun MainAppScaffoldContent(
                     upcomingViewModel = upcomingViewModel,
                     popularViewModel = popularViewModel,
                     topRatedViewModel = topRatedViewModel,
-                    onMovieSelected = {}
+                    onMovieSelected = {},
                 )
             }
             composable(HomepageScreen.Tvshows.route) { TvShowsScreenTab() }
@@ -234,23 +236,25 @@ private fun MainAppScaffoldContent(
 @Composable
 private fun AppTopBar(windowSize: WindowSize) {
     TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = Color.Transparent,
-        ),
+        colors =
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = Color.Transparent,
+            ),
         title = {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(end = NavigationConstants.TOP_BAR_END_PADDING),
                 contentAlignment = Alignment.Center,
             ) {
                 SearchBox(
-                    modifier = Modifier.fillMaxWidth(
-                        if (windowSize.isCompact()) {
-                            NavigationConstants.SEARCH_BOX_COMPACT_WIDTH_FRACTION
-                        } else {
-                            NavigationConstants.SEARCH_BOX_WIDE_WIDTH_FRACTION
-                        }
-                    ),
+                    modifier =
+                        Modifier.fillMaxWidth(
+                            if (windowSize.isCompact()) {
+                                NavigationConstants.SEARCH_BOX_COMPACT_WIDTH_FRACTION
+                            } else {
+                                NavigationConstants.SEARCH_BOX_WIDE_WIDTH_FRACTION
+                            },
+                        ),
                     hint = "Search for Movies & Tv shows",
                     onClick = {},
                 )
@@ -259,7 +263,10 @@ private fun AppTopBar(windowSize: WindowSize) {
     )
 }
 
-private fun navigateWithSingleTop(navController: NavHostController, route: String) {
+private fun navigateWithSingleTop(
+    navController: NavHostController,
+    route: String,
+) {
     navController.navigate(route) {
         popUpTo(navController.graph.findStartDestination().id) {
             saveState = true

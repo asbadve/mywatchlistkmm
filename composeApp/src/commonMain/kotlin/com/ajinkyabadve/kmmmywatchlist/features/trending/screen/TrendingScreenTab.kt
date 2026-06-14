@@ -1,12 +1,12 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -31,13 +31,17 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_MOVIE
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_PEOPLE
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_TV
+import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrendingSectionState
 import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.ExperimentalSerializationApi
 
+@OptIn(ExperimentalSerializationApi::class)
 @Composable
-fun TrendingScreenTab(modifier: Modifier = Modifier) {
-
-    val viewModel: TrendingScreenTabViewModel = viewModel { TrendingScreenTabViewModel() }
+fun TrendingScreenTab(
+    modifier: Modifier = Modifier,
+    viewModel: TrendingScreenTabViewModel = viewModel { TrendingScreenTabViewModel() },
+) {
     val screenLoadingState by viewModel.isScreenLoading.collectAsState()
     val movieTrendScreenLoadingState by viewModel.isMovieTrendScreenLoading.collectAsState()
     val movieTrendLoadingState by viewModel.isMovieTrendLoading.collectAsState()
@@ -55,8 +59,54 @@ fun TrendingScreenTab(modifier: Modifier = Modifier) {
     val peopleChipList by viewModel.trendPeopleChipList.collectAsState()
     val peopleChipSelected by viewModel.selectedPeopleChipIndex.collectAsState()
 
+    val sections =
+        listOf(
+            TrendingSectionState(
+                title = "Trending Movies",
+                mediaType = MEDIA_TYPE_MOVIE,
+                chipList = movieChipList,
+                selectedChipIndex = movieChipSelected,
+                isScreenLoading = movieTrendScreenLoadingState,
+                isLoading = movieTrendLoadingState,
+                mediaList = movieTrendResult,
+            ),
+            TrendingSectionState(
+                title = "Trending Tv show",
+                mediaType = MEDIA_TYPE_TV,
+                chipList = tvChipList,
+                selectedChipIndex = tvChipSelected,
+                isScreenLoading = tvTrendScreenLoadingState,
+                isLoading = tvTrendLoadingState,
+                mediaList = tvTrendResult,
+            ),
+            TrendingSectionState(
+                title = "Trending People",
+                mediaType = MEDIA_TYPE_PEOPLE,
+                chipList = peopleChipList,
+                selectedChipIndex = peopleChipSelected,
+                isScreenLoading = peopleTrendScreenLoadingState,
+                isLoading = peopleTrendLoadingState,
+                mediaList = peopleTrendResult,
+            ),
+        )
+
+    TrendingScreenContent(
+        modifier = modifier,
+        screenLoadingState = screenLoadingState,
+        sections = sections,
+        onChipSelected = viewModel::onChipSelected,
+    )
+}
+
+@Composable
+fun TrendingScreenContent(
+    screenLoadingState: Boolean,
+    sections: List<TrendingSectionState>,
+    onChipSelected: (Int, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     BoxWithConstraints(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+        modifier = modifier.fillMaxWidth().fillMaxHeight(),
     ) {
         Column(
             modifier =
@@ -69,192 +119,45 @@ fun TrendingScreenTab(modifier: Modifier = Modifier) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            setupTrendingMovies(
-                movieChipList,
-                movieChipSelected,
-                viewModel,
-                movieTrendScreenLoadingState,
-                movieTrendLoadingState,
-                movieTrendResult,
-            )
-
-            setupTrendingTvShows(
-                tvChipList,
-                tvChipSelected,
-                viewModel,
-                tvTrendScreenLoadingState,
-                tvTrendLoadingState,
-                tvTrendResult,
-            )
-
-            setupTrendingPeople(
-                peopleChipList,
-                peopleChipSelected,
-                viewModel,
-                peopleTrendScreenLoadingState,
-                peopleTrendLoadingState,
-                peopleTrendResult,
-            )
+            sections.forEach { section ->
+                TrendingSection(
+                    section = section,
+                    onChipSelected = onChipSelected,
+                )
+            }
         }
     }
-
-
 }
 
 @Composable
-private fun setupTrendingPeople(
-    peopleChipList: List<String>,
-    peopleChipSelected: Int,
-    viewModel: TrendingScreenTabViewModel,
-    peopleTrendScreenLoadingState: Boolean,
-    peopleTrendLoadingState: Boolean,
-    peopleTrendResult: List<Movie>,
+private fun TrendingSection(
+    section: TrendingSectionState,
+    onChipSelected: (Int, String) -> Unit,
 ) {
-    addPeopleChips(peopleChipList, peopleChipSelected, viewModel)
-
-    if (peopleTrendScreenLoadingState) {
-        trendingLoadingState()
+    if (section.chipList.isNotEmpty()) {
+        MediaChips(
+            section = section,
+            onChipSelected = onChipSelected,
+        )
     }
 
-    if (peopleTrendLoadingState) {
+    if (section.isScreenLoading) {
+        TrendingLoadingState()
+    }
+
+    if (section.isLoading) {
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }
 
-    if (peopleTrendResult.isNotEmpty()) {
-        trendingMediaCarousel(peopleTrendResult)
+    if (section.mediaList.isNotEmpty()) {
+        TrendingMediaCarousel(section.mediaList)
     }
 }
 
 @Composable
-private fun setupTrendingTvShows(
-    tvChipList: List<String>,
-    tvChipSelected: Int,
-    viewModel: TrendingScreenTabViewModel,
-    tvTrendScreenLoadingState: Boolean,
-    tvTrendLoadingState: Boolean,
-    tvTrendResult: List<Movie>,
-) {
-    addTvChips(tvChipList, tvChipSelected, viewModel)
-
-    if (tvTrendScreenLoadingState) {
-        trendingLoadingState()
-    }
-
-    if (tvTrendLoadingState) {
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-    }
-
-    if (tvTrendResult.isNotEmpty()) {
-        trendingMediaCarousel(tvTrendResult)
-    }
-}
-
-@Composable
-private fun setupTrendingMovies(
-    movieChipList: List<String>,
-    movieChipSelected: Int,
-    viewModel: TrendingScreenTabViewModel,
-    movieTrendScreenLoadingState: Boolean,
-    movieTrendLoadingState: Boolean,
-    movieTrendResult: List<Movie>,
-) {
-    addMovieChips(movieChipList, movieChipSelected, viewModel)
-
-    if (movieTrendScreenLoadingState) {
-        trendingLoadingState()
-    }
-
-    if (movieTrendLoadingState) {
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-    }
-
-    if (movieTrendResult.isNotEmpty()) {
-        trendingMediaCarousel(movieTrendResult)
-    }
-}
-
-@Composable
-private fun addTvChips(
-    tvChipList: List<String>,
-    tvChipSelected: Int,
-    viewModel: TrendingScreenTabViewModel,
-) {
-    if (tvChipList.isNotEmpty()) {
-        addMediaChips(
-            tvChipSelected,
-            tvChipList,
-            viewModel,
-            "Trending Tv show",
-            MEDIA_TYPE_TV,
-        )
-    }
-}
-
-@Composable
-private fun addPeopleChips(
-    peopleChipList: List<String>,
-    peopleChipSelected: Int,
-    viewModel: TrendingScreenTabViewModel,
-) {
-    if (peopleChipList.isNotEmpty()) {
-        addMediaChips(
-            peopleChipSelected,
-            peopleChipList,
-            viewModel,
-            "Trending People",
-            MEDIA_TYPE_PEOPLE,
-        )
-    }
-}
-
-@Composable
-private fun addMovieChips(
-    movieChipList: List<String>,
-    movieChipSelected: Int,
-    viewModel: TrendingScreenTabViewModel,
-) {
-    if (movieChipList.isNotEmpty()) {
-        addMediaChips(
-            movieChipSelected,
-            movieChipList,
-            viewModel,
-            "Trending Movies",
-            MEDIA_TYPE_MOVIE,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun trendingMediaCarousel(mediaTrendResult: List<Movie>) {
-    val state = rememberCarouselState { mediaTrendResult.count() }
-    HorizontalMultiBrowseCarousel(
-        state = state,
-        modifier = Modifier.fillMaxWidth(),
-        preferredItemWidth = 200.dp,
-        flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(state = state),
-        itemSpacing = 8.dp,
-        contentPadding = PaddingValues(horizontal = 16.dp),
-    ) { i ->
-        val item = mediaTrendResult[i]
-        mediaMovieRow(
-            MoviesTab.Tabs.IMAGE_BASE_URL + item.posterPath,
-            item.title,
-            modifier = Modifier,
-            onClick = {
-                Napier.d { "title" + item.title }
-            },
-        )
-    }
-}
-
-@Composable
-private fun addMediaChips(
-    movieChipSelected: Int,
-    movieChipList: List<String>,
-    viewModel: TrendingScreenTabViewModel,
-    chipsHeading: String,
-    mediaType: String,
+private fun MediaChips(
+    section: TrendingSectionState,
+    onChipSelected: (Int, String) -> Unit,
 ) {
     Row(
         modifier =
@@ -267,24 +170,47 @@ private fun addMediaChips(
     ) {
         Text(
             modifier = Modifier.padding(end = 8.dp),
-            text = chipsHeading,
+            text = section.title,
             style = MaterialTheme.typography.titleMedium,
         )
 
         scrollableChips(
-            selectedChip = movieChipSelected,
-            chipItemList = movieChipList,
+            selectedChip = section.selectedChipIndex,
+            chipItemList = section.chipList,
             onClick = { selectedIndex ->
-                viewModel.onChipSelected(selectedIndex, mediaType)
+                onChipSelected(selectedIndex, section.mediaType)
             },
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TrendingMediaCarousel(mediaTrendResult: List<Movie>) {
+    val state = rememberCarouselState { mediaTrendResult.count() }
+    HorizontalMultiBrowseCarousel(
+        state = state,
+        modifier = Modifier.fillMaxWidth(),
+        preferredItemWidth = 200.dp,
+        flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(state = state),
+        itemSpacing = 8.dp,
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) { i ->
+        val item = mediaTrendResult[i]
+        mediaMovieRow(
+            imageUrl = MoviesTab.Tabs.IMAGE_BASE_URL + item.posterPath,
+            title = item.title,
+            modifier = Modifier,
+            onClick = {
+                Napier.d { "title" + item.title }
+            },
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun trendingLoadingState() {
+private fun TrendingLoadingState() {
     val items = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9")
     HorizontalMultiBrowseCarousel(
         state = rememberCarouselState { items.count() },
@@ -294,48 +220,11 @@ private fun trendingLoadingState() {
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
         mediaMovieRow(
-            null,
-            "loading",
+            imageUrl = null,
+            title = "loading",
             modifier = Modifier,
-            onClick = {
-            },
+            onClick = {},
             isLoadingState = true,
         )
     }
 }
-
-
-@Composable
-fun TvShowsScreenTab(modifier: Modifier = Modifier) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Tv shows (Sub-Tab of Home)")
-    }
-}
-
-
-@Composable
-fun PersonScreenTab(modifier: Modifier = Modifier) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Person (Sub-Tab of Home)")
-    }
-}
-
-@Composable
-fun MyFavScreenTab(modifier: Modifier = Modifier) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("MyFav (Sub-Tab of Home)")
-    }
-}
-
