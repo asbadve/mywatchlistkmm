@@ -14,6 +14,7 @@ import io.github.aakira.napier.log
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class MovieListScreenModel(
@@ -95,6 +96,7 @@ class MovieListScreenModel(
         page = 1
         listState = ListState.IDLE
         canPaginate = false
+        viewModelScope.cancel()
         super.onDispose()
     }
 }

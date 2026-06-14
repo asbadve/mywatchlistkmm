@@ -41,10 +41,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun screenContent(
     viewModel: MovieListScreenModel,
+    lazyColumnListState: LazyGridState = rememberLazyGridState(),
     onMovieSelected: ((movieId: Long) -> Unit)? = null,
 ) {
     val movies = viewModel.movieList
-    val lazyColumnListState = rememberLazyGridState()
     val coroutineScope = rememberCoroutineScope()
     val shouldStartPaginate =
         remember {
@@ -55,7 +55,7 @@ fun screenContent(
                 ) >= (lazyColumnListState.layoutInfo.totalItemsCount - THIRD_INDEX)
             }
         }
-    LaunchedEffect(key1 = shouldStartPaginate.value) {
+    LaunchedEffect(key1 = shouldStartPaginate.value, key2 = viewModel.listState) {
         if (shouldStartPaginate.value && viewModel.listState == ListState.IDLE) {
             viewModel.loadMovies()
         }

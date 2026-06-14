@@ -5,9 +5,12 @@
 package com.ajinkyabadve.kmmmywatchlist
 
 import HomepageScreen
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -31,6 +36,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +52,8 @@ import bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTab
@@ -67,6 +75,11 @@ fun MainAppScreen(windowSize: WindowSize) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    val nowPlayingViewModel = remember { MovieListScreenModel(MoviesConstant.NOW_PLAYING_API_PATH) }
+    val upcomingViewModel = remember { MovieListScreenModel(MoviesConstant.UPCOMING_API_PATH) }
+    val popularViewModel = remember { MovieListScreenModel(MoviesConstant.POPULAR_API_PATH) }
+    val topRatedViewModel = remember { MovieListScreenModel(MoviesConstant.TOP_RATED_API_PATH) }
+
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val layoutType = if (windowSize.isExpanded() && !adaptiveInfo.windowPosture.isTabletop) {
         NavigationSuiteType.NavigationDrawer
@@ -74,156 +87,125 @@ fun MainAppScreen(windowSize: WindowSize) {
         NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
     }
 
-    val scaffoldContent: @Composable () -> Unit = {
-        MainAppScaffoldContent(
-            windowSize = windowSize,
-            navController = navController,
-        )
-    }
-
-    when (layoutType) {
-        NavigationSuiteType.NavigationDrawer -> {
-            AppNavigationDrawer(
-                currentDestination = currentDestination,
-                navController = navController,
-                content = scaffoldContent,
-            )
-        }
-        NavigationSuiteType.NavigationRail -> {
-            AppNavigationRail(
-                currentDestination = currentDestination,
-                navController = navController,
-                content = scaffoldContent,
-            )
-        }
-        else -> {
-            AppNavigationSuiteScaffold(
-                layoutType = layoutType,
-                currentDestination = currentDestination,
-                navController = navController,
-                content = scaffoldContent,
-            )
-        }
-    }
-}
-
-@Composable
-private fun AppNavigationDrawer(
-    currentDestination: NavDestination?,
-    navController: NavHostController,
-    content: @Composable () -> Unit,
-) {
-    PermanentNavigationDrawer(
-        drawerContent = {
+    Row(modifier = Modifier.fillMaxSize()) {
+        if (layoutType == NavigationSuiteType.NavigationDrawer) {
             PermanentDrawerSheet(
                 modifier = Modifier.width(NavigationConstants.NAVIGATION_DRAWER_WIDTH),
                 drawerContainerColor = MaterialTheme.colorScheme.background,
                 drawerContentColor = MaterialTheme.colorScheme.onSurface,
                 drawerShape = androidx.compose.ui.graphics.RectangleShape,
             ) {
-                Spacer(Modifier.weight(1f))
-                bottomNavItems.forEach { screen ->
-                    val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                    NavigationDrawerItem(
-                        selected = selected,
-                        onClick = {
-                            navigateWithSingleTop(navController, screen.route)
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(screen.icon),
-                                contentDescription = screen.label,
-                            )
-                        },
-                        label = { Text(screen.label) },
-                        modifier = Modifier
-                            .padding(horizontal = NavigationConstants.NAVIGATION_DRAWER_ITEM_HORIZONTAL_PADDING)
-                            .padding(vertical = NavigationConstants.NAVIGATION_DRAWER_ITEM_VERTICAL_PADDING),
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-            }
-        },
-        content = content,
-    )
-}
-
-@Composable
-private fun AppNavigationRail(
-    currentDestination: NavDestination?,
-    navController: NavHostController,
-    content: @Composable () -> Unit,
-) {
-    Row(modifier = Modifier.fillMaxSize()) {
-        NavigationRail(
-            containerColor = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ) {
-            Spacer(Modifier.weight(1f))
-            bottomNavItems.forEach { screen ->
-                val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                NavigationRailItem(
-                    selected = selected,
-                    onClick = {
-                        navigateWithSingleTop(navController, screen.route)
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(screen.icon),
-                            contentDescription = screen.label,
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    bottomNavItems.forEach { screen ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        NavigationDrawerItem(
+                            selected = selected,
+                            onClick = {
+                                navigateWithSingleTop(navController, screen.route)
+                            },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(screen.icon),
+                                    contentDescription = screen.label,
+                                )
+                            },
+                            label = { Text(screen.label) },
+                            modifier = Modifier
+                                .padding(horizontal = NavigationConstants.NAVIGATION_DRAWER_ITEM_HORIZONTAL_PADDING)
+                                .padding(vertical = NavigationConstants.NAVIGATION_DRAWER_ITEM_VERTICAL_PADDING),
                         )
-                    },
-                    label = { Text(screen.label) },
-                    modifier = Modifier.padding(vertical = NavigationConstants.NAVIGATION_RAIL_ITEM_VERTICAL_PADDING),
-                )
+                    }
+                }
             }
-            Spacer(Modifier.weight(1f))
+        } else if (layoutType == NavigationSuiteType.NavigationRail) {
+            NavigationRail(
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    bottomNavItems.forEach { screen ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        NavigationRailItem(
+                            selected = selected,
+                            onClick = {
+                                navigateWithSingleTop(navController, screen.route)
+                            },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(screen.icon),
+                                    contentDescription = screen.label,
+                                )
+                            },
+                            label = { Text(screen.label) },
+                            modifier = Modifier.padding(vertical = NavigationConstants.NAVIGATION_RAIL_ITEM_VERTICAL_PADDING),
+                        )
+                    }
+                }
+            }
         }
+
         Box(modifier = Modifier.weight(1f)) {
-            content()
+            MainAppScaffoldContent(
+                windowSize = windowSize,
+                navController = navController,
+                layoutType = layoutType,
+                currentDestination = currentDestination,
+                nowPlayingViewModel = nowPlayingViewModel,
+                upcomingViewModel = upcomingViewModel,
+                popularViewModel = popularViewModel,
+                topRatedViewModel = topRatedViewModel,
+            )
         }
     }
-}
-
-@Composable
-private fun AppNavigationSuiteScaffold(
-    layoutType: NavigationSuiteType,
-    currentDestination: NavDestination?,
-    navController: NavHostController,
-    content: @Composable () -> Unit,
-) {
-    NavigationSuiteScaffold(
-        layoutType = layoutType,
-        navigationSuiteItems = {
-            bottomNavItems.forEach { screen ->
-                item(
-                    selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                    onClick = {
-                        navigateWithSingleTop(navController, screen.route)
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(screen.icon),
-                            contentDescription = screen.label,
-                        )
-                    },
-                    label = { Text(screen.label) },
-                )
-            }
-        },
-        content = content,
-    )
 }
 
 @Composable
 private fun MainAppScaffoldContent(
     windowSize: WindowSize,
     navController: NavHostController,
+    layoutType: NavigationSuiteType,
+    currentDestination: NavDestination?,
+    nowPlayingViewModel: MovieListScreenModel,
+    upcomingViewModel: MovieListScreenModel,
+    popularViewModel: MovieListScreenModel,
+    topRatedViewModel: MovieListScreenModel,
 ) {
     Scaffold(
         topBar = {
             AppTopBar(windowSize)
         },
+        bottomBar = {
+            if (layoutType != NavigationSuiteType.NavigationDrawer && layoutType != NavigationSuiteType.NavigationRail) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ) {
+                    bottomNavItems.forEach { screen ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                navigateWithSingleTop(navController, screen.route)
+                            },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(screen.icon),
+                                    contentDescription = screen.label,
+                                )
+                            },
+                            label = { Text(screen.label) },
+                        )
+                    }
+                }
+            }
+        }
     ) { innerPadding ->
         NavHost(
             navController = navController,
@@ -232,7 +214,14 @@ private fun MainAppScaffoldContent(
         ) {
             composable(HomepageScreen.Trending.route) { TrendingScreenTab() }
             composable(HomepageScreen.Movies.route) {
-                MovieScreenTabs(Modifier, onMovieSelected = {})
+                MovieScreenTabs(
+                    modifier = Modifier,
+                    nowPlayingViewModel = nowPlayingViewModel,
+                    upcomingViewModel = upcomingViewModel,
+                    popularViewModel = popularViewModel,
+                    topRatedViewModel = topRatedViewModel,
+                    onMovieSelected = {}
+                )
             }
             composable(HomepageScreen.Tvshows.route) { TvShowsScreenTab() }
             composable(HomepageScreen.Person.route) { PersonScreenTab() }
