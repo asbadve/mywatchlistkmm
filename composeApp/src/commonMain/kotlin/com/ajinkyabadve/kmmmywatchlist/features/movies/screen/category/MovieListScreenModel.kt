@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import cafe.adriel.voyager.core.model.ScreenModel
+import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 class MovieListScreenModel(
     private val movieFetchType: String,
     private val movieRepository: MovieRepositoryImpl = MovieRepositoryImpl(),
-) : ScreenModel {
+) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
     internal val movieList = mutableStateListOf<Movie>()
 
@@ -92,11 +92,11 @@ class MovieListScreenModel(
 
     private fun isFirstPage() = page == 1
 
-    override fun onDispose() {
+    override fun onCleared() {
         page = 1
         listState = ListState.IDLE
         canPaginate = false
         viewModelScope.cancel()
-        super.onDispose()
+        super.onCleared()
     }
 }

@@ -1,10 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.homepage.model
 
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.FavTab
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.PersonTab
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.TrendingTab
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.TvShowsTab
+
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.baseline_favorite_24
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
@@ -63,6 +59,4 @@ object AppTabs {
     const val PERSON = "Person"
     const val TRENDING = "Trending"
     const val FAV = "My Fav"
-
-    fun getTabs() = listOf(TrendingTab, MoviesTab, TvShowsTab, PersonTab, FavTab)
 }

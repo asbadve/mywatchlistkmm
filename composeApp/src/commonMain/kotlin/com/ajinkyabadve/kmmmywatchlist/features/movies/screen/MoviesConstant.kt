@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
 object MoviesConstant {
+    const val IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w185/"
     const val NOW_PLAYING_MOVIES = "Now Playing"
     const val UPCOMING_MOVIES = "Upcoming"
     const val POPULAR_MOVIES = "Popular"

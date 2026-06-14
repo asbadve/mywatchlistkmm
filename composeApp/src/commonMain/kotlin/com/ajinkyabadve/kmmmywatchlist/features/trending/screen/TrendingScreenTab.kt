@@ -33,7 +33,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_PEOPLE
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_TV
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrendingSectionState
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.ExperimentalSerializationApi
 import androidx.compose.foundation.layout.Spacer
@@ -224,7 +224,7 @@ private fun TrendingMediaCarousel(mediaTrendResult: List<Movie>) {
     ) { i ->
         val item = mediaTrendResult[i]
         mediaMovieRow(
-            imageUrl = MoviesTab.Tabs.IMAGE_BASE_URL + item.posterPath,
+            imageUrl = MoviesConstant.IMAGE_BASE_URL + item.posterPath,
             title = item.title,
             modifier = Modifier,
             onClick = {

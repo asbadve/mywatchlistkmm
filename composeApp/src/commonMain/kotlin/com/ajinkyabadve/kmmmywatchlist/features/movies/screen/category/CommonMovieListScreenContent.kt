@@ -33,7 +33,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.SIXTH_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.THIRD_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
-import com.ajinkyabadve.kmmmywatchlist.homepage.tabs.MoviesTab
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -67,7 +67,7 @@ fun screenContent(
     ) {
         items(movies) {
             mediaMovieRow(
-                MoviesTab.Tabs.IMAGE_BASE_URL + it.posterPath,
+                MoviesConstant.IMAGE_BASE_URL + it.posterPath,
                 it.title,
                 modifier = Modifier,
                 onClick = {
