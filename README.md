@@ -4,6 +4,13 @@
 - check your system with [KDoctor](https://github.com/Kotlin/kdoctor)
 - install JDK 8 on your machine
 - add `local.properties` file to the project root and set a path to Android SDK there
+- **Set up the TMDB API Key**: The application uses The Movie Database (TMDB) API. You need to obtain an API key and make it available to the build system:
+  1. Register and request an API key at [The Movie Database (TMDB)](https://www.themoviedb.org/).
+  2. Add the key to your global Gradle properties file (usually located at `~/.gradle/gradle.properties` on macOS/Linux or `%USERPROFILE%\.gradle\gradle.properties` on Windows) to prevent accidentally committing it to Git:
+     ```properties
+     MY_WATCH_LIST_TMDB_API_KEY=your_api_key_here
+     ```
+     *(Alternatively, you can temporarily add it to the project's root `gradle.properties` file, but be careful not to commit it.)*
 
 ### Android
 To run the application on android device/emulator:
