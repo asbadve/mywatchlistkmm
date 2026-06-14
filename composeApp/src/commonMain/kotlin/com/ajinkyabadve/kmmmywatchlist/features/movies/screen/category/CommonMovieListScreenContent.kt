@@ -40,7 +40,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun screenContent(
-    viewModel: MovieListScreenModel
+    viewModel: MovieListScreenModel,
+    onMovieSelected: ((movieId: Long) -> Unit)? = null,
 ) {
     val movies = viewModel.movieList
     val lazyColumnListState = rememberLazyGridState()
@@ -71,6 +72,7 @@ fun screenContent(
                 modifier = Modifier,
                 onClick = {
                     Napier.d { "title" + it.title }
+                    onMovieSelected?.invoke(it.id.toLong())
                 },
             )
         }

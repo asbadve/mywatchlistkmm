@@ -7,6 +7,7 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,6 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.NOW_PLAYING_API_PATH
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.POPULAR_API_PATH
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.TOP_RATED_API_PATH
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.UPCOMING_API_PATH
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.screenContent
 
 sealed class MovieTab(val title: String) {
     data object NowPlaying : MovieTab("Now Playing")
@@ -99,24 +106,52 @@ fun MovieScreenTabs(
 
 @Composable
 fun NowPlayingTab(onMovieSelected: (movieId: Long) -> Unit) {
-    // TODO: Implement Now Playing content. When a movie item is clicked, call onMovieSelected(movieId).
-    Text("Now Playing Content")
+    val viewModel = remember {
+        MovieListScreenModel(movieFetchType = NOW_PLAYING_API_PATH)
+    }
+    DisposableEffect(viewModel) {
+        onDispose {
+            viewModel.onDispose()
+        }
+    }
+    screenContent(viewModel = viewModel, onMovieSelected = onMovieSelected)
 }
 
 @Composable
 fun UpcomingTab(onMovieSelected: (movieId: Long) -> Unit) {
-    // TODO: Implement Upcoming content. When a movie item is clicked, call onMovieSelected(movieId).
-    Text("Upcoming Content")
+    val viewModel = remember {
+        MovieListScreenModel(movieFetchType = UPCOMING_API_PATH)
+    }
+    DisposableEffect(viewModel) {
+        onDispose {
+            viewModel.onDispose()
+        }
+    }
+    screenContent(viewModel = viewModel, onMovieSelected = onMovieSelected)
 }
 
 @Composable
 fun PopularTab(onMovieSelected: (movieId: Long) -> Unit) {
-    // TODO: Implement Popular content. When a movie item is clicked, call onMovieSelected(movieId).
-    Text("Popular Content")
+    val viewModel = remember {
+        MovieListScreenModel(movieFetchType = POPULAR_API_PATH)
+    }
+    DisposableEffect(viewModel) {
+        onDispose {
+            viewModel.onDispose()
+        }
+    }
+    screenContent(viewModel = viewModel, onMovieSelected = onMovieSelected)
 }
 
 @Composable
 fun TopRatedTab(onMovieSelected: (movieId: Long) -> Unit) {
-    // TODO: Implement Top Rated content. When a movie item is clicked, call onMovieSelected(movieId).
-    Text("Top Rated Content")
+    val viewModel = remember {
+        MovieListScreenModel(movieFetchType = TOP_RATED_API_PATH)
+    }
+    DisposableEffect(viewModel) {
+        onDispose {
+            viewModel.onDispose()
+        }
+    }
+    screenContent(viewModel = viewModel, onMovieSelected = onMovieSelected)
 }
