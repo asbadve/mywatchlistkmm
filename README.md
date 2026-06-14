@@ -2,7 +2,7 @@
 
 ## Before running!
 - check your system with [KDoctor](https://github.com/Kotlin/kdoctor)
-- install JDK 8 on your machine
+- install JDK 17 on your machine
 - add `local.properties` file to the project root and set a path to Android SDK there
 - **Set up the TMDB API Key**: The application uses The Movie Database (TMDB) API. You need to obtain an API key and make it available to the build system:
   1. Register and request an API key at [The Movie Database (TMDB)](https://www.themoviedb.org/).
