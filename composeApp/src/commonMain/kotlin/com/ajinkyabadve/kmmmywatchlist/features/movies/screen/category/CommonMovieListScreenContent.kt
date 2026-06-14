@@ -62,7 +62,7 @@ fun screenContent(
     }
     LazyVerticalGrid(
         state = lazyColumnListState,
-        columns = GridCells.Adaptive(minSize = 200.dp),
+        columns = GridCells.Adaptive(minSize = 150.dp),
         contentPadding = PaddingValues(8.dp),
     ) {
         items(movies) {

@@ -74,6 +74,11 @@ Here are the side-by-side Light Mode and Dark Mode captures for each build varia
 | :---: | :---: |
 | ![iOS iPhone Light](./screenshots/ios_iphone_light.png)<br>[View Image](./screenshots/ios_iphone_light.png) | ![iOS iPhone Dark](./screenshots/ios_iphone_dark.png)<br>[View Image](./screenshots/ios_iphone_dark.png) |
 
+#### iOS (iPhone 16e - Compact / Small Device)
+| Light Mode | Dark Mode |
+| :---: | :---: |
+| ![iOS iPhone 16e Light](./screenshots/ios_iphone_16e_light.png)<br>[View Image](./screenshots/ios_iphone_16e_light.png) | ![iOS iPhone 16e Dark](./screenshots/ios_iphone_16e_dark.png)<br>[View Image](./screenshots/ios_iphone_16e_dark.png) |
+
 #### iOS (iPad Pro 13-inch - Tablet/Expanded)
 | Light Mode | Dark Mode |
 | :---: | :---: |
