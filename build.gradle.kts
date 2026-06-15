@@ -7,3 +7,11 @@ plugins {
     alias(libs.plugins.sqlDelight).apply(false)
     alias(libs.plugins.compose.compiler) apply false
 }
+
+rootProject.plugins.withType<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin> {
+    rootProject.the<org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension>().apply {
+        yarnLockMismatchReport = org.jetbrains.kotlin.gradle.targets.js.yarn.YarnLockMismatchReport.WARNING
+        reportNewYarnLock = false
+        yarnLockAutoReplace = true
+    }
+}
