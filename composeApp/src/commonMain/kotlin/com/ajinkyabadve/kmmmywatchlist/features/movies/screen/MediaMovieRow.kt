@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.design.movie.MediaCard
-import com.seiko.imageloader.rememberImagePainter
+import coil3.compose.rememberAsyncImagePainter
+import org.jetbrains.compose.resources.painterResource
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.baseline_movie_24
 
 @Composable
 fun mediaMovieRow(
@@ -31,21 +33,26 @@ fun mediaMovieRow(
             )
         }
     } else {
-        var painter: Painter? = null
-        imageUrl?.let {
-            painter = rememberImagePainter(url = imageUrl, filterQuality = FilterQuality.Medium)
+        val fallbackPainter = painterResource(Res.drawable.baseline_movie_24)
+        val painter = if (imageUrl != null) {
+            rememberAsyncImagePainter(
+                model = imageUrl,
+                filterQuality = FilterQuality.Medium,
+                error = fallbackPainter,
+                fallback = fallbackPainter,
+            )
+        } else {
+            fallbackPainter
         }
         Box(
             modifier.padding(8.dp),
         ) {
-            painter?.let {
-                MediaCard(
-                    modifier = modifier,
-                    movieTitle = title,
-                    painter = it,
-                    onClick = onClick,
-                )
-            }
+            MediaCard(
+                modifier = modifier,
+                movieTitle = title,
+                painter = painter,
+                onClick = onClick,
+            )
         }
     }
 }

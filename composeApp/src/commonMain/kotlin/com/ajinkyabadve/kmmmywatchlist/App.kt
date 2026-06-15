@@ -59,15 +59,26 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TvShowsScreenTab
 import com.ajinkyabadve.kmmmywatchlist.navigation.NavigationConstants
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor2.KtorNetworkFetcherFactory
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-internal fun App(calculateWindowSizeClass: WindowSizeClass) =
+internal fun App(calculateWindowSizeClass: WindowSizeClass) {
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context)
+            .components {
+                add(KtorNetworkFetcherFactory())
+            }
+            .build()
+    }
     AppTheme {
         val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
         MainAppScreen(windowSize)
     }
+}
 
 @Composable
 fun MainAppScreen(windowSize: WindowSize) {

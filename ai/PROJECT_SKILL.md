@@ -71,3 +71,9 @@ This document contains core instructions, architectural decisions, and layout ru
 * **Avoid Production Constants**: Do **NOT** use actual constants imported from production classes inside unit tests (e.g., constants from `TrendingConstant`). Instead, redefine these constants inside a `private companion object` in the test class.
 * **Private Companion Objects**: The companion object inside test classes should be declared `private companion object` to restrict constant visibility.
 * **Common Test Constants**: Any common constants used in multiple test classes at the same feature level package should be moved to a shared test constants file (e.g., `TrendingTestConstants.kt`) rather than duplicated across companion objects.
+
+---
+
+## 8. General Code Cleanups & Instruction Propagation Guidelines
+* **Remove Unused Imports**: Always check for and remove unused package imports during file modification, especially when types are inferred automatically (e.g., unused `Painter` imports).
+* **Remember Instruction Rule**: Whenever the user instructs the agent to remember any rule, guideline, or instruction, the agent must immediately document it and append it to this `PROJECT_SKILL.md` file to preserve it across future agent sessions.

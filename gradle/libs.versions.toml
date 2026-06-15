@@ -2,7 +2,6 @@
 
 adaptive = "1.1.0"
 componentsResources = "1.8.0"
-kamelImage = "0.7.3"
 kotlin = "2.2.0"
 agp = "8.9.3"
 compose = "1.8.0"
@@ -18,7 +17,7 @@ materialIconsCore = "1.7.3"
 materialNavigation = "1.7.0-beta02"
 navigationCompose = "2.9.0-beta01"
 
-composeImageLoader = "1.6.7"
+coil = "3.0.4"
 napier = "2.6.1"
 buildConfig = "4.1.2"
 kotlinx-coroutines = "1.8.0"
@@ -46,7 +45,6 @@ androidx-activityCompose = { module = "androidx.activity:activity-compose", vers
 components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "componentsResources" }
 compose-uitooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose-uitooling" }
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }
-kamel-image = { module = "media.kamel:kamel-image", version.ref = "kamelImage" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutinesSwing" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktorVersion" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorVersion" }
@@ -57,7 +55,8 @@ material3-adaptive-navigation-suite = { module = "org.jetbrains.compose.material
 material3-window-size-class1 = { module = "org.jetbrains.compose.material3:material3-window-size-class", version.ref = "material3WindowSizeClass" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 
-composeImageLoader = { module = "io.github.qdsfdhvh:image-loader", version.ref = "composeImageLoader" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor2", version.ref = "coil" }
 napier = { module = "io.github.aakira:napier", version.ref = "napier" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
