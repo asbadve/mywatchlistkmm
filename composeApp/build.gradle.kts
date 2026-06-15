@@ -81,6 +81,10 @@ kotlin {
             dependencies {
                 implementation(kotlin("test"))
                 implementation(libs.kotlinx.coroutines.test)
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+                implementation(compose.uiTest)
+                implementation(libs.lifecycle.runtime.compose)
+                implementation(libs.lifecycle.viewmodel.compose)
             }
         }
 

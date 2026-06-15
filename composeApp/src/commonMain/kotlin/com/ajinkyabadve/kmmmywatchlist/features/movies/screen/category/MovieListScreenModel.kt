@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -19,7 +20,7 @@ import kotlinx.coroutines.launch
 
 class MovieListScreenModel(
     private val movieFetchType: String,
-    private val movieRepository: MovieRepositoryImpl = MovieRepositoryImpl(),
+    private val movieRepository: MovieRepository = MovieRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
     internal val movieList = mutableStateListOf<Movie>()

@@ -83,3 +83,10 @@ Here are the side-by-side Light Mode and Dark Mode captures for each build varia
 | Light Mode | Dark Mode |
 | :---: | :---: |
 | ![iOS iPad Light](./screenshots/ios_ipad_light.png)<br>[View Image](./screenshots/ios_ipad_light.png) | ![iOS iPad Dark](./screenshots/ios_ipad_dark.png)<br>[View Image](./screenshots/ios_ipad_dark.png) |
+
+### 4. Browser (Web) Target
+
+#### Web (Browser App)
+| Light Mode | Dark Mode |
+| :---: | :---: |
+| ![Web Light](./screenshots/web_light.png)<br>[View Image](./screenshots/web_light.png) | ![Web Dark](./screenshots/web_dark.png)<br>[View Image](./screenshots/web_dark.png) |

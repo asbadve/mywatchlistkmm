@@ -57,7 +57,9 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieList
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTab
+import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTabViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TvShowsScreenTab
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.navigation.NavigationConstants
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
@@ -81,15 +83,17 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
 }
 
 @Composable
-fun MainAppScreen(windowSize: WindowSize) {
+fun MainAppScreen(
+    windowSize: WindowSize,
+    nowPlayingViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.NOW_PLAYING_API_PATH) },
+    upcomingViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.UPCOMING_API_PATH) },
+    popularViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.POPULAR_API_PATH) },
+    topRatedViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.TOP_RATED_API_PATH) },
+    trendingViewModel: TrendingScreenTabViewModel = viewModel { TrendingScreenTabViewModel() },
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-
-    val nowPlayingViewModel = remember { MovieListScreenModel(MoviesConstant.NOW_PLAYING_API_PATH) }
-    val upcomingViewModel = remember { MovieListScreenModel(MoviesConstant.UPCOMING_API_PATH) }
-    val popularViewModel = remember { MovieListScreenModel(MoviesConstant.POPULAR_API_PATH) }
-    val topRatedViewModel = remember { MovieListScreenModel(MoviesConstant.TOP_RATED_API_PATH) }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val layoutType =
@@ -174,6 +178,7 @@ fun MainAppScreen(windowSize: WindowSize) {
                 upcomingViewModel = upcomingViewModel,
                 popularViewModel = popularViewModel,
                 topRatedViewModel = topRatedViewModel,
+                trendingViewModel = trendingViewModel,
             )
         }
     }
@@ -189,6 +194,7 @@ private fun MainAppScaffoldContent(
     upcomingViewModel: MovieListScreenModel,
     popularViewModel: MovieListScreenModel,
     topRatedViewModel: MovieListScreenModel,
+    trendingViewModel: TrendingScreenTabViewModel,
 ) {
     Scaffold(
         topBar = {
@@ -225,7 +231,7 @@ private fun MainAppScaffoldContent(
             startDestination = HomepageScreen.Trending.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(HomepageScreen.Trending.route) { TrendingScreenTab() }
+            composable(HomepageScreen.Trending.route) { TrendingScreenTab(viewModel = trendingViewModel) }
             composable(HomepageScreen.Movies.route) {
                 MovieScreenTabs(
                     modifier = Modifier,
