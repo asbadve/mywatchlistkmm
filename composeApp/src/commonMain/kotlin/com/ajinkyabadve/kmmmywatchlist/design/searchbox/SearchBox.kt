@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,7 +82,7 @@ private fun InternalSearchBox(
             .padding(end = 16.dp)
     ) {
         BoxWithConstraints(
-            contentAlignment = Alignment.CenterStart,
+            contentAlignment = Alignment.Center,
             modifier =
                 Modifier
                     .height(45.dp)
@@ -99,38 +100,38 @@ private fun InternalSearchBox(
                             ),
                     ),
         ) {
-            Row(
-                modifier = Modifier,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (leftIconPainter != null) {
-                    IconButton(modifier = Modifier, onClick = { /*TODO*/ }) {
-                        Icon(
-                            painter = leftIconPainter,
-                            contentDescription = contentDescription,
-                            tint = leftIconTint,
-                        )
-                    }
+            // Hint text — centered in the full pill
+            Text(
+                hint,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 48.dp), // leave room for icon on left
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                style =
+                    TextStyle(
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
+                        lineHeightStyle =
+                            LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Proportional,
+                                trim = LineHeightStyle.Trim.None,
+                            ),
+                    ),
+            )
+            // Search icon — pinned to start, vertically centered
+            if (leftIconPainter != null) {
+                IconButton(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    onClick = { /*TODO*/ },
+                ) {
+                    Icon(
+                        painter = leftIconPainter,
+                        contentDescription = contentDescription,
+                        tint = leftIconTint,
+                    )
                 }
-                Text(
-                    hint ?: "",
-                    modifier =
-                        Modifier.padding(start = 0.dp, end = 16.dp)
-                            .align(Alignment.CenterVertically),
-                    maxLines = 1,
-                    fontSize = 16.sp,
-                    overflow = TextOverflow.Ellipsis,
-                    style =
-                        TextStyle(
-                            fontSize = 16.sp,
-                            lineHeight = 22.sp,
-                            lineHeightStyle =
-                                LineHeightStyle(
-                                    alignment = LineHeightStyle.Alignment.Proportional,
-                                    trim = LineHeightStyle.Trim.None,
-                                ),
-                        ),
-                )
             }
         }
     }

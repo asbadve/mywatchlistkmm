@@ -1,15 +1,12 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,48 +23,40 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.screenContent
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.tvShowScreenContent
 
-sealed class MovieTab(val title: String) {
-    data object NowPlaying : MovieTab("Now Playing")
-    data object Upcoming : MovieTab("Upcoming")
-    data object Popular : MovieTab("Popular")
-    data object TopRated : MovieTab("Top Rated")
+sealed class TvTab(val title: String) {
+    data object AiringToday : TvTab("Airing Today")
+    data object OnTheAir : TvTab("On The Air")
+    data object Popular : TvTab("Popular")
+    data object TopRated : TvTab("Top Rated")
 }
 
-/**
- * A composable that displays movie tabs and the content for the selected tab.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MovieScreenTabs(
+fun TvShowScreenTabs(
     modifier: Modifier = Modifier,
-    nowPlayingViewModel: MovieListScreenModel,
-    upcomingViewModel: MovieListScreenModel,
-    popularViewModel: MovieListScreenModel,
-    topRatedViewModel: MovieListScreenModel,
-    onMovieSelected: (movieId: Long) -> Unit
+    airingTodayViewModel: TvListScreenModel,
+    onTheAirViewModel: TvListScreenModel,
+    popularViewModel: TvListScreenModel,
+    topRatedViewModel: TvListScreenModel,
+    onTvShowSelected: (tvShowId: Long) -> Unit
 ) {
     val tabs = remember {
         listOf(
-            MovieTab.NowPlaying,
-            MovieTab.Upcoming,
-            MovieTab.Popular,
-            MovieTab.TopRated
+            TvTab.AiringToday,
+            TvTab.OnTheAir,
+            TvTab.Popular,
+            TvTab.TopRated
         )
     }
     var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
 
-    val nowPlayingGridState = rememberLazyGridState()
-    val upcomingGridState = rememberLazyGridState()
+    val airingTodayGridState = rememberLazyGridState()
+    val onTheAirGridState = rememberLazyGridState()
     val popularGridState = rememberLazyGridState()
     val topRatedGridState = rememberLazyGridState()
 
@@ -108,19 +97,19 @@ fun MovieScreenTabs(
             }
         }
         when (tabs[selectedTabIndex]) {
-            MovieTab.NowPlaying -> MovieListTab(nowPlayingViewModel, nowPlayingGridState, onMovieSelected)
-            MovieTab.Upcoming -> MovieListTab(upcomingViewModel, upcomingGridState, onMovieSelected)
-            MovieTab.Popular -> MovieListTab(popularViewModel, popularGridState, onMovieSelected)
-            MovieTab.TopRated -> MovieListTab(topRatedViewModel, topRatedGridState, onMovieSelected)
+            TvTab.AiringToday -> TvListTab(airingTodayViewModel, airingTodayGridState, onTvShowSelected)
+            TvTab.OnTheAir -> TvListTab(onTheAirViewModel, onTheAirGridState, onTvShowSelected)
+            TvTab.Popular -> TvListTab(popularViewModel, popularGridState, onTvShowSelected)
+            TvTab.TopRated -> TvListTab(topRatedViewModel, topRatedGridState, onTvShowSelected)
         }
     }
 }
 
 @Composable
-fun MovieListTab(
-    viewModel: MovieListScreenModel,
+fun TvListTab(
+    viewModel: TvListScreenModel,
     lazyGridState: LazyGridState,
-    onMovieSelected: (movieId: Long) -> Unit
+    onTvShowSelected: (tvShowId: Long) -> Unit
 ) {
-    screenContent(viewModel = viewModel, lazyColumnListState = lazyGridState, onMovieSelected = onMovieSelected)
+    tvShowScreenContent(viewModel = viewModel, lazyColumnListState = lazyGridState, onTvShowSelected = onTvShowSelected)
 }

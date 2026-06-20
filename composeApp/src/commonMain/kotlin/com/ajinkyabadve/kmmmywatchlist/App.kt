@@ -55,10 +55,13 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
+import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTabViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TvShowsScreenTab
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.navigation.NavigationConstants
 import coil3.ImageLoader
@@ -90,6 +93,11 @@ fun MainAppScreen(
     popularViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.POPULAR_API_PATH) },
     topRatedViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.TOP_RATED_API_PATH) },
     trendingViewModel: TrendingScreenTabViewModel = viewModel { TrendingScreenTabViewModel() },
+    airingTodayTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.AIRING_TODAY_API_PATH) },
+    onTheAirTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.ON_THE_AIR_API_PATH) },
+    popularTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.POPULAR_API_PATH) },
+    topRatedTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.TOP_RATED_API_PATH) },
+    personListViewModel: PersonListScreenModel = remember { PersonListScreenModel() },
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -179,6 +187,11 @@ fun MainAppScreen(
                 popularViewModel = popularViewModel,
                 topRatedViewModel = topRatedViewModel,
                 trendingViewModel = trendingViewModel,
+                airingTodayTvViewModel = airingTodayTvViewModel,
+                onTheAirTvViewModel = onTheAirTvViewModel,
+                popularTvViewModel = popularTvViewModel,
+                topRatedTvViewModel = topRatedTvViewModel,
+                personListViewModel = personListViewModel,
             )
         }
     }
@@ -195,6 +208,11 @@ private fun MainAppScaffoldContent(
     popularViewModel: MovieListScreenModel,
     topRatedViewModel: MovieListScreenModel,
     trendingViewModel: TrendingScreenTabViewModel,
+    airingTodayTvViewModel: TvListScreenModel,
+    onTheAirTvViewModel: TvListScreenModel,
+    popularTvViewModel: TvListScreenModel,
+    topRatedTvViewModel: TvListScreenModel,
+    personListViewModel: PersonListScreenModel,
 ) {
     Scaffold(
         topBar = {
@@ -242,8 +260,17 @@ private fun MainAppScaffoldContent(
                     onMovieSelected = {},
                 )
             }
-            composable(HomepageScreen.Tvshows.route) { TvShowsScreenTab() }
-            composable(HomepageScreen.Person.route) { PersonScreenTab() }
+            composable(HomepageScreen.Tvshows.route) {
+                TvShowsScreenTab(
+                    airingTodayViewModel = airingTodayTvViewModel,
+                    onTheAirViewModel = onTheAirTvViewModel,
+                    popularViewModel = popularTvViewModel,
+                    topRatedViewModel = topRatedTvViewModel,
+                )
+            }
+            composable(HomepageScreen.Person.route) {
+                PersonScreenTab(viewModel = personListViewModel)
+            }
             composable(HomepageScreen.MyFav.route) { MyFavScreenTab() }
         }
     }

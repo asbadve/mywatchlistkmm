@@ -1,20 +1,25 @@
 package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowScreenTabs
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
 
 @Composable
-fun TvShowsScreenTab(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("Tv shows (Sub-Tab of Home)")
-    }
+fun TvShowsScreenTab(
+    modifier: Modifier = Modifier,
+    airingTodayViewModel: TvListScreenModel,
+    onTheAirViewModel: TvListScreenModel,
+    popularViewModel: TvListScreenModel,
+    topRatedViewModel: TvListScreenModel,
+    onTvShowSelected: (tvShowId: Long) -> Unit = {}
+) {
+    TvShowScreenTabs(
+        modifier = modifier,
+        airingTodayViewModel = airingTodayViewModel,
+        onTheAirViewModel = onTheAirViewModel,
+        popularViewModel = popularViewModel,
+        topRatedViewModel = topRatedViewModel,
+        onTvShowSelected = onTvShowSelected
+    )
 }

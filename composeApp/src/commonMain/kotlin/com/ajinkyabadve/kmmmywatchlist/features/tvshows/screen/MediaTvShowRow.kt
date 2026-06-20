@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -13,14 +13,14 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.design.movie.MediaCard
 import mywatchlist.composeapp.generated.resources.Res
-import mywatchlist.composeapp.generated.resources.baseline_movie_24
+import mywatchlist.composeapp.generated.resources.baseline_tv_24
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun mediaMovieRow(
+fun mediaTvShowRow(
     imageUrl: String?,
     title: String,
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     isLoadingState: Boolean = false,
 ) {
@@ -37,7 +37,7 @@ fun mediaMovieRow(
             )
         }
     } else {
-        val fallbackPainter = painterResource(Res.drawable.baseline_movie_24)
+        val fallbackPainter = painterResource(Res.drawable.baseline_tv_24)
 
         if (imageUrl != null) {
             // Observe state so we switch from Fit → Crop once the image loads successfully

@@ -1,20 +1,18 @@
 package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.personListScreenContent
 
 @Composable
-fun PersonScreenTab(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("Person (Sub-Tab of Home)")
-    }
+fun PersonScreenTab(
+    modifier: Modifier = Modifier,
+    viewModel: PersonListScreenModel,
+    onPersonSelected: (personId: Long) -> Unit = {}
+) {
+    personListScreenContent(
+        viewModel = viewModel,
+        onPersonSelected = onPersonSelected
+    )
 }

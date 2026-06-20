@@ -29,6 +29,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
+import com.ajinkyabadve.kmmmywatchlist.features.person.screen.mediaPersonRow
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_MOVIE
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_PEOPLE
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_TV
@@ -176,7 +178,7 @@ private fun TrendingSection(
             }
         )
     } else if (section.mediaList.isNotEmpty()) {
-        TrendingMediaCarousel(section.mediaList)
+        TrendingMediaCarousel(section.mediaList, section.mediaType)
     }
 }
 
@@ -212,7 +214,7 @@ private fun MediaChips(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TrendingMediaCarousel(mediaTrendResult: List<Movie>) {
+private fun TrendingMediaCarousel(mediaTrendResult: List<Movie>, mediaType: String) {
     val state = rememberCarouselState { mediaTrendResult.count() }
     HorizontalMultiBrowseCarousel(
         state = state,
@@ -223,14 +225,28 @@ private fun TrendingMediaCarousel(mediaTrendResult: List<Movie>) {
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) { i ->
         val item = mediaTrendResult[i]
-        mediaMovieRow(
-            imageUrl = MoviesConstant.IMAGE_BASE_URL + item.posterPath,
-            title = item.title,
-            modifier = Modifier,
-            onClick = {
-                Napier.d { "title" + item.title }
-            },
-        )
+        val imageUrl = if (item.posterPath.isNullOrBlank()) null
+                       else MoviesConstant.IMAGE_BASE_URL + item.posterPath
+        when (mediaType) {
+            MEDIA_TYPE_TV -> mediaTvShowRow(
+                imageUrl = imageUrl,
+                title = item.title,
+                modifier = Modifier,
+                onClick = { Napier.d { "title " + item.title } },
+            )
+            MEDIA_TYPE_PEOPLE -> mediaPersonRow(
+                imageUrl = imageUrl,
+                name = item.title,
+                modifier = Modifier,
+                onClick = { Napier.d { "title " + item.title } },
+            )
+            else -> mediaMovieRow(
+                imageUrl = imageUrl,
+                title = item.title,
+                modifier = Modifier,
+                onClick = { Napier.d { "title " + item.title } },
+            )
+        }
     }
 }
 

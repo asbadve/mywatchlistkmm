@@ -34,6 +34,7 @@ fun MediaCard(
     accessibilityContentDescription: String? = null,
     onClick: () -> Unit,
     isLoadingState: Boolean = false,
+    contentScale: ContentScale = ContentScale.Crop,
 ) {
     if (isLoadingState) {
         Box(
@@ -54,6 +55,7 @@ fun MediaCard(
                 movieTitle = movieTitle,
                 onClick = onClick,
                 painter = painter,
+                contentScale = contentScale,
             )
         }
     }
@@ -67,6 +69,7 @@ private fun InternalMediaCard(
     movieTitle: String,
     onClick: () -> Unit,
     painter: Painter,
+    contentScale: ContentScale = ContentScale.Crop,
 ) {
     Card(
         modifier =
@@ -85,7 +88,7 @@ private fun InternalMediaCard(
             Image(
                 modifier = modifier.fillMaxSize(),
                 painter = painter,
-                contentScale = ContentScale.Crop,
+                contentScale = contentScale,
                 contentDescription = null,
             )
 
