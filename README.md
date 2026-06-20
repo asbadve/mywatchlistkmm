@@ -90,3 +90,16 @@ Here are the side-by-side Light Mode and Dark Mode captures for each build varia
 | Light Mode | Dark Mode |
 | :---: | :---: |
 | ![Web Light](./screenshots/web_light.png)<br>[View Image](./screenshots/web_light.png) | ![Web Dark](./screenshots/web_dark.png)<br>[View Image](./screenshots/web_dark.png) |
+
+## Upcoming Features (Based on TMDB OpenAPI Spec)
+
+- [ ] **Integrated Search Feature**:
+  - Connect the Top Bar's search bar to a functional search results screen that aggregates movies, TV shows, and people using `/3/search/multi` (with keystroke debouncing).
+- [ ] **Account Favorites & Watchlist**:
+  - Add favorite/watchlist support (using guest sessions or account IDs) in the "My Fav" tab with sub-tabs for "Favorites" and "Watchlist".
+  - Add a "Favorite" (heart) button on media cards to mark/unmark items.
+- [ ] **Media Detailed Views (Movies & TV Shows)**:
+  - Create a premium detailed screen Composable featuring a large backdrop banner image, basic metadata, horizontal cast list, trailers, and recommended media.
+- [ ] **Genre-based Discovery Screen**:
+  - Let users filter and explore movies/shows by genres, release year, language, or popularity sorting options using `/3/discover` endpoints.
+
