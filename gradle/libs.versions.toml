@@ -65,6 +65,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 ktor-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 composeIcons-featherIcons = { module = "br.com.devsrsouza.compose.icons:feather", version.ref = "composeIcons" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }

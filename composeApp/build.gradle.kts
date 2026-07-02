@@ -66,6 +66,7 @@ kotlin {
                 implementation(libs.napier)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.ktor.core)
+                implementation(libs.ktor.client.logging)
                 implementation(libs.composeIcons.featherIcons)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.datetime)

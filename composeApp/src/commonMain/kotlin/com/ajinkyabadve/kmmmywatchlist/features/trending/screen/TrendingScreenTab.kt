@@ -56,6 +56,7 @@ import androidx.compose.material3.Icon
 fun TrendingScreenTab(
     modifier: Modifier = Modifier,
     viewModel: TrendingScreenTabViewModel = viewModel { TrendingScreenTabViewModel() },
+    onMovieSelected: (Long) -> Unit = {},
 ) {
     val screenLoadingState by viewModel.isScreenLoading.collectAsState()
     val movieTrendScreenLoadingState by viewModel.isMovieTrendScreenLoading.collectAsState()
@@ -116,6 +117,7 @@ fun TrendingScreenTab(
         screenLoadingState = screenLoadingState,
         sections = sections,
         onChipSelected = viewModel::onChipSelected,
+        onMovieSelected = onMovieSelected,
     )
 }
 
@@ -124,6 +126,7 @@ fun TrendingScreenContent(
     screenLoadingState: Boolean,
     sections: List<TrendingSectionState>,
     onChipSelected: (Int, String) -> Unit,
+    onMovieSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -144,6 +147,7 @@ fun TrendingScreenContent(
                 TrendingSection(
                     section = section,
                     onChipSelected = onChipSelected,
+                    onMovieSelected = onMovieSelected,
                 )
             }
         }
@@ -154,6 +158,7 @@ fun TrendingScreenContent(
 private fun TrendingSection(
     section: TrendingSectionState,
     onChipSelected: (Int, String) -> Unit,
+    onMovieSelected: (Long) -> Unit,
 ) {
     if (section.chipList.isNotEmpty()) {
         MediaChips(
@@ -178,7 +183,7 @@ private fun TrendingSection(
             }
         )
     } else if (section.mediaList.isNotEmpty()) {
-        TrendingMediaCarousel(section.mediaList, section.mediaType)
+        TrendingMediaCarousel(section.mediaList, section.mediaType, onMovieSelected)
     }
 }
 
@@ -214,7 +219,11 @@ private fun MediaChips(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TrendingMediaCarousel(mediaTrendResult: List<Movie>, mediaType: String) {
+private fun TrendingMediaCarousel(
+    mediaTrendResult: List<Movie>,
+    mediaType: String,
+    onMovieSelected: (Long) -> Unit,
+) {
     val state = rememberCarouselState { mediaTrendResult.count() }
     HorizontalMultiBrowseCarousel(
         state = state,
@@ -244,7 +253,10 @@ private fun TrendingMediaCarousel(mediaTrendResult: List<Movie>, mediaType: Stri
                 imageUrl = imageUrl,
                 title = item.title,
                 modifier = Modifier,
-                onClick = { Napier.d { "title " + item.title } },
+                onClick = {
+                    Napier.d { "title " + item.title }
+                    onMovieSelected(item.id.toLong())
+                },
             )
         }
     }

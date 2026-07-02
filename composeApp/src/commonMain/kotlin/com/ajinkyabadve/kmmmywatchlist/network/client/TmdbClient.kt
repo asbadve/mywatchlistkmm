@@ -6,11 +6,15 @@ import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import io.github.aakira.napier.Napier
 
 class TmdbClient {
     internal val client =
@@ -36,6 +40,14 @@ class TmdbClient {
                         ignoreUnknownKeys = true
                     },
                 )
+            }
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        Napier.d(tag = "HTTP Client") { message }
+                    }
+                }
+                level = LogLevel.ALL
             }
             HttpResponseValidator {
                 validateResponse {

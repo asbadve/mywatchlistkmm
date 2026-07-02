@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -214,10 +215,24 @@ private fun MainAppScaffoldContent(
     topRatedTvViewModel: TvListScreenModel,
     personListViewModel: PersonListScreenModel,
 ) {
+    val currentRoute = currentDestination?.route
+    val showTopBar = when (currentRoute) {
+        HomepageScreen.Trending.route,
+        HomepageScreen.Movies.route,
+        HomepageScreen.Tvshows.route,
+        HomepageScreen.Person.route,
+        HomepageScreen.MyFav.route -> true
+        else -> false
+    }
+
+    val topBarContent: @Composable () -> Unit = if (showTopBar) {
+        { AppTopBar(windowSize) }
+    } else {
+        {}
+    }
+
     Scaffold(
-        topBar = {
-            AppTopBar(windowSize)
-        },
+        topBar = topBarContent,
         bottomBar = {
             if (layoutType != NavigationSuiteType.NavigationDrawer && layoutType != NavigationSuiteType.NavigationRail) {
                 NavigationBar(
@@ -244,12 +259,27 @@ private fun MainAppScaffoldContent(
             }
         },
     ) { innerPadding ->
+        println("Antigravity Log: innerPadding=$innerPadding currentRoute=${currentDestination?.route}")
         NavHost(
             navController = navController,
             startDestination = HomepageScreen.Trending.route,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.padding(
+                top = if (currentDestination?.route != "movie_detail/{movieId}") {
+                    innerPadding.calculateTopPadding()
+                } else {
+                    0.dp
+                },
+                bottom = innerPadding.calculateBottomPadding()
+            ),
         ) {
-            composable(HomepageScreen.Trending.route) { TrendingScreenTab(viewModel = trendingViewModel) }
+            composable(HomepageScreen.Trending.route) {
+                TrendingScreenTab(
+                    viewModel = trendingViewModel,
+                    onMovieSelected = { movieId ->
+                        navController.navigate("movie_detail/$movieId")
+                    }
+                )
+            }
             composable(HomepageScreen.Movies.route) {
                 MovieScreenTabs(
                     modifier = Modifier,
@@ -257,7 +287,9 @@ private fun MainAppScaffoldContent(
                     upcomingViewModel = upcomingViewModel,
                     popularViewModel = popularViewModel,
                     topRatedViewModel = topRatedViewModel,
-                    onMovieSelected = {},
+                    onMovieSelected = { movieId ->
+                        navController.navigate("movie_detail/$movieId")
+                    },
                 )
             }
             composable(HomepageScreen.Tvshows.route) {
@@ -272,6 +304,20 @@ private fun MainAppScaffoldContent(
                 PersonScreenTab(viewModel = personListViewModel)
             }
             composable(HomepageScreen.MyFav.route) { MyFavScreenTab() }
+            composable(
+                route = "movie_detail/{movieId}",
+                arguments = listOf(androidx.navigation.navArgument("movieId") { type = androidx.navigation.NavType.LongType })
+            ) { backStackEntry ->
+                val movieId = backStackEntry.savedStateHandle.get<Long>("movieId") ?: -1L
+                com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen(
+                    movieId = movieId,
+                    windowSize = windowSize,
+                    onBackClicked = { navController.popBackStack() },
+                    onMovieClicked = { nextMovieId ->
+                        navController.navigate("movie_detail/$nextMovieId")
+                    }
+                )
+            }
         }
     }
 }

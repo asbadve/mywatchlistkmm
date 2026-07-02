@@ -35,4 +35,29 @@ class FakeMovieRepository : MovieRepository {
             totalPages = 1
         )
     }
+
+    override suspend fun getMovieDetails(movieId: Long): com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail {
+        return com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail(
+            id = movieId,
+            title = "Fake Movie Detail",
+            overview = "Overview of Fake Movie Detail",
+            genres = emptyList(),
+            keywords = null,
+            videos = null,
+            images = null,
+            credits = null,
+            releaseDates = null,
+            translations = null,
+            runtime = 120,
+            budget = 10000000L,
+            voteAverage = 8.0,
+            originalLanguage = "en",
+            releaseDate = "2026-07-02",
+            backdropPath = null,
+            posterPath = null,
+            recommendations = null,
+            similar = null,
+            reviews = null
+        )
+    }
 }

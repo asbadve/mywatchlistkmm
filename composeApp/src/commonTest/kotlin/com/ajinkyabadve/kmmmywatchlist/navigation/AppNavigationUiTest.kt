@@ -23,6 +23,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.FakeTrendingRepository
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTabViewModel
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +73,15 @@ class AppNavigationUiTest {
         val popularViewModel = MovieListScreenModel(MoviesConstant.POPULAR_API_PATH, fakeMovieRepository)
         val topRatedViewModel = MovieListScreenModel(MoviesConstant.TOP_RATED_API_PATH, fakeMovieRepository)
 
+        val fakeTvRepository = com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository()
+        val airingTodayTvViewModel = TvListScreenModel(com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.AIRING_TODAY_API_PATH, fakeTvRepository)
+        val onTheAirTvViewModel = TvListScreenModel(com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.ON_THE_AIR_API_PATH, fakeTvRepository)
+        val popularTvViewModel = TvListScreenModel(com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.POPULAR_API_PATH, fakeTvRepository)
+        val topRatedTvViewModel = TvListScreenModel(com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.TOP_RATED_API_PATH, fakeTvRepository)
+
+        val fakePersonRepository = com.ajinkyabadve.kmmmywatchlist.features.person.screen.FakePersonRepository()
+        val personListViewModel = PersonListScreenModel(fakePersonRepository)
+
         setContent {
             val lifecycleOwner = remember {
                 object : LifecycleOwner {
@@ -96,6 +107,11 @@ class AppNavigationUiTest {
                     popularViewModel = popularViewModel,
                     topRatedViewModel = topRatedViewModel,
                     trendingViewModel = trendingViewModel,
+                    airingTodayTvViewModel = airingTodayTvViewModel,
+                    onTheAirTvViewModel = onTheAirTvViewModel,
+                    popularTvViewModel = popularTvViewModel,
+                    topRatedTvViewModel = topRatedTvViewModel,
+                    personListViewModel = personListViewModel,
                 )
             }
         }
@@ -126,11 +142,11 @@ class AppNavigationUiTest {
 
         // 3. Navigate to Tv Shows Tab
         onNodeWithContentDescription("Tv shows", useUnmergedTree = true).performClick()
-        onNodeWithText("Tv shows (Sub-Tab of Home)").assertExists()
+        onAllNodesWithText("Tv Show A")[0].assertExists()
 
         // 4. Navigate to Person Tab
         onNodeWithContentDescription("Person", useUnmergedTree = true).performClick()
-        onNodeWithText("Person (Sub-Tab of Home)").assertExists()
+        onAllNodesWithText("Person A")[0].assertExists()
 
         // 5. Navigate to My Fav Tab
         onNodeWithContentDescription("My Fav", useUnmergedTree = true).performClick()
