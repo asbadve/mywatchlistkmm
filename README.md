@@ -102,4 +102,7 @@ Here are the side-by-side Light Mode and Dark Mode captures for each build varia
   - Create a premium detailed screen Composable featuring a large backdrop banner image, basic metadata, horizontal cast list, trailers, and recommended media.
 - [ ] **Genre-based Discovery Screen**:
   - Let users filter and explore movies/shows by genres, release year, language, or popularity sorting options using `/3/discover` endpoints.
+- [ ] **TMDB User Authentication / Login**:
+  - Allow users to log in securely using TMDB credentials (request token, session ID generation) to sync favorites, watchlist, and ratings.
+
 

@@ -82,3 +82,23 @@ This document contains a checklist of high-priority features that can be impleme
 - [ ] **UI Presentation**:
   - Create a "Discover" search filter panel (e.g. bottom sheet or side panel on desktop) letting users pick genres (Action, Drama, Comedy) and filter parameters.
   - Render lists using our common scrollable grid screen content.
+
+---
+
+## 5. TMDB User Authentication / Login
+**Goal**: Allow users to log in securely using their TMDB credentials to sync favorites, watchlist, and ratings.
+
+### Relevant OAS Endpoints:
+- `GET /3/authentication/token/new`: Create a request token.
+- `POST /3/authentication/session/new`: Create a session ID with an authorized request token.
+- `DELETE /3/authentication/session`: Delete a session (Log out).
+
+### Implementation Checklist:
+- [ ] **Data Layer**:
+  - Add authentication and session generation requests to the networking module.
+  - Implement secure storage for session keys locally (e.g., using settings/keychain library).
+- [ ] **UI Presentation & Flow**:
+  - Create a "Settings" or "Profile" screen layout.
+  - Integrate a login mechanism (WebView overlay or redirect to TMDB auth URL `https://www.themoviedb.org/authenticate/{request_token}`) for authorizing request tokens.
+  - Implement dynamic UI states based on whether the user is logged in or logged out.
+
