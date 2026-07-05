@@ -32,7 +32,13 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun BackdropSection(detail: MovieDetail) {
-    val backdropUrl = detail.backdropPath?.let { "https://image.tmdb.org/t/p/w780/$it" }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val backdropUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+        path = detail.backdropPath,
+        type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
+        targetWidthDp = 500,
+        density = density
+    )
     val fallbackPainter = painterResource(Res.drawable.baseline_movie_24)
 
     Box(

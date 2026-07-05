@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
 object MoviesConstant {
+    @Deprecated("Use ImageConfigResolver instead to resolve dynamic resolutions based on density")
     const val IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w185/"
     const val NOW_PLAYING_MOVIES = "Now Playing"
     const val UPCOMING_MOVIES = "Upcoming"

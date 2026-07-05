@@ -58,7 +58,13 @@ fun CastSection(castList: List<CastMember>) {
 
 @Composable
 private fun CastMemberItem(member: CastMember) {
-    val profileUrl = member.profilePath?.let { "https://image.tmdb.org/t/p/w185/$it" }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val profileUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+        path = member.profilePath,
+        type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE,
+        targetWidthDp = 70,
+        density = density
+    )
     val fallbackPainter = painterResource(Res.drawable.baseline_person_24)
 
     Column(

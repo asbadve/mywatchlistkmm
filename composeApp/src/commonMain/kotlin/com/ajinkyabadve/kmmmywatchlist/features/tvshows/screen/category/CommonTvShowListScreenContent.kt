@@ -66,8 +66,15 @@ fun tvShowScreenContent(
         contentPadding = PaddingValues(8.dp),
     ) {
         items(tvShows) {
+            val density = androidx.compose.ui.platform.LocalDensity.current.density
+            val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                path = it.posterPath,
+                type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                targetWidthDp = 150,
+                density = density
+            )
             mediaTvShowRow(
-                TvShowsConstant.IMAGE_BASE_URL + it.posterPath,
+                imageUrl,
                 it.title,
                 modifier = Modifier,
                 onClick = {

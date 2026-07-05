@@ -35,9 +35,16 @@ fun SimilarMoviesSection(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(similarMovies.take(10)) { movie ->
+                    val density = androidx.compose.ui.platform.LocalDensity.current.density
+                    val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                        path = movie.posterPath,
+                        type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                        targetWidthDp = 140,
+                        density = density
+                    )
                     Box(modifier = Modifier.width(140.dp)) {
                         mediaMovieRow(
-                            imageUrl = movie.posterPath?.let { MoviesConstant.IMAGE_BASE_URL + it },
+                            imageUrl = imageUrl,
                             title = movie.title,
                             modifier = Modifier,
                             onClick = { onMovieClicked(movie.id.toLong()) }

@@ -64,8 +64,15 @@ fun personListScreenContent(
         contentPadding = PaddingValues(8.dp),
     ) {
         items(people) {
+            val density = androidx.compose.ui.platform.LocalDensity.current.density
+            val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                path = it.profilePath,
+                type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE,
+                targetWidthDp = 150,
+                density = density
+            )
             mediaPersonRow(
-                IMAGE_BASE_URL + it.profilePath,
+                imageUrl,
                 it.name,
                 modifier = Modifier,
                 onClick = {

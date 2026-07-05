@@ -234,8 +234,19 @@ private fun TrendingMediaCarousel(
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) { i ->
         val item = mediaTrendResult[i]
-        val imageUrl = if (item.posterPath.isNullOrBlank()) null
-                       else MoviesConstant.IMAGE_BASE_URL + item.posterPath
+        val density = androidx.compose.ui.platform.LocalDensity.current.density
+        val targetWidth = 200
+        val imageType = if (mediaType == MEDIA_TYPE_PEOPLE) {
+            com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE
+        } else {
+            com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER
+        }
+        val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+            path = item.posterPath,
+            type = imageType,
+            targetWidthDp = targetWidth,
+            density = density
+        )
         when (mediaType) {
             MEDIA_TYPE_TV -> mediaTvShowRow(
                 imageUrl = imageUrl,

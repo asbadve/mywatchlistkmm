@@ -66,8 +66,15 @@ fun screenContent(
         contentPadding = PaddingValues(8.dp),
     ) {
         items(movies) {
+            val density = androidx.compose.ui.platform.LocalDensity.current.density
+            val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                path = it.posterPath,
+                type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                targetWidthDp = 150,
+                density = density
+            )
             mediaMovieRow(
-                MoviesConstant.IMAGE_BASE_URL + it.posterPath,
+                imageUrl,
                 it.title,
                 modifier = Modifier,
                 onClick = {

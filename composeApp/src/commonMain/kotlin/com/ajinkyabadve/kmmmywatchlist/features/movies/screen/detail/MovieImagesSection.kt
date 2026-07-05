@@ -35,7 +35,13 @@ fun MovieImagesSection(images: List<BackdropImage>) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(images.take(10)) { image ->
-                    val imageUrl = "https://image.tmdb.org/t/p/w500${image.filePath}"
+                    val density = androidx.compose.ui.platform.LocalDensity.current.density
+                    val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                        path = image.filePath,
+                        type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
+                        targetWidthDp = 200,
+                        density = density
+                    )
                     Card(
                         modifier = Modifier
                             .width(200.dp)

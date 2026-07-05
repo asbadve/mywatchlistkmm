@@ -80,6 +80,10 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
             }
             .build()
     }
+    // Refresh configuration dynamically on app launch
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.refreshConfig()
+    }
     AppTheme {
         val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
         MainAppScreen(windowSize)

@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 
 object TvShowsConstant {
+    @Deprecated("Use ImageConfigResolver instead to resolve dynamic resolutions based on density")
     const val IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w185/"
     const val AIRING_TODAY_TV = "Airing Today"
     const val ON_THE_AIR_TV = "On The Air"
