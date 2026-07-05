@@ -7,7 +7,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -78,63 +82,98 @@ fun MovieDetailScreen(
                 is MovieDetailState.Success -> {
                     val detail = state.movieDetail
                     Box(modifier = Modifier.fillMaxSize()) {
-                        if (windowSize.isCompact()) {
-                            CompactMovieDetailContent(
-                                detail = detail,
-                                lazyListState = lazyListState,
-                                onMovieClicked = onMovieClicked
-                            )
-                        } else {
-                            ExpandedMovieDetailContent(
-                                detail = detail,
-                                leftLazyListState = leftLazyListState,
-                                onMovieClicked = onMovieClicked
-                            )
-                        }
-
                         val headerBgColor by animateColorAsState(
                             targetValue = if (showSolidHeader) MaterialTheme.colorScheme.background else Color.Transparent,
                             animationSpec = tween(durationMillis = 300)
                         )
-                        TopAppBar(
-                            title = {
-                                AnimatedVisibility(
-                                    visible = showSolidHeader,
-                                    enter = fadeIn(),
-                                    exit = fadeOut()
-                                ) {
-                                    Text(
-                                        text = detail.title,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            },
-                            navigationIcon = {
-                                if (showSolidHeader) {
-                                    IconButton(onClick = onBackClicked) {
-                                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
-                                    }
-                                } else {
-                                    IconButton(
-                                        onClick = onBackClicked,
-                                        modifier = Modifier
-                                            .padding(8.dp)
-                                            .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ArrowBack,
-                                            contentDescription = "Back",
-                                            tint = Color.White
+
+                        var verticalDragOffset by remember { mutableStateOf(0f) }
+                        val density = androidx.compose.ui.platform.LocalDensity.current
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .offset { androidx.compose.ui.unit.IntOffset(0, verticalDragOffset.toInt()) }
+                                .pointerInput(windowSize.isCompact(), lazyListState) {
+                                    if (windowSize.isCompact()) {
+                                        detectVerticalDragGestures(
+                                            onDragStart = {},
+                                            onDragEnd = {
+                                                val thresholdPx = with(density) { 150.dp.toPx() }
+                                                if (verticalDragOffset > thresholdPx) {
+                                                    onBackClicked()
+                                                } else {
+                                                    verticalDragOffset = 0f
+                                                }
+                                            },
+                                            onDragCancel = {
+                                                verticalDragOffset = 0f
+                                            },
+                                            onVerticalDrag = { change, dragAmount ->
+                                                val isAtTop = lazyListState.firstVisibleItemIndex == 0 &&
+                                                        lazyListState.firstVisibleItemScrollOffset == 0
+                                                if (isAtTop && (dragAmount > 0 || verticalDragOffset > 0)) {
+                                                    verticalDragOffset = (verticalDragOffset + dragAmount).coerceAtLeast(0f)
+                                                    change.consume()
+                                                }
+                                            }
                                         )
                                     }
                                 }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = headerBgColor
+                        ) {
+                            if (windowSize.isCompact()) {
+                                CompactMovieDetailContent(
+                                    detail = detail,
+                                    lazyListState = lazyListState,
+                                    onMovieClicked = onMovieClicked
+                                )
+                            } else {
+                                ExpandedMovieDetailContent(
+                                    detail = detail,
+                                    leftLazyListState = leftLazyListState,
+                                    onMovieClicked = onMovieClicked
+                                )
+                            }
+
+                            TopAppBar(
+                                title = {
+                                    AnimatedVisibility(
+                                        visible = showSolidHeader,
+                                        enter = fadeIn(),
+                                        exit = fadeOut()
+                                    ) {
+                                        Text(
+                                            text = detail.title,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                },
+                                navigationIcon = {
+                                    if (showSolidHeader) {
+                                        IconButton(onClick = onBackClicked) {
+                                            Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                                        }
+                                    } else {
+                                        IconButton(
+                                            onClick = onBackClicked,
+                                            modifier = Modifier
+                                                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Close",
+                                                tint = Color.White
+                                            )
+                                        }
+                                    }
+                                },
+                                colors = TopAppBarDefaults.topAppBarColors(
+                                    containerColor = headerBgColor
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
