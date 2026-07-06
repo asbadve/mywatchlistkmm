@@ -11,9 +11,9 @@ import kotlinx.cinterop.usePinned
 
 actual class ImageSaver actual constructor() {
     @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-    actual suspend fun saveImage(bytes: ByteArray, fileName: String): Boolean {
+    actual suspend fun saveImage(bytes: ByteArray, fileName: String): String? {
         return try {
-            if (bytes.isEmpty()) return false
+            if (bytes.isEmpty()) return null
             val nsData = bytes.usePinned { pinned ->
                 NSData.create(
                     bytes = pinned.addressOf(0),
@@ -23,13 +23,13 @@ actual class ImageSaver actual constructor() {
             val uiImage = UIImage.imageWithData(nsData)
             if (uiImage != null) {
                 UIImageWriteToSavedPhotosAlbum(uiImage, null, null, null)
-                true
+                "Photos Album"
             } else {
-                false
+                null
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            null
         }
     }
 }

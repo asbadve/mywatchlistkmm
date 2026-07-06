@@ -200,9 +200,7 @@ fun MovieDetailScreen(
                     initialIndex = galleryInitialIndex,
                     onDismiss = { galleryImages = null },
                     onDownload = { imageUrl ->
-                        scope.launch {
-                            com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader.downloadAndSave(imageUrl)
-                        }
+                        com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader.downloadAndSave(imageUrl)
                     }
                 )
             }

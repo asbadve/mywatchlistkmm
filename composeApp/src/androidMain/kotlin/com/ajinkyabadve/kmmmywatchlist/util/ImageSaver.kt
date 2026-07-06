@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 actual class ImageSaver actual constructor() {
-    actual suspend fun saveImage(bytes: ByteArray, fileName: String): Boolean = withContext(Dispatchers.IO) {
+    actual suspend fun saveImage(bytes: ByteArray, fileName: String): String? = withContext(Dispatchers.IO) {
         try {
             val context = AndroidApp.INSTANCE
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -21,24 +21,24 @@ actual class ImageSaver actual constructor() {
                     val mediaScanIntent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
                     mediaScanIntent.data = android.net.Uri.fromFile(file)
                     context.sendBroadcast(mediaScanIntent)
-                    true
+                    "Pictures/$fileName"
                 } catch (e: java.io.IOException) {
                     val appDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
                     val appFile = java.io.File(appDir, fileName)
                     try {
                         appFile.writeBytes(bytes)
-                        true
+                        "Pictures/MyWatchList/$fileName"
                     } catch (ex: java.io.IOException) {
-                        false
+                        null
                     }
                 } catch (e: SecurityException) {
                     val appDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
                     val appFile = java.io.File(appDir, fileName)
                     try {
                         appFile.writeBytes(bytes)
-                        true
+                        "Pictures/MyWatchList/$fileName"
                     } catch (ex: SecurityException) {
-                        false
+                        null
                     }
                 }
             } else {
@@ -58,20 +58,20 @@ actual class ImageSaver actual constructor() {
                     contentValues.clear()
                     contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
                     contentResolver.update(uri, contentValues, null, null)
-                    true
+                    "Pictures/MyWatchList/$fileName"
                 } else {
-                    false
+                    null
                 }
             }
         } catch (e: java.io.IOException) {
             e.printStackTrace()
-            false
+            null
         } catch (e: SecurityException) {
             e.printStackTrace()
-            false
+            null
         } catch (e: IllegalStateException) {
             e.printStackTrace()
-            false
+            null
         }
     }
 }

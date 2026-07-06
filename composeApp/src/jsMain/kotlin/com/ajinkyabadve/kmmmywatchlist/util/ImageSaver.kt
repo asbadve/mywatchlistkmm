@@ -7,7 +7,7 @@ import org.w3c.files.BlobPropertyBag
 import kotlinx.browser.document
 
 actual class ImageSaver actual constructor() {
-    actual suspend fun saveImage(bytes: ByteArray, fileName: String): Boolean {
+    actual suspend fun saveImage(bytes: ByteArray, fileName: String): String? {
         return try {
             val bytesTyped = Int8Array(bytes.size)
             for (i in bytes.indices) {
@@ -22,10 +22,10 @@ actual class ImageSaver actual constructor() {
             link.click()
             document.body?.removeChild(link)
             revokeObjectURL(url)
-            true
+            "Downloads"
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            null
         }
     }
 

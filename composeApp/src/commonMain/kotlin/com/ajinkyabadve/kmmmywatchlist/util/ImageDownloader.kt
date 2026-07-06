@@ -8,7 +8,7 @@ import io.github.aakira.napier.Napier
 object ImageDownloader {
     private val client = HttpClient()
 
-    suspend fun downloadAndSave(url: String): Boolean {
+    suspend fun downloadAndSave(url: String): String? {
         return try {
             Napier.d("Starting image download from: $url", tag = "ImageDownloader")
             val response = client.get(url)
@@ -25,13 +25,13 @@ object ImageDownloader {
             throw e
         } catch (e: io.ktor.client.plugins.ResponseException) {
             Napier.e("HTTP error downloading image", e, tag = "ImageDownloader")
-            false
+            null
         } catch (e: io.ktor.utils.io.errors.IOException) {
             Napier.e("Network/IO error downloading image", e, tag = "ImageDownloader")
-            false
+            null
         } catch (e: Exception) {
             Napier.e("Unexpected error downloading image", e, tag = "ImageDownloader")
-            false
+            null
         }
     }
 }

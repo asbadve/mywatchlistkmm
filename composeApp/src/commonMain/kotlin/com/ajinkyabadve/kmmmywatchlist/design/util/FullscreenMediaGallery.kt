@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.rememberAsyncImagePainter
+import kotlinx.coroutines.launch
+import androidx.compose.ui.text.font.FontWeight
 
 /**
  * Reusable full-screen media/photo gallery component supporting pinch-to-zoom gestures,
@@ -46,7 +48,7 @@ fun FullscreenMediaGallery(
     images: List<String>,
     initialIndex: Int,
     onDismiss: () -> Unit,
-    onDownload: ((imageUrl: String) -> Unit)? = null
+    onDownload: (suspend (imageUrl: String) -> String?)? = null
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -62,6 +64,9 @@ fun FullscreenMediaGallery(
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
+            val scope = rememberCoroutineScope()
+            var downloadStatus by remember { mutableStateOf<String?>(null) }
+
             val pagerState = rememberPagerState(initialPage = initialIndex) { images.size }
             var isZoomed by remember { mutableStateOf(false) }
             var activeScale by remember { mutableStateOf(1f) }
@@ -184,7 +189,19 @@ fun FullscreenMediaGallery(
                 // Optional download button
                 if (onDownload != null) {
                     IconButton(
-                        onClick = { onDownload(images[pagerState.currentPage]) },
+                        onClick = {
+                            scope.launch {
+                                downloadStatus = "Downloading..."
+                                val savedPath = onDownload(images[pagerState.currentPage])
+                                downloadStatus = if (savedPath != null) {
+                                    "Saved to:\n$savedPath"
+                                } else {
+                                    "Failed to save image"
+                                }
+                                kotlinx.coroutines.delay(3000)
+                                downloadStatus = null
+                            }
+                        },
                         modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
                     ) {
                         Icon(
@@ -280,6 +297,26 @@ fun FullscreenMediaGallery(
                         imageVector = FeatherIcons.ZoomOut,
                         contentDescription = "Zoom Out (Current: $zoomPercent%)",
                         tint = Color.White
+                    )
+                }
+            }
+
+            // Download status Toast overlay
+            downloadStatus?.let { status ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = status,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        lineHeight = 20.sp
                     )
                 }
             }

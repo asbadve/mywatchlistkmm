@@ -5,7 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 actual class ImageSaver actual constructor() {
-    actual suspend fun saveImage(bytes: ByteArray, fileName: String): Boolean = withContext(Dispatchers.IO) {
+    actual suspend fun saveImage(bytes: ByteArray, fileName: String): String? = withContext(Dispatchers.IO) {
         try {
             val userHome = System.getProperty("user.home")
             val downloadsDir = File(userHome, "Downloads")
@@ -14,13 +14,13 @@ actual class ImageSaver actual constructor() {
             }
             val destinationFile = File(downloadsDir, fileName)
             destinationFile.writeBytes(bytes)
-            true
+            "Downloads/$fileName"
         } catch (e: java.io.IOException) {
             e.printStackTrace()
-            false
+            null
         } catch (e: SecurityException) {
             e.printStackTrace()
-            false
+            null
         }
     }
 }
