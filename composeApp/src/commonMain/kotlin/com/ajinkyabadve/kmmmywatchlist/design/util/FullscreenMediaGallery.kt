@@ -50,9 +50,7 @@ fun FullscreenMediaGallery(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            usePlatformInsets = false,
+        properties = com.ajinkyabadve.kmmmywatchlist.getDialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = true
         )
