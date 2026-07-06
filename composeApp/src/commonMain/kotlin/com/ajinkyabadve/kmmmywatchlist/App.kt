@@ -111,7 +111,7 @@ fun MainAppScreen(
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val layoutType =
         if (windowSize.isExpanded() && !adaptiveInfo.windowPosture.isTabletop) {
-            NavigationSuiteType.NavigationDrawer
+            NavigationSuiteType.NavigationRail
         } else {
             NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptiveInfo)
         }

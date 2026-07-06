@@ -73,6 +73,13 @@ actual fun ConfigureDialogWindow() {
                 w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 w.setBackgroundDrawable(ColorDrawable(Color.BLACK))
                 
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    w.attributes?.let { lp ->
+                        lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                        w.attributes = lp
+                    }
+                }
+
                 // Avoid FLAG_LAYOUT_NO_LIMITS on foldables and tablets to prevent clipping/stretching
                 if (!isLargeScreen) {
                     w.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)

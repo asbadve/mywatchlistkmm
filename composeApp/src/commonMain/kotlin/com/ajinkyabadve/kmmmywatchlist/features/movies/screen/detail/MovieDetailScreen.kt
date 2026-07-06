@@ -60,7 +60,8 @@ fun MovieDetailScreen(
     }
 
     Scaffold(
-        topBar = {}
+        topBar = {},
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Box(
             modifier = Modifier
