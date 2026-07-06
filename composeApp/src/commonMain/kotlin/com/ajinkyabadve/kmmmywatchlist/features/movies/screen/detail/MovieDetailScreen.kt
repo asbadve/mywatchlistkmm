@@ -32,6 +32,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +47,10 @@ fun MovieDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
     val leftLazyListState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    var galleryImages by remember { mutableStateOf<List<String>?>(null) }
+    var galleryInitialIndex by remember { mutableStateOf(0) }
 
     val showSolidHeader by remember {
         derivedStateOf {
@@ -111,7 +117,7 @@ fun MovieDetailScreen(
                                             },
                                             onVerticalDrag = { change, dragAmount ->
                                                 val isAtTop = lazyListState.firstVisibleItemIndex == 0 &&
-                                                        lazyListState.firstVisibleItemScrollOffset == 0
+                                                         lazyListState.firstVisibleItemScrollOffset == 0
                                                 if (isAtTop && (dragAmount > 0 || verticalDragOffset > 0)) {
                                                     verticalDragOffset = (verticalDragOffset + dragAmount).coerceAtLeast(0f)
                                                     change.consume()
@@ -125,13 +131,21 @@ fun MovieDetailScreen(
                                 CompactMovieDetailContent(
                                     detail = detail,
                                     lazyListState = lazyListState,
-                                    onMovieClicked = onMovieClicked
+                                    onMovieClicked = onMovieClicked,
+                                    onShowGallery = { images, index ->
+                                        galleryImages = images
+                                        galleryInitialIndex = index
+                                    }
                                 )
                             } else {
                                 ExpandedMovieDetailContent(
                                     detail = detail,
                                     leftLazyListState = leftLazyListState,
-                                    onMovieClicked = onMovieClicked
+                                    onMovieClicked = onMovieClicked,
+                                    onShowGallery = { images, index ->
+                                        galleryImages = images
+                                        galleryInitialIndex = index
+                                    }
                                 )
                             }
 
@@ -177,6 +191,20 @@ fun MovieDetailScreen(
                     }
                 }
             }
+
+            // Fullscreen Media Gallery Overlay
+            galleryImages?.let { images ->
+                com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery(
+                    images = images,
+                    initialIndex = galleryInitialIndex,
+                    onDismiss = { galleryImages = null },
+                    onDownload = { imageUrl ->
+                        scope.launch {
+                            com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader.downloadAndSave(imageUrl)
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -185,7 +213,8 @@ fun MovieDetailScreen(
 private fun CompactMovieDetailContent(
     detail: MovieDetail,
     lazyListState: LazyListState,
-    onMovieClicked: (Long) -> Unit
+    onMovieClicked: (Long) -> Unit,
+    onShowGallery: (images: List<String>, index: Int) -> Unit
 ) {
     LazyColumn(
         state = lazyListState,
@@ -205,7 +234,20 @@ private fun CompactMovieDetailContent(
             VideoClipsSection(videos = detail.videos?.results ?: emptyList())
         }
         item {
-            MovieImagesSection(images = detail.images?.backdrops ?: emptyList())
+            MovieImagesSection(
+                images = detail.images?.backdrops ?: emptyList(),
+                title = "Backdrops",
+                imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
+                onShowGallery = onShowGallery
+            )
+        }
+        item {
+            MovieImagesSection(
+                images = detail.images?.posters ?: emptyList(),
+                title = "Posters",
+                imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                onShowGallery = onShowGallery
+            )
         }
         item {
             CastSection(castList = detail.credits?.cast ?: emptyList())
@@ -234,7 +276,8 @@ private fun CompactMovieDetailContent(
 private fun ExpandedMovieDetailContent(
     detail: MovieDetail,
     leftLazyListState: LazyListState,
-    onMovieClicked: (Long) -> Unit
+    onMovieClicked: (Long) -> Unit,
+    onShowGallery: (images: List<String>, index: Int) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -261,7 +304,20 @@ private fun ExpandedMovieDetailContent(
                 VideoClipsSection(videos = detail.videos?.results ?: emptyList())
             }
             item {
-                MovieImagesSection(images = detail.images?.backdrops ?: emptyList())
+                MovieImagesSection(
+                    images = detail.images?.backdrops ?: emptyList(),
+                    title = "Backdrops",
+                    imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
+                    onShowGallery = onShowGallery
+                )
+            }
+            item {
+                MovieImagesSection(
+                    images = detail.images?.posters ?: emptyList(),
+                    title = "Posters",
+                    imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                    onShowGallery = onShowGallery
+                )
             }
             item {
                 ReviewsSection(

@@ -7,7 +7,8 @@ This document contains core instructions, architectural decisions, and layout ru
 ## 1. Environment & Build Configuration
 * **Java Version**: Always use **Java 17** for compilation. Ensure compatible JDK setup across Android, Desktop, and iOS.
 * **Web Target**: The JS/Web target is currently parked due to signature mismatch issues. Do not spend time trying to compile it unless explicitly requested by the user.
-* **Android Target**: Always use the **android-cli** skill and the `android` command-line tool by Google for Android builds and environments diagnostics.
+* **Android Target**: Always use the **android-cli** skill and the `android` command-line tool by Google for Android builds and environment diagnostics.
+* **Android Verification**: Whenever modifying Android UI layouts, gestures, or interactive features, do not rely only on compilation. Always use the `android-cli` tools to launch the app on a running emulator/device and verify the actual runtime behavior.
 
 ---
 
@@ -77,3 +78,10 @@ This document contains core instructions, architectural decisions, and layout ru
 ## 8. General Code Cleanups & Instruction Propagation Guidelines
 * **Remove Unused Imports**: Always check for and remove unused package imports during file modification, especially when types are inferred automatically (e.g., unused `Painter` imports).
 * **Remember Instruction Rule**: Whenever the user instructs the agent to remember any rule, guideline, or instruction, the agent must immediately document it and append it to this `PROJECT_SKILL.md` file to preserve it across future agent sessions.
+
+---
+
+## 9. Exception Handling Guidelines
+* **CRITICAL**: Do **NOT** use general `catch (e: Exception)` blocks for handling failures.
+* **Catch Specific Targets**: Always catch specific, expected exceptions (e.g., `NoSuchMethodException`, `IOException`, `SecurityException`, `IllegalAccessException`, `InvocationTargetException`, `NullPointerException`).
+* **Avoid Silent Swallow**: Do not swallow general Exceptions silently. If catching a general block is absolutely required for safety, log the error explicitly and ensure it doesn't mask other failure modes.
