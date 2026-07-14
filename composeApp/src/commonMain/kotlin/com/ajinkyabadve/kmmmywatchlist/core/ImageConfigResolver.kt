@@ -4,9 +4,9 @@ import com.ajinkyabadve.kmmmywatchlist.core.constant.ConfigurationConstants
 import com.ajinkyabadve.kmmmywatchlist.core.model.ImagesConfig
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.ConfigurationRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.ConfigurationRepositoryImpl
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 
 object ImageConfigResolver {
@@ -24,21 +24,21 @@ object ImageConfigResolver {
     }
 
     fun refreshConfig() {
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             try {
                 activeConfig = repository.getConfiguration()
             } catch (e: io.ktor.client.plugins.ResponseException) {
-                // Ignore load errors and retain fallback defaults
+                Napier.e("Response exception when loading config", e, tag = "ImageConfigResolver")
             } catch (e: io.ktor.client.network.sockets.ConnectTimeoutException) {
-                // Ignore connection timeout
+                Napier.e("Connection timeout when loading config", e, tag = "ImageConfigResolver")
             } catch (e: io.ktor.client.plugins.HttpRequestTimeoutException) {
-                // Ignore request timeout
+                Napier.e("Request timeout when loading config", e, tag = "ImageConfigResolver")
             } catch (e: io.ktor.utils.io.errors.IOException) {
-                // Ignore network IO exceptions
+                Napier.e("Network IO exception when loading config", e, tag = "ImageConfigResolver")
             } catch (e: kotlinx.serialization.SerializationException) {
-                // Ignore serialization parsing errors
+                Napier.e("Serialization exception when loading config", e, tag = "ImageConfigResolver")
             } catch (e: IllegalArgumentException) {
-                // Ignore
+                Napier.e("Invalid argument exception when loading config", e, tag = "ImageConfigResolver")
             }
         }
     }
