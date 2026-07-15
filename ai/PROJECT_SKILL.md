@@ -4,10 +4,33 @@ This document contains core instructions, architectural decisions, and layout ru
 
 ---
 
+## 0. Basic Project Information
+* **Project**: MyWatchList — a Kotlin Multiplatform (KMM) / Compose Multiplatform app for browsing trending/movies/TV shows/people via the TMDB API.
+* **Root project name**: `MyWatchList` (see `settings.gradle.kts`), single Gradle module: `:composeApp`.
+* **Package / namespace**: `com.ajinkyabadve.kmmmywatchlist` (Android applicationId: `com.ajinkyabadve.kmmmywatchlist.androidApp`).
+* **Targets**: Android (compileSdk 35, minSdk 24, targetSdk 34), Desktop (JVM, `MainKt`), iOS (iosX64, iosArm64, iosSimulatorArm64 → static `ComposeApp` framework), and JS/Web via Kotlin/JS + Compose HTML (currently parked, see build notes above).
+* **Build system**: Gradle Kotlin DSL, Kotlin Multiplatform plugin + Compose Multiplatform plugin, JDK 17 everywhere. Key plugins: `android-application`, `buildConfig` (injects `TMDB_API_KEY` from `MY_WATCH_LIST_TMDB_API_KEY` gradle property), `kotlinx-serialization`, `sqlDelight`, `compose-compiler`.
+* **Core libraries**: Ktor (networking, with per-platform engines: OkHttp on Android/Desktop, Darwin on iOS), Koin (DI), Coil (image loading), Napier (logging), kotlinx-coroutines/-serialization/-datetime, Compose Navigation, Material3 adaptive navigation suite, SqlDelight (DB, drivers per platform), multiplatform-settings, Feather compose-icons.
+* **Source set layout**: `composeApp/src/{commonMain,androidMain,desktopMain,iosMain,jsMain,commonTest,...}`. Shared UI/logic lives in `commonMain`.
+* **Package structure** (under `commonMain/kotlin/com/ajinkyabadve/kmmmywatchlist/`):
+  - `core/` — shared constants, models, paging source.
+  - `design/` — shared Compose UI components (movie cards, search box, segments, util).
+  - `features/` — feature modules: `favorite`, `movies`, `person`, `trending`, `tvshows`, each with `model` / `network` / `repository` / `screen` sub-packages.
+  - `homepage/` — home screen tabs.
+  - `navigation/` — app navigation (Compose Navigation, no Voyager — see section 5).
+  - `network/` — Ktor client builder/config, constants, exceptions.
+  - `theme/`, `util/` — theming and utilities.
+* **Docs**: `README.md` (setup, run instructions per target, screenshots), `future_features_checklist.md` (TMDB-spec-driven roadmap: search, favorites/watchlist, detail screens, discovery, TMDB auth).
+* **Other skill files**: `.agents/skills/tmdb-guidelines/SKILL.md` — TMDB API/OpenAPI usage and image-resolution rules (see that file when touching TMDB network/image code).
+
+---
+
 ## 1. Environment & Build Configuration
 * **Java Version**: Always use **Java 17** for compilation. Ensure compatible JDK setup across Android, Desktop, and iOS.
 * **Web Target**: The JS/Web target is currently parked due to signature mismatch issues. Do not spend time trying to compile it unless explicitly requested by the user.
 * **Android Target**: Always use the **android-cli** skill and the `android` command-line tool by Google for Android builds and environment diagnostics.
+  - Skill installed at `.agents/skills/android-cli/SKILL.md` (Google's official Android CLI skill, `android skills add android-cli --project <root>`). Binary lives at `/opt/homebrew/bin/android` (installed via `brew install android-cli`, tap `android/tap`) — `~/.zshrc` was updated to put `/opt/homebrew/bin` ahead of the legacy deprecated `~/Library/Android/sdk/tools` on `PATH` so `android` resolves to this CLI, not the old SDK tool.
+  - Useful commands: `android run` (deploy/launch on device/emulator), `android screen capture` (screenshot), `android layout` (UI layout tree, faster than screenshots for debugging), `android emulator start|stop|list`, `android docs search` (Android Knowledge Base lookups), `android sdk install/list`.
 * **Android Verification**: Whenever modifying Android UI layouts, gestures, or interactive features, do not rely only on compilation. Always use the `android-cli` tools to launch the app on a running emulator/device and verify the actual runtime behavior.
 
 ---
