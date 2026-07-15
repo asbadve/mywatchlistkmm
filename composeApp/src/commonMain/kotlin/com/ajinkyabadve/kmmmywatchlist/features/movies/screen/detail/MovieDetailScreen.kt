@@ -57,7 +57,7 @@ fun MovieDetailScreen(
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
     onMovieClicked: (Long) -> Unit,
-    viewModel: MovieDetailScreenModel = remember(movieId) { MovieDetailScreenModel(movieId) }
+    viewModel: MovieDetailScreenModel = remember(movieId) { MovieDetailScreenModel(movieId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
@@ -76,24 +76,27 @@ fun MovieDetailScreen(
 
     Scaffold(
         topBar = {},
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(if (windowSize.isCompact()) PaddingValues(0.dp) else innerPadding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(if (windowSize.isCompact()) PaddingValues(0.dp) else innerPadding),
         ) {
             when (val state = uiState) {
                 is MovieDetailState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
+
                 is MovieDetailState.Error -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
                         Button(onClick = { viewModel.loadMovieDetails() }) {
@@ -101,47 +104,52 @@ fun MovieDetailScreen(
                         }
                     }
                 }
+
                 is MovieDetailState.Success -> {
                     val detail = state.movieDetail
                     Box(modifier = Modifier.fillMaxSize()) {
                         val headerBgColor by animateColorAsState(
                             targetValue = if (showSolidHeader) MaterialTheme.colorScheme.background else Color.Transparent,
-                            animationSpec = tween(durationMillis = 300)
+                            animationSpec = tween(durationMillis = 300),
                         )
 
                         var verticalDragOffset by remember { mutableStateOf(0f) }
                         val density = androidx.compose.ui.platform.LocalDensity.current
 
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .offset { androidx.compose.ui.unit.IntOffset(0, verticalDragOffset.toInt()) }
-                                .pointerInput(windowSize.isCompact(), lazyListState) {
-                                    if (windowSize.isCompact()) {
-                                        detectVerticalDragGestures(
-                                            onDragStart = {},
-                                            onDragEnd = {
-                                                val thresholdPx = with(density) { 150.dp.toPx() }
-                                                if (verticalDragOffset > thresholdPx) {
-                                                    onBackClicked()
-                                                } else {
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .offset {
+                                        androidx.compose.ui.unit
+                                            .IntOffset(0, verticalDragOffset.toInt())
+                                    }.pointerInput(windowSize.isCompact(), lazyListState) {
+                                        if (windowSize.isCompact()) {
+                                            detectVerticalDragGestures(
+                                                onDragStart = {},
+                                                onDragEnd = {
+                                                    val thresholdPx = with(density) { 150.dp.toPx() }
+                                                    if (verticalDragOffset > thresholdPx) {
+                                                        onBackClicked()
+                                                    } else {
+                                                        verticalDragOffset = 0f
+                                                    }
+                                                },
+                                                onDragCancel = {
                                                     verticalDragOffset = 0f
-                                                }
-                                            },
-                                            onDragCancel = {
-                                                verticalDragOffset = 0f
-                                            },
-                                            onVerticalDrag = { change, dragAmount ->
-                                                val isAtTop = lazyListState.firstVisibleItemIndex == 0 &&
-                                                         lazyListState.firstVisibleItemScrollOffset == 0
-                                                if (isAtTop && (dragAmount > 0 || verticalDragOffset > 0)) {
-                                                    verticalDragOffset = (verticalDragOffset + dragAmount).coerceAtLeast(0f)
-                                                    change.consume()
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
+                                                },
+                                                onVerticalDrag = { change, dragAmount ->
+                                                    val isAtTop =
+                                                        lazyListState.firstVisibleItemIndex == 0 &&
+                                                            lazyListState.firstVisibleItemScrollOffset == 0
+                                                    if (isAtTop && (dragAmount > 0 || verticalDragOffset > 0)) {
+                                                        verticalDragOffset = (verticalDragOffset + dragAmount).coerceAtLeast(0f)
+                                                        change.consume()
+                                                    }
+                                                },
+                                            )
+                                        }
+                                    },
                         ) {
                             if (windowSize.isCompact()) {
                                 CompactMovieDetailContent(
@@ -151,7 +159,7 @@ fun MovieDetailScreen(
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
-                                    }
+                                    },
                                 )
                             } else {
                                 ExpandedMovieDetailContent(
@@ -161,7 +169,7 @@ fun MovieDetailScreen(
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
-                                    }
+                                    },
                                 )
                             }
 
@@ -170,13 +178,13 @@ fun MovieDetailScreen(
                                     AnimatedVisibility(
                                         visible = showSolidHeader,
                                         enter = fadeIn(),
-                                        exit = fadeOut()
+                                        exit = fadeOut(),
                                     ) {
                                         Text(
                                             text = detail.title,
                                             fontWeight = FontWeight.Bold,
                                             maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     }
                                 },
@@ -188,20 +196,22 @@ fun MovieDetailScreen(
                                     } else {
                                         IconButton(
                                             onClick = onBackClicked,
-                                            modifier = Modifier
-                                                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                                            modifier =
+                                                Modifier
+                                                    .background(Color.Black.copy(alpha = 0.4f), CircleShape),
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Close,
                                                 contentDescription = "Close",
-                                                tint = Color.White
+                                                tint = Color.White,
                                             )
                                         }
                                     }
                                 },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = headerBgColor
-                                )
+                                colors =
+                                    TopAppBarDefaults.topAppBarColors(
+                                        containerColor = headerBgColor,
+                                    ),
                             )
                         }
                     }
@@ -215,8 +225,9 @@ fun MovieDetailScreen(
                     initialIndex = galleryInitialIndex,
                     onDismiss = { galleryImages = null },
                     onDownload = { imageUrl ->
-                        com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader.downloadAndSave(imageUrl)
-                    }
+                        com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
+                            .downloadAndSave(imageUrl)
+                    },
                 )
             }
         }
@@ -228,12 +239,12 @@ private fun CompactMovieDetailContent(
     detail: MovieDetail,
     lazyListState: LazyListState,
     onMovieClicked: (Long) -> Unit,
-    onShowGallery: (images: List<String>, index: Int) -> Unit
+    onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     LazyColumn(
         state = lazyListState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 32.dp)
+        contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
             BackdropSection(detail = detail)
@@ -252,7 +263,7 @@ private fun CompactMovieDetailContent(
                 images = detail.images?.backdrops ?: emptyList(),
                 title = "Backdrops",
                 imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
-                onShowGallery = onShowGallery
+                onShowGallery = onShowGallery,
             )
         }
         item {
@@ -260,7 +271,7 @@ private fun CompactMovieDetailContent(
                 images = detail.images?.posters ?: emptyList(),
                 title = "Posters",
                 imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
-                onShowGallery = onShowGallery
+                onShowGallery = onShowGallery,
             )
         }
         item {
@@ -269,18 +280,18 @@ private fun CompactMovieDetailContent(
         item {
             RecommendationsSection(
                 recommendations = detail.recommendations?.list ?: emptyList(),
-                onMovieClicked = onMovieClicked
+                onMovieClicked = onMovieClicked,
             )
         }
         item {
             SimilarMoviesSection(
                 similarMovies = detail.similar?.list ?: emptyList(),
-                onMovieClicked = onMovieClicked
+                onMovieClicked = onMovieClicked,
             )
         }
         item {
             ReviewsSection(
-                reviews = detail.reviews?.results ?: emptyList()
+                reviews = detail.reviews?.results ?: emptyList(),
             )
         }
     }
@@ -291,17 +302,17 @@ private fun ExpandedMovieDetailContent(
     detail: MovieDetail,
     leftLazyListState: LazyListState,
     onMovieClicked: (Long) -> Unit,
-    onShowGallery: (images: List<String>, index: Int) -> Unit
+    onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(24.dp)
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         // Left Column (Main details pane) - Width takes up 60% of space
         LazyColumn(
             state = leftLazyListState,
             modifier = Modifier.weight(1.5f),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
                 BackdropSection(detail = detail)
@@ -320,7 +331,7 @@ private fun ExpandedMovieDetailContent(
                     images = detail.images?.backdrops ?: emptyList(),
                     title = "Backdrops",
                     imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
-                    onShowGallery = onShowGallery
+                    onShowGallery = onShowGallery,
                 )
             }
             item {
@@ -328,12 +339,12 @@ private fun ExpandedMovieDetailContent(
                     images = detail.images?.posters ?: emptyList(),
                     title = "Posters",
                     imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
-                    onShowGallery = onShowGallery
+                    onShowGallery = onShowGallery,
                 )
             }
             item {
                 ReviewsSection(
-                    reviews = detail.reviews?.results ?: emptyList()
+                    reviews = detail.reviews?.results ?: emptyList(),
                 )
             }
         }
@@ -342,7 +353,7 @@ private fun ExpandedMovieDetailContent(
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(top = 64.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
                 CastSection(castList = detail.credits?.cast ?: emptyList())
@@ -350,13 +361,13 @@ private fun ExpandedMovieDetailContent(
             item {
                 RecommendationsSection(
                     recommendations = detail.recommendations?.list ?: emptyList(),
-                    onMovieClicked = onMovieClicked
+                    onMovieClicked = onMovieClicked,
                 )
             }
             item {
                 SimilarMoviesSection(
                     similarMovies = detail.similar?.list ?: emptyList(),
-                    onMovieClicked = onMovieClicked
+                    onMovieClicked = onMovieClicked,
                 )
             }
         }
