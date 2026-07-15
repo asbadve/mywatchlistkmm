@@ -78,7 +78,7 @@ fun MovieImagesSection(
                         val painter = rememberAsyncImagePainter(model = imageUrl)
                         Image(
                             painter = painter,
-                            contentDescription = "Movie photo",
+                            contentDescription = "Photo",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )

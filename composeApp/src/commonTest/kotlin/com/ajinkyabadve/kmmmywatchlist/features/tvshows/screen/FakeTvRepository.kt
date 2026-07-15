@@ -1,7 +1,9 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
 
 class FakeTvRepository : TvRepository {
@@ -14,6 +16,26 @@ class FakeTvRepository : TvRepository {
             list = tvShows,
             totalResults = tvShows.size,
             totalPages = 1
+        )
+    }
+
+    override suspend fun getTvDetails(tvId: Long): TvDetail {
+        return TvDetail(
+            id = tvId,
+            title = "Fake Tv Detail",
+            overview = "Overview of Fake Tv Detail",
+            firstAirDate = "2026-07-02",
+            voteAverage = 8.0,
+            originalLanguage = "en",
+        )
+    }
+
+    override suspend fun getSeasonDetails(tvId: Long, seasonNumber: Int): TvSeasonDetail {
+        return TvSeasonDetail(
+            id = tvId,
+            seasonNumber = seasonNumber,
+            name = "Season $seasonNumber",
+            overview = "Overview of Season $seasonNumber",
         )
     }
 }

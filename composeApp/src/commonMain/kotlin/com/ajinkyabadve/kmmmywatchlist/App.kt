@@ -268,7 +268,9 @@ private fun MainAppScaffoldContent(
             navController = navController,
             startDestination = HomepageScreen.Trending.route,
             modifier = Modifier.padding(
-                top = if (currentDestination?.route != "movie_detail/{movieId}") {
+                top = if (currentDestination?.route != "movie_detail/{movieId}" &&
+                    currentDestination?.route != "tv_detail/{tvShowId}"
+                ) {
                     innerPadding.calculateTopPadding()
                 } else {
                     0.dp
@@ -281,6 +283,9 @@ private fun MainAppScaffoldContent(
                     viewModel = trendingViewModel,
                     onMovieSelected = { movieId ->
                         navController.navigate("movie_detail/$movieId")
+                    },
+                    onTvShowSelected = { tvShowId ->
+                        navController.navigate("tv_detail/$tvShowId")
                     }
                 )
             }
@@ -302,6 +307,9 @@ private fun MainAppScaffoldContent(
                     onTheAirViewModel = onTheAirTvViewModel,
                     popularViewModel = popularTvViewModel,
                     topRatedViewModel = topRatedTvViewModel,
+                    onTvShowSelected = { tvShowId ->
+                        navController.navigate("tv_detail/$tvShowId")
+                    }
                 )
             }
             composable(HomepageScreen.Person.route) {
@@ -319,6 +327,20 @@ private fun MainAppScaffoldContent(
                     onBackClicked = { navController.popBackStack() },
                     onMovieClicked = { nextMovieId ->
                         navController.navigate("movie_detail/$nextMovieId")
+                    }
+                )
+            }
+            composable(
+                route = "tv_detail/{tvShowId}",
+                arguments = listOf(androidx.navigation.navArgument("tvShowId") { type = androidx.navigation.NavType.LongType })
+            ) { backStackEntry ->
+                val tvShowId = backStackEntry.savedStateHandle.get<Long>("tvShowId") ?: -1L
+                com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.TvDetailScreen(
+                    tvShowId = tvShowId,
+                    windowSize = windowSize,
+                    onBackClicked = { navController.popBackStack() },
+                    onTvShowClicked = { nextTvShowId ->
+                        navController.navigate("tv_detail/$nextTvShowId")
                     }
                 )
             }

@@ -12,10 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 
 @Composable
-fun OverviewSection(detail: MovieDetail) {
+fun OverviewSection(overview: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -29,7 +28,7 @@ fun OverviewSection(detail: MovieDetail) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = detail.overview.ifEmpty { "No overview available for this movie." },
+            text = overview.ifEmpty { "No overview available." },
             fontSize = 15.sp,
             lineHeight = 22.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)

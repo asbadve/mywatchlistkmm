@@ -57,6 +57,7 @@ fun TrendingScreenTab(
     modifier: Modifier = Modifier,
     viewModel: TrendingScreenTabViewModel = viewModel { TrendingScreenTabViewModel() },
     onMovieSelected: (Long) -> Unit = {},
+    onTvShowSelected: (Long) -> Unit = {},
 ) {
     val screenLoadingState by viewModel.isScreenLoading.collectAsState()
     val movieTrendScreenLoadingState by viewModel.isMovieTrendScreenLoading.collectAsState()
@@ -118,6 +119,7 @@ fun TrendingScreenTab(
         sections = sections,
         onChipSelected = viewModel::onChipSelected,
         onMovieSelected = onMovieSelected,
+        onTvShowSelected = onTvShowSelected,
     )
 }
 
@@ -128,6 +130,7 @@ fun TrendingScreenContent(
     onChipSelected: (Int, String) -> Unit,
     onMovieSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    onTvShowSelected: (Long) -> Unit = {},
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth().fillMaxHeight(),
@@ -148,6 +151,7 @@ fun TrendingScreenContent(
                     section = section,
                     onChipSelected = onChipSelected,
                     onMovieSelected = onMovieSelected,
+                    onTvShowSelected = onTvShowSelected,
                 )
             }
         }
@@ -159,6 +163,7 @@ private fun TrendingSection(
     section: TrendingSectionState,
     onChipSelected: (Int, String) -> Unit,
     onMovieSelected: (Long) -> Unit,
+    onTvShowSelected: (Long) -> Unit,
 ) {
     if (section.chipList.isNotEmpty()) {
         MediaChips(
@@ -183,7 +188,7 @@ private fun TrendingSection(
             }
         )
     } else if (section.mediaList.isNotEmpty()) {
-        TrendingMediaCarousel(section.mediaList, section.mediaType, onMovieSelected)
+        TrendingMediaCarousel(section.mediaList, section.mediaType, onMovieSelected, onTvShowSelected)
     }
 }
 
@@ -223,6 +228,7 @@ private fun TrendingMediaCarousel(
     mediaTrendResult: List<Movie>,
     mediaType: String,
     onMovieSelected: (Long) -> Unit,
+    onTvShowSelected: (Long) -> Unit,
 ) {
     val state = rememberCarouselState { mediaTrendResult.count() }
     HorizontalMultiBrowseCarousel(
@@ -252,7 +258,10 @@ private fun TrendingMediaCarousel(
                 imageUrl = imageUrl,
                 title = item.title,
                 modifier = Modifier,
-                onClick = { Napier.d { "title " + item.title } },
+                onClick = {
+                    Napier.d { "title " + item.title }
+                    onTvShowSelected(item.id.toLong())
+                },
             )
             MEDIA_TYPE_PEOPLE -> mediaPersonRow(
                 imageUrl = imageUrl,

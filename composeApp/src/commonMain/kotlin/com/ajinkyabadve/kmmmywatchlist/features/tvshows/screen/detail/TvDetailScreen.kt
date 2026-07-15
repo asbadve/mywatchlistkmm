@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -48,16 +48,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
-import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CastSection
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.OverviewSection
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.VideoClipsSection
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MovieDetailScreen(
-    movieId: Long,
+fun TvDetailScreen(
+    tvShowId: Long,
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
-    onMovieClicked: (Long) -> Unit,
-    viewModel: MovieDetailScreenModel = remember(movieId) { MovieDetailScreenModel(movieId) },
+    onTvShowClicked: (Long) -> Unit,
+    viewModel: TvDetailScreenModel = remember(tvShowId) { TvDetailScreenModel(tvShowId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
@@ -85,11 +90,11 @@ fun MovieDetailScreen(
                     .padding(if (windowSize.isCompact()) PaddingValues(0.dp) else innerPadding),
         ) {
             when (val state = uiState) {
-                is MovieDetailState.Loading -> {
+                is TvDetailState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
-                is MovieDetailState.Error -> {
+                is TvDetailState.Error -> {
                     Column(
                         modifier =
                             Modifier
@@ -99,14 +104,14 @@ fun MovieDetailScreen(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
-                        Button(onClick = { viewModel.loadMovieDetails() }) {
+                        Button(onClick = { viewModel.loadTvDetails() }) {
                             Text("Retry")
                         }
                     }
                 }
 
-                is MovieDetailState.Success -> {
-                    val detail = state.movieDetail
+                is TvDetailState.Success -> {
+                    val detail = state.tvDetail
                     Box(modifier = Modifier.fillMaxSize()) {
                         val headerBgColor by animateColorAsState(
                             targetValue = if (showSolidHeader) MaterialTheme.colorScheme.background else Color.Transparent,
@@ -152,20 +157,22 @@ fun MovieDetailScreen(
                                     },
                         ) {
                             if (windowSize.isCompact()) {
-                                CompactMovieDetailContent(
+                                CompactTvDetailContent(
                                     detail = detail,
+                                    currentSeason = state.currentSeason,
                                     lazyListState = lazyListState,
-                                    onMovieClicked = onMovieClicked,
+                                    onTvShowClicked = onTvShowClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
                                     },
                                 )
                             } else {
-                                ExpandedMovieDetailContent(
+                                ExpandedTvDetailContent(
                                     detail = detail,
+                                    currentSeason = state.currentSeason,
                                     leftLazyListState = leftLazyListState,
-                                    onMovieClicked = onMovieClicked,
+                                    onTvShowClicked = onTvShowClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
@@ -235,10 +242,11 @@ fun MovieDetailScreen(
 }
 
 @Composable
-private fun CompactMovieDetailContent(
-    detail: MovieDetail,
+private fun CompactTvDetailContent(
+    detail: TvDetail,
+    currentSeason: TvSeasonDetail?,
     lazyListState: LazyListState,
-    onMovieClicked: (Long) -> Unit,
+    onTvShowClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     LazyColumn(
@@ -247,16 +255,21 @@ private fun CompactMovieDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            BackdropSection(detail = detail)
+            TvBackdropSection(detail = detail)
         }
         item {
-            MovieMetaSection(detail = detail)
+            TvMetaSection(detail = detail)
         }
         item {
             OverviewSection(overview = detail.overview)
         }
         item {
             VideoClipsSection(videos = detail.videos?.results ?: emptyList())
+        }
+        currentSeason?.let { season ->
+            item {
+                CurrentSeasonSection(season = season)
+            }
         }
         item {
             MovieImagesSection(
@@ -278,30 +291,26 @@ private fun CompactMovieDetailContent(
             CastSection(castList = detail.credits?.cast ?: emptyList())
         }
         item {
-            RecommendationsSection(
+            TvRecommendationsSection(
                 recommendations = detail.recommendations?.list ?: emptyList(),
-                onMovieClicked = onMovieClicked,
+                onTvShowClicked = onTvShowClicked,
             )
         }
         item {
-            SimilarMoviesSection(
-                similarMovies = detail.similar?.list ?: emptyList(),
-                onMovieClicked = onMovieClicked,
-            )
-        }
-        item {
-            ReviewsSection(
-                reviews = detail.reviews?.results ?: emptyList(),
+            TvSimilarSection(
+                similarTvShows = detail.similar?.list ?: emptyList(),
+                onTvShowClicked = onTvShowClicked,
             )
         }
     }
 }
 
 @Composable
-private fun ExpandedMovieDetailContent(
-    detail: MovieDetail,
+private fun ExpandedTvDetailContent(
+    detail: TvDetail,
+    currentSeason: TvSeasonDetail?,
     leftLazyListState: LazyListState,
-    onMovieClicked: (Long) -> Unit,
+    onTvShowClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     Row(
@@ -315,16 +324,21 @@ private fun ExpandedMovieDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                BackdropSection(detail = detail)
+                TvBackdropSection(detail = detail)
             }
             item {
-                MovieMetaSection(detail = detail)
+                TvMetaSection(detail = detail)
             }
             item {
                 OverviewSection(overview = detail.overview)
             }
             item {
                 VideoClipsSection(videos = detail.videos?.results ?: emptyList())
+            }
+            currentSeason?.let { season ->
+                item {
+                    CurrentSeasonSection(season = season)
+                }
             }
             item {
                 MovieImagesSection(
@@ -342,11 +356,6 @@ private fun ExpandedMovieDetailContent(
                     onShowGallery = onShowGallery,
                 )
             }
-            item {
-                ReviewsSection(
-                    reviews = detail.reviews?.results ?: emptyList(),
-                )
-            }
         }
 
         // Right Column (Supporting details pane) - Width takes up 40% of space
@@ -359,15 +368,15 @@ private fun ExpandedMovieDetailContent(
                 CastSection(castList = detail.credits?.cast ?: emptyList())
             }
             item {
-                RecommendationsSection(
+                TvRecommendationsSection(
                     recommendations = detail.recommendations?.list ?: emptyList(),
-                    onMovieClicked = onMovieClicked,
+                    onTvShowClicked = onTvShowClicked,
                 )
             }
             item {
-                SimilarMoviesSection(
-                    similarMovies = detail.similar?.list ?: emptyList(),
-                    onMovieClicked = onMovieClicked,
+                TvSimilarSection(
+                    similarTvShows = detail.similar?.list ?: emptyList(),
+                    onTvShowClicked = onTvShowClicked,
                 )
             }
         }
