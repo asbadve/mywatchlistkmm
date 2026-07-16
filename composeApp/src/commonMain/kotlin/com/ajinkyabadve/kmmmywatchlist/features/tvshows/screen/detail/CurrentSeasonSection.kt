@@ -21,9 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.FilterQuality
@@ -43,18 +45,30 @@ import mywatchlist.composeapp.generated.resources.baseline_tv_24
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun CurrentSeasonSection(season: TvSeasonDetail) {
+fun CurrentSeasonSection(
+    season: TvSeasonDetail,
+    onViewAllSeasonsClick: () -> Unit = {},
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp, horizontal = 16.dp)
     ) {
-        Text(
-            text = "Current Season",
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Current Season",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            TextButton(onClick = onViewAllSeasonsClick) {
+                Text("View All")
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {

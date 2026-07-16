@@ -4,6 +4,7 @@
 
 package com.ajinkyabadve.kmmmywatchlist
 
+import Destination
 import HomepageScreen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -268,8 +269,9 @@ private fun MainAppScaffoldContent(
             navController = navController,
             startDestination = HomepageScreen.Trending.route,
             modifier = Modifier.padding(
-                top = if (currentDestination?.route != "movie_detail/{movieId}" &&
-                    currentDestination?.route != "tv_detail/{tvShowId}"
+                top = if (currentDestination?.route != Destination.MovieDetail.route &&
+                    currentDestination?.route != Destination.TvDetail.route &&
+                    currentDestination?.route != Destination.AllSeasons.route
                 ) {
                     innerPadding.calculateTopPadding()
                 } else {
@@ -282,10 +284,10 @@ private fun MainAppScaffoldContent(
                 TrendingScreenTab(
                     viewModel = trendingViewModel,
                     onMovieSelected = { movieId ->
-                        navController.navigate("movie_detail/$movieId")
+                        navController.navigate(Destination.MovieDetail.createRoute(movieId))
                     },
                     onTvShowSelected = { tvShowId ->
-                        navController.navigate("tv_detail/$tvShowId")
+                        navController.navigate(Destination.TvDetail.createRoute(tvShowId))
                     }
                 )
             }
@@ -297,7 +299,7 @@ private fun MainAppScaffoldContent(
                     popularViewModel = popularViewModel,
                     topRatedViewModel = topRatedViewModel,
                     onMovieSelected = { movieId ->
-                        navController.navigate("movie_detail/$movieId")
+                        navController.navigate(Destination.MovieDetail.createRoute(movieId))
                     },
                 )
             }
@@ -308,7 +310,7 @@ private fun MainAppScaffoldContent(
                     popularViewModel = popularTvViewModel,
                     topRatedViewModel = topRatedTvViewModel,
                     onTvShowSelected = { tvShowId ->
-                        navController.navigate("tv_detail/$tvShowId")
+                        navController.navigate(Destination.TvDetail.createRoute(tvShowId))
                     }
                 )
             }
@@ -317,31 +319,50 @@ private fun MainAppScaffoldContent(
             }
             composable(HomepageScreen.MyFav.route) { MyFavScreenTab() }
             composable(
-                route = "movie_detail/{movieId}",
-                arguments = listOf(androidx.navigation.navArgument("movieId") { type = androidx.navigation.NavType.LongType })
+                route = Destination.MovieDetail.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument(Destination.MovieDetail.ARG_MOVIE_ID) { type = androidx.navigation.NavType.LongType }
+                )
             ) { backStackEntry ->
-                val movieId = backStackEntry.savedStateHandle.get<Long>("movieId") ?: -1L
+                val movieId = backStackEntry.savedStateHandle.get<Long>(Destination.MovieDetail.ARG_MOVIE_ID) ?: -1L
                 com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen(
                     movieId = movieId,
                     windowSize = windowSize,
                     onBackClicked = { navController.popBackStack() },
                     onMovieClicked = { nextMovieId ->
-                        navController.navigate("movie_detail/$nextMovieId")
+                        navController.navigate(Destination.MovieDetail.createRoute(nextMovieId))
                     }
                 )
             }
             composable(
-                route = "tv_detail/{tvShowId}",
-                arguments = listOf(androidx.navigation.navArgument("tvShowId") { type = androidx.navigation.NavType.LongType })
+                route = Destination.TvDetail.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument(Destination.TvDetail.ARG_TV_SHOW_ID) { type = androidx.navigation.NavType.LongType }
+                )
             ) { backStackEntry ->
-                val tvShowId = backStackEntry.savedStateHandle.get<Long>("tvShowId") ?: -1L
+                val tvShowId = backStackEntry.savedStateHandle.get<Long>(Destination.TvDetail.ARG_TV_SHOW_ID) ?: -1L
                 com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.TvDetailScreen(
                     tvShowId = tvShowId,
                     windowSize = windowSize,
                     onBackClicked = { navController.popBackStack() },
                     onTvShowClicked = { nextTvShowId ->
-                        navController.navigate("tv_detail/$nextTvShowId")
+                        navController.navigate(Destination.TvDetail.createRoute(nextTvShowId))
+                    },
+                    onViewAllSeasonsClick = { seasonsTvShowId ->
+                        navController.navigate(Destination.AllSeasons.createRoute(seasonsTvShowId))
                     }
+                )
+            }
+            composable(
+                route = Destination.AllSeasons.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument(Destination.AllSeasons.ARG_TV_SHOW_ID) { type = androidx.navigation.NavType.LongType }
+                )
+            ) { backStackEntry ->
+                val tvShowId = backStackEntry.savedStateHandle.get<Long>(Destination.AllSeasons.ARG_TV_SHOW_ID) ?: -1L
+                com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.AllSeasonsScreen(
+                    tvShowId = tvShowId,
+                    onBackClicked = { navController.popBackStack() },
                 )
             }
         }

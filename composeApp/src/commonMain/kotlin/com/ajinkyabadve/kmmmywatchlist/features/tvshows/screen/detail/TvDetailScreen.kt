@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -62,7 +63,8 @@ fun TvDetailScreen(
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
     onTvShowClicked: (Long) -> Unit,
-    viewModel: TvDetailScreenModel = remember(tvShowId) { TvDetailScreenModel(tvShowId) },
+    onViewAllSeasonsClick: (Long) -> Unit,
+    viewModel: TvDetailScreenModel = viewModel(key = tvShowId.toString()) { TvDetailScreenModel(tvShowId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
@@ -166,6 +168,7 @@ fun TvDetailScreen(
                                         galleryImages = images
                                         galleryInitialIndex = index
                                     },
+                                    onViewAllSeasonsClick = { onViewAllSeasonsClick(tvShowId) },
                                 )
                             } else {
                                 ExpandedTvDetailContent(
@@ -177,6 +180,7 @@ fun TvDetailScreen(
                                         galleryImages = images
                                         galleryInitialIndex = index
                                     },
+                                    onViewAllSeasonsClick = { onViewAllSeasonsClick(tvShowId) },
                                 )
                             }
 
@@ -248,6 +252,7 @@ private fun CompactTvDetailContent(
     lazyListState: LazyListState,
     onTvShowClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
+    onViewAllSeasonsClick: () -> Unit,
 ) {
     LazyColumn(
         state = lazyListState,
@@ -268,7 +273,10 @@ private fun CompactTvDetailContent(
         }
         currentSeason?.let { season ->
             item {
-                CurrentSeasonSection(season = season)
+                CurrentSeasonSection(
+                    season = season,
+                    onViewAllSeasonsClick = onViewAllSeasonsClick,
+                )
             }
         }
         item {
@@ -312,6 +320,7 @@ private fun ExpandedTvDetailContent(
     leftLazyListState: LazyListState,
     onTvShowClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
+    onViewAllSeasonsClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxSize(),

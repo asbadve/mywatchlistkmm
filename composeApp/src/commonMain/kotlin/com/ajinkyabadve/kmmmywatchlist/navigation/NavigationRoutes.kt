@@ -35,3 +35,18 @@ val movieScreenTab = listOf(
     MovieScreenTab.Popular,
     MovieScreenTab.TopRated
 )
+
+sealed class Destination(val route: String) {
+    object MovieDetail : Destination("movie_detail/{movieId}") {
+        const val ARG_MOVIE_ID = "movieId"
+        fun createRoute(movieId: Long) = "movie_detail/$movieId"
+    }
+    object TvDetail : Destination("tv_detail/{tvShowId}") {
+        const val ARG_TV_SHOW_ID = "tvShowId"
+        fun createRoute(tvShowId: Long) = "tv_detail/$tvShowId"
+    }
+    object AllSeasons : Destination("all_seasons/{tvShowId}") {
+        const val ARG_TV_SHOW_ID = "tvShowId"
+        fun createRoute(tvShowId: Long) = "all_seasons/$tvShowId"
+    }
+}

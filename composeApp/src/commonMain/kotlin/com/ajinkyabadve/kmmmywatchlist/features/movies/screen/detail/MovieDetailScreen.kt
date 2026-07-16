@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,7 +58,7 @@ fun MovieDetailScreen(
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
     onMovieClicked: (Long) -> Unit,
-    viewModel: MovieDetailScreenModel = remember(movieId) { MovieDetailScreenModel(movieId) },
+    viewModel: MovieDetailScreenModel = viewModel(key = movieId.toString()) { MovieDetailScreenModel(movieId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
