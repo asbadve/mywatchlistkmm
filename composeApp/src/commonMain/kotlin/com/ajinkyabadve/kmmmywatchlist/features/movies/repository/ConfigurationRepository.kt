@@ -6,6 +6,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.model.TmdbConfiguration
 import com.ajinkyabadve.kmmmywatchlist.network.client.TmdbClient
 import com.ajinkyabadve.kmmmywatchlist.network.constant.NetworkConstant
 import com.russhwolf.settings.Settings
+import io.github.aakira.napier.Napier
 import io.ktor.client.call.body
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
@@ -36,20 +37,22 @@ class ConfigurationRepositoryImpl(
         val now = Clock.System.now().toEpochMilliseconds()
 
         // If cache is fresh, parse and return
-        if (cachedJson.isNotEmpty() && (now - lastFetch < ConfigurationConstants.DAY_IN_MILLIS)) {
+        if (cachedJson.isNotEmpty() && ((now - lastFetch) < ConfigurationConstants.DAY_IN_MILLIS)) {
             try {
                 return json.decodeFromString(ImagesConfig.serializer(), cachedJson)
             } catch (e: SerializationException) {
                 // Settings payload is corrupted; clear setting and force fresh fetch
+                Napier.w(tag = TAG, throwable = e) { "Corrupted cached config JSON, clearing cache" }
                 settings.remove(ConfigurationConstants.KEY_CONFIG)
             } catch (e: IllegalArgumentException) {
                 // In case of class model schema changes/mismatch
+                Napier.w(tag = TAG, throwable = e) { "Cached config schema mismatch, clearing cache" }
                 settings.remove(ConfigurationConstants.KEY_CONFIG)
             }
         }
 
         // Fetch from network
-        try {
+        return try {
             val response: HttpResponse =
                 tmdbClient.client.get {
                     url {
@@ -73,19 +76,23 @@ class ConfigurationRepositoryImpl(
             )
             settings.putLong(ConfigurationConstants.KEY_TIMESTAMP, now)
 
-            return imagesConfig
+            imagesConfig
         } catch (e: ResponseException) {
             // Server error response (e.g. 401, 404, 500)
-            return getFallbackConfig(cachedJson)
+            Napier.w(tag = TAG, throwable = e) { "Server error fetching configuration, using fallback" }
+            getFallbackConfig(cachedJson)
         } catch (e: ConnectTimeoutException) {
             // Connection timeout
-            return getFallbackConfig(cachedJson)
+            Napier.w(tag = TAG, throwable = e) { "Connection timeout fetching configuration, using fallback" }
+            getFallbackConfig(cachedJson)
         } catch (e: HttpRequestTimeoutException) {
             // Request timeout
-            return getFallbackConfig(cachedJson)
+            Napier.w(tag = TAG, throwable = e) { "Request timeout fetching configuration, using fallback" }
+            getFallbackConfig(cachedJson)
         } catch (e: IOException) {
             // General network IO / Offline state
-            return getFallbackConfig(cachedJson)
+            Napier.w(tag = TAG, throwable = e) { "Network IO error fetching configuration, using fallback" }
+            getFallbackConfig(cachedJson)
         }
     }
 
@@ -94,11 +101,15 @@ class ConfigurationRepositoryImpl(
             try {
                 return json.decodeFromString(ImagesConfig.serializer(), cachedJson)
             } catch (e: SerializationException) {
-                // Ignore corrupted caches
+                Napier.w(tag = TAG, throwable = e) { "Corrupted cached config JSON, using default fallback" }
             } catch (e: IllegalArgumentException) {
-                // Ignore
+                Napier.w(tag = TAG, throwable = e) { "Cached config schema mismatch, using default fallback" }
             }
         }
         return ConfigurationConstants.defaultImagesConfig
+    }
+
+    private companion object {
+        const val TAG = "ConfigurationRepositoryImpl"
     }
 }
