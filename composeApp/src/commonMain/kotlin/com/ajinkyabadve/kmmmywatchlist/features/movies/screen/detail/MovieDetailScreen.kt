@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -116,6 +119,7 @@ fun MovieDetailScreen(
 
                         var verticalDragOffset by remember { mutableStateOf(0f) }
                         val density = androidx.compose.ui.platform.LocalDensity.current
+                        var topBarHeightDp by remember { mutableStateOf(64.dp) }
 
                         Box(
                             modifier =
@@ -171,49 +175,62 @@ fun MovieDetailScreen(
                                         galleryImages = images
                                         galleryInitialIndex = index
                                     },
+                                    rightColumnTopPadding = topBarHeightDp,
                                 )
                             }
 
-                            TopAppBar(
-                                title = {
-                                    AnimatedVisibility(
-                                        visible = showSolidHeader,
-                                        enter = fadeIn(),
-                                        exit = fadeOut(),
-                                    ) {
-                                        Text(
-                                            text = detail.title,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                },
-                                navigationIcon = {
-                                    if (showSolidHeader) {
-                                        IconButton(onClick = onBackClicked) {
-                                            Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
-                                        }
-                                    } else {
-                                        IconButton(
-                                            onClick = onBackClicked,
-                                            modifier =
-                                                Modifier
-                                                    .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                            Column(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .onGloballyPositioned {
+                                            topBarHeightDp = with(density) { it.size.height.toDp() }
+                                        },
+                            ) {
+                                TopAppBar(
+                                    title = {
+                                        AnimatedVisibility(
+                                            visible = showSolidHeader,
+                                            enter = fadeIn(),
+                                            exit = fadeOut(),
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Close,
-                                                contentDescription = "Close",
-                                                tint = Color.White,
+                                            Text(
+                                                text = detail.title,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
                                             )
                                         }
-                                    }
-                                },
-                                colors =
-                                    TopAppBarDefaults.topAppBarColors(
-                                        containerColor = headerBgColor,
-                                    ),
-                            )
+                                    },
+                                    navigationIcon = {
+                                        if (showSolidHeader) {
+                                            IconButton(onClick = onBackClicked) {
+                                                Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                                            }
+                                        } else {
+                                            IconButton(
+                                                onClick = onBackClicked,
+                                                modifier =
+                                                    Modifier
+                                                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Close",
+                                                    tint = Color.White,
+                                                )
+                                            }
+                                        }
+                                    },
+                                    colors =
+                                        TopAppBarDefaults.topAppBarColors(
+                                            containerColor = headerBgColor,
+                                        ),
+                                )
+                                if (showSolidHeader) {
+                                    HorizontalDivider()
+                                }
+                            }
                         }
                     }
                 }
@@ -304,6 +321,7 @@ private fun ExpandedMovieDetailContent(
     leftLazyListState: LazyListState,
     onMovieClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
+    rightColumnTopPadding: androidx.compose.ui.unit.Dp,
 ) {
     Row(
         modifier = Modifier.fillMaxSize(),
@@ -352,8 +370,8 @@ private fun ExpandedMovieDetailContent(
 
         // Right Column (Supporting details pane) - Width takes up 40% of space
         LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(top = 64.dp, bottom = 32.dp),
+            modifier = Modifier.weight(1f).padding(top = rightColumnTopPadding),
+            contentPadding = PaddingValues(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
