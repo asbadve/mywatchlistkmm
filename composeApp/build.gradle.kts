@@ -86,6 +86,7 @@ kotlin {
                 implementation(compose.uiTest)
                 implementation(libs.lifecycle.runtime.compose)
                 implementation(libs.lifecycle.viewmodel.compose)
+                implementation(libs.ktor.client.mock)
             }
         }
 

@@ -1,14 +1,17 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import io.ktor.utils.io.errors.IOException
 
 class FakeMovieRepository : MovieRepository {
     var getMoviesResult: Result<MoviePageResult>? = null
+    var getMovieDetailsResult: Result<MovieDetail>? = null
 
     val getMoviesCalls = mutableListOf<Pair<Int, String>>()
+    val getMovieDetailsCalls = mutableListOf<Long>()
 
     override suspend fun getMovies(pageNo: Int, moveFetchType: String): MoviePageResult {
         getMoviesCalls.add(pageNo to moveFetchType)
@@ -36,8 +39,18 @@ class FakeMovieRepository : MovieRepository {
         )
     }
 
-    override suspend fun getMovieDetails(movieId: Long): com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail {
-        return com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail(
+    override suspend fun getMovieDetails(movieId: Long): MovieDetail {
+        getMovieDetailsCalls.add(movieId)
+
+        getMovieDetailsResult?.let { result ->
+            if (result.isSuccess) {
+                return result.getOrThrow()
+            } else {
+                throw result.exceptionOrNull() ?: IOException("Fake repository error")
+            }
+        }
+
+        return MovieDetail(
             id = movieId,
             title = "Fake Movie Detail",
             overview = "Overview of Fake Movie Detail",

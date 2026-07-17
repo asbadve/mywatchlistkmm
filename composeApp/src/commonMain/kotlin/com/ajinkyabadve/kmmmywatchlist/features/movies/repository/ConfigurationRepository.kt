@@ -5,10 +5,11 @@ import com.ajinkyabadve.kmmmywatchlist.core.model.ImagesConfig
 import com.ajinkyabadve.kmmmywatchlist.core.model.TmdbConfiguration
 import com.ajinkyabadve.kmmmywatchlist.network.client.TmdbClient
 import com.ajinkyabadve.kmmmywatchlist.network.constant.NetworkConstant
+import com.russhwolf.settings.Settings
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.URLProtocol
@@ -18,7 +19,6 @@ import kotlinproject.composeapp.BuildConfig
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import com.russhwolf.settings.Settings
 
 interface ConfigurationRepository {
     suspend fun getConfiguration(): ImagesConfig
@@ -26,9 +26,8 @@ interface ConfigurationRepository {
 
 class ConfigurationRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
-    private val settings: Settings = com.ajinkyabadve.kmmmywatchlist.createSettings()
+    private val settings: Settings = com.ajinkyabadve.kmmmywatchlist.createSettings(),
 ) : ConfigurationRepository {
-
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun getConfiguration(): ImagesConfig {
@@ -51,20 +50,27 @@ class ConfigurationRepositoryImpl(
 
         // Fetch from network
         try {
-            val response: HttpResponse = tmdbClient.client.get {
-                url {
-                    protocol = URLProtocol.HTTPS
-                    host = NetworkConstant.HOST
-                    trailingQuery = true
-                    encodedPath = "/3/configuration"
-                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+            val response: HttpResponse =
+                tmdbClient.client.get {
+                    url {
+                        protocol = URLProtocol.HTTPS
+                        host = NetworkConstant.HOST
+                        trailingQuery = true
+                        encodedPath = "/3/configuration"
+                        parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                    }
                 }
-            }
             val config: TmdbConfiguration = response.body()
             val imagesConfig = config.images
-            
+
             // Save cache
-            settings.putString(ConfigurationConstants.KEY_CONFIG, json.encodeToString(ImagesConfig.serializer(), imagesConfig))
+            settings.putString(
+                ConfigurationConstants.KEY_CONFIG,
+                json.encodeToString(
+                    ImagesConfig.serializer(),
+                    imagesConfig,
+                ),
+            )
             settings.putLong(ConfigurationConstants.KEY_TIMESTAMP, now)
 
             return imagesConfig

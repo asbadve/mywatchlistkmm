@@ -15,6 +15,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalSerializationApi::class)
 class TrendingScreenTabViewModelTest {
@@ -103,6 +104,22 @@ class TrendingScreenTabViewModelTest {
         
         assertEquals(1, fakeRepository.getTrendingCalls.size)
         assertEquals("week" to MEDIA_TYPE_PEOPLE, fakeRepository.getTrendingCalls[0])
+    }
+
+    @Test
+    fun testEmptyTrendingResultsResultInEmptyListsWithoutError() = runTest(testDispatcher) {
+        fakeRepository.getTrendingResult = Result.success(
+            MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0)
+        )
+
+        val viewModel = TrendingScreenTabViewModel(fakeRepository)
+
+        assertTrue(viewModel.trendMovieList.value.isEmpty())
+        assertTrue(viewModel.trendTvList.value.isEmpty())
+        assertTrue(viewModel.trendPeopleList.value.isEmpty())
+        assertEquals(null, viewModel.movieTrendError.value)
+        assertEquals(null, viewModel.tvTrendError.value)
+        assertEquals(null, viewModel.peopleTrendError.value)
     }
 
     @Test
