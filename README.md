@@ -36,60 +36,63 @@ demo
 
 ## Screenshots & Layouts
 
-Here are the side-by-side Light Mode and Dark Mode captures for each build variant.
+Dark Mode captures for each build variant.
 
 ### 1. Desktop Target
 
 #### Desktop (Compact Size)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![Compact Light](./screenshots/desktop_compact_light.png)<br>[View Image](./screenshots/desktop_compact_light.png) | ![Compact Dark](./screenshots/desktop_compact_dark.png)<br>[View Image](./screenshots/desktop_compact_dark.png) |
+![Desktop Compact](./screenshots/desktop_compact_dark.png)
 
 #### Desktop (Medium/Normal Size)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![Normal Light](./screenshots/desktop_normal_light.png)<br>[View Image](./screenshots/desktop_normal_light.png) | ![Normal Dark](./screenshots/desktop_normal_dark.png)<br>[View Image](./screenshots/desktop_normal_dark.png) |
+![Desktop Normal](./screenshots/desktop_normal_dark.png)
 
 #### Desktop (Expanded Size - Maximized)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![Expanded Light](./screenshots/desktop_expanded_light.png)<br>[View Image](./screenshots/desktop_expanded_light.png) | ![Expanded Dark](./screenshots/desktop_expanded_dark.png)<br>[View Image](./screenshots/desktop_expanded_dark.png) |
+![Desktop Expanded](./screenshots/desktop_expanded_dark.png)
 
 ### 2. Android Target
 
 #### Android (Folded - Compact)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![Android Folded Light](./screenshots/android_folded_light.png)<br>[View Image](./screenshots/android_folded_light.png) | ![Android Folded Dark](./screenshots/android_folded_dark.png)<br>[View Image](./screenshots/android_folded_dark.png) |
+![Android Folded](./screenshots/android_folded_dark.png)
 
 #### Android (Unfolded - Tablet)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![Android Unfolded Light](./screenshots/android_unfolded_light.png)<br>[View Image](./screenshots/android_unfolded_light.png) | ![Android Unfolded Dark](./screenshots/android_unfolded_dark.png)<br>[View Image](./screenshots/android_unfolded_dark.png) |
+![Android Unfolded](./screenshots/android_unfolded_dark.png)
 
 ### 3. iOS Target
 
 #### iOS (iPhone 16 - Compact)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![iOS iPhone Light](./screenshots/ios_iphone_light.png)<br>[View Image](./screenshots/ios_iphone_light.png) | ![iOS iPhone Dark](./screenshots/ios_iphone_dark.png)<br>[View Image](./screenshots/ios_iphone_dark.png) |
+![iOS iPhone](./screenshots/ios_iphone_dark.png)
 
 #### iOS (iPhone 16e - Compact / Small Device)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![iOS iPhone 16e Light](./screenshots/ios_iphone_16e_light.png)<br>[View Image](./screenshots/ios_iphone_16e_light.png) | ![iOS iPhone 16e Dark](./screenshots/ios_iphone_16e_dark.png)<br>[View Image](./screenshots/ios_iphone_16e_dark.png) |
+![iOS iPhone 16e](./screenshots/ios_iphone_16e_dark.png)
 
 #### iOS (iPad Pro 13-inch - Tablet/Expanded)
-| Light Mode | Dark Mode |
-| :---: | :---: |
-| ![iOS iPad Light](./screenshots/ios_ipad_light.png)<br>[View Image](./screenshots/ios_ipad_light.png) | ![iOS iPad Dark](./screenshots/ios_ipad_dark.png)<br>[View Image](./screenshots/ios_ipad_dark.png) |
+![iOS iPad](./screenshots/ios_ipad_dark.png)
 
 ### 4. Browser (Web) Target
 
 #### Web (Browser App)
-| Light Mode | Dark Mode |
+![Web](./screenshots/web_dark.png)
+
+### 5. TV Show Episodes (Seasons & Episode Detail)
+
+TV show detail now drills down into a full Seasons/Episodes list and a dedicated Episode Detail screen (overview, guest stars, images).
+
+#### Android
+| Episodes List (Seasons + Episodes) | Episode Detail |
 | :---: | :---: |
-| ![Web Light](./screenshots/web_light.png)<br>[View Image](./screenshots/web_light.png) | ![Web Dark](./screenshots/web_dark.png)<br>[View Image](./screenshots/web_dark.png) |
+| ![Android Episodes List](./screenshots/android_episodes_list_detail_dark.png) | ![Android Episode Detail](./screenshots/android_episode_detail_dark.png) |
+
+#### iOS
+| Episodes List (Seasons + Episodes) | Episode Detail |
+| :---: | :---: |
+| ![iOS Episodes List](./screenshots/ios_episodes_list_detail_dark.png) | ![iOS Episode Detail](./screenshots/ios_episode_detail_dark.png) |
+
+#### Browser (Web)
+| Episodes List (Seasons + Episodes) | Episode Detail |
+| :---: | :---: |
+| ![Web Episodes List](./screenshots/web_episodes_list_detail_dark.png) | ![Web Episode Detail](./screenshots/web_episode_detail_dark.png) |
+
+> Desktop screenshots for this feature are not captured yet — see the "Desktop screenshot automation" item below.
 
 ## Upcoming Features (Based on TMDB OpenAPI Spec)
 
@@ -104,5 +107,8 @@ Here are the side-by-side Light Mode and Dark Mode captures for each build varia
   - Let users filter and explore movies/shows by genres, release year, language, or popularity sorting options using `/3/discover` endpoints.
 - [ ] **TMDB User Authentication / Login**:
   - Allow users to log in securely using TMDB credentials (request token, session ID generation) to sync favorites, watchlist, and ratings.
+- [ ] **Desktop screenshot automation**:
+  - Coordinate-based UI automation (`cliclick` + synthetic `CGEvent` scroll/click) against the live Compose Desktop window proved unreliable for navigating into clickable rows (Season list, episode cards) — clicks silently no-op when the target/gap boundary is misjudged, with no error signal to correct against.
+  - Capture the Desktop Episodes List and Episode Detail screenshots (`desktop_episodes_list_detail_dark.png`, `desktop_episode_detail_dark.png`) once a more reliable driver exists — e.g. a Compose UI test harness that navigates via semantics (like `runComposeUiTest`) rather than blind screen coordinates, or a manual capture.
 
 
