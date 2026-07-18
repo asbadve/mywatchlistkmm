@@ -1,16 +1,14 @@
 @file:OptIn(
     ExperimentalMaterial3Api::class,
+    androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi::class,
 )
 
 package com.ajinkyabadve.kmmmywatchlist
 
-import Destination
-import HomepageScreen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,17 +23,19 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PermanentDrawerSheet
-import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -43,16 +43,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import bottomNavItems
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
 import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor2.KtorNetworkFetcherFactory
@@ -62,6 +58,7 @@ import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
@@ -70,7 +67,24 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTa
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TvShowsScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.AllSeasonsScreen
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.EpisodeDetailScreen
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.EpisodeListScreen
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.TvDetailScreen
+import com.ajinkyabadve.kmmmywatchlist.navigation.AllSeasonsKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.AppKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeDetailKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeListKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.MovieDetailKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.MoviesKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.MyFavKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.NavigationConstants
+import com.ajinkyabadve.kmmmywatchlist.navigation.PersonKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.TopLevelBackStack
+import com.ajinkyabadve.kmmmywatchlist.navigation.TrendingKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import org.jetbrains.compose.resources.painterResource
 
@@ -87,9 +101,21 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
     LaunchedEffect(Unit) {
         ImageConfigResolver.refreshConfig()
     }
-    AppTheme {
-        val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
-        MainAppScreen(windowSize)
+    // NavDisplay disposes an entry's composition once it's no longer the top of the backstack
+    // (e.g. TvDetail -> AllSeasons), so viewModel() calls inside it rely entirely on the ambient
+    // ViewModelStoreOwner to keep their ViewModel alive across that disposal. Provide one stable
+    // owner for the whole app session here instead of relying on per-platform defaults, so
+    // navigating away and back doesn't recreate ViewModels and refetch already-loaded data.
+    val appViewModelStoreOwner = remember {
+        object : ViewModelStoreOwner {
+            override val viewModelStore: ViewModelStore = ViewModelStore()
+        }
+    }
+    CompositionLocalProvider(LocalViewModelStoreOwner provides appViewModelStoreOwner) {
+        AppTheme {
+            val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
+            MainAppScreen(windowSize)
+        }
     }
 }
 
@@ -107,9 +133,8 @@ fun MainAppScreen(
     topRatedTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.TOP_RATED_API_PATH) },
     personListViewModel: PersonListScreenModel = remember { PersonListScreenModel() },
 ) {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
+    val topLevelBackStack = remember { TopLevelBackStack(TrendingKey) }
+    val currentKey = topLevelBackStack.backStack.lastOrNull()
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val layoutType =
@@ -131,20 +156,20 @@ fun MainAppScreen(
                     modifier = Modifier.fillMaxHeight(),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    bottomNavItems.forEach { item ->
+                        val selected = topLevelBackStack.topLevelKey == item.key
                         NavigationDrawerItem(
                             selected = selected,
                             onClick = {
-                                navigateWithSingleTop(navController, screen.route)
+                                topLevelBackStack.switchTopLevel(item.key)
                             },
                             icon = {
                                 Icon(
-                                    painter = painterResource(screen.icon),
-                                    contentDescription = screen.label,
+                                    painter = painterResource(item.icon),
+                                    contentDescription = item.label,
                                 )
                             },
-                            label = { Text(screen.label) },
+                            label = { Text(item.label) },
                             modifier =
                                 Modifier
                                     .padding(horizontal = NavigationConstants.NAVIGATION_DRAWER_ITEM_HORIZONTAL_PADDING)
@@ -163,20 +188,20 @@ fun MainAppScreen(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    bottomNavItems.forEach { item ->
+                        val selected = topLevelBackStack.topLevelKey == item.key
                         NavigationRailItem(
                             selected = selected,
                             onClick = {
-                                navigateWithSingleTop(navController, screen.route)
+                                topLevelBackStack.switchTopLevel(item.key)
                             },
                             icon = {
                                 Icon(
-                                    painter = painterResource(screen.icon),
-                                    contentDescription = screen.label,
+                                    painter = painterResource(item.icon),
+                                    contentDescription = item.label,
                                 )
                             },
-                            label = { Text(screen.label) },
+                            label = { Text(item.label) },
                             modifier = Modifier.padding(vertical = NavigationConstants.NAVIGATION_RAIL_ITEM_VERTICAL_PADDING),
                         )
                     }
@@ -187,9 +212,9 @@ fun MainAppScreen(
         Box(modifier = Modifier.weight(1f)) {
             MainAppScaffoldContent(
                 windowSize = windowSize,
-                navController = navController,
+                topLevelBackStack = topLevelBackStack,
                 layoutType = layoutType,
-                currentDestination = currentDestination,
+                currentKey = currentKey,
                 nowPlayingViewModel = nowPlayingViewModel,
                 upcomingViewModel = upcomingViewModel,
                 popularViewModel = popularViewModel,
@@ -208,9 +233,9 @@ fun MainAppScreen(
 @Composable
 private fun MainAppScaffoldContent(
     windowSize: WindowSize,
-    navController: NavHostController,
+    topLevelBackStack: TopLevelBackStack,
     layoutType: NavigationSuiteType,
-    currentDestination: NavDestination?,
+    currentKey: AppKey?,
     nowPlayingViewModel: MovieListScreenModel,
     upcomingViewModel: MovieListScreenModel,
     popularViewModel: MovieListScreenModel,
@@ -222,16 +247,9 @@ private fun MainAppScaffoldContent(
     topRatedTvViewModel: TvListScreenModel,
     personListViewModel: PersonListScreenModel,
 ) {
-    val currentRoute = currentDestination?.route
     val showTopBar =
-        when (currentRoute) {
-            HomepageScreen.Trending.route,
-            HomepageScreen.Movies.route,
-            HomepageScreen.Tvshows.route,
-            HomepageScreen.Person.route,
-            HomepageScreen.MyFav.route,
-            -> true
-
+        when (currentKey) {
+            TrendingKey, MoviesKey, TvShowsKey, PersonKey, MyFavKey -> true
             else -> false
         }
 
@@ -250,36 +268,39 @@ private fun MainAppScaffoldContent(
                     containerColor = MaterialTheme.colorScheme.background,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
-                    bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                    bottomNavItems.forEach { item ->
+                        val selected = topLevelBackStack.topLevelKey == item.key
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
-                                navigateWithSingleTop(navController, screen.route)
+                                topLevelBackStack.switchTopLevel(item.key)
                             },
                             icon = {
                                 Icon(
-                                    painter = painterResource(screen.icon),
-                                    contentDescription = screen.label,
+                                    painter = painterResource(item.icon),
+                                    contentDescription = item.label,
                                 )
                             },
-                            label = { Text(screen.label) },
+                            label = { Text(item.label) },
                         )
                     }
                 }
             }
         },
     ) { innerPadding ->
-        println("Antigravity Log: innerPadding=$innerPadding currentRoute=${currentDestination?.route}")
-        NavHost(
-            navController = navController,
-            startDestination = HomepageScreen.Trending.route,
+        val listDetailStrategy = rememberListDetailSceneStrategy<AppKey>()
+        NavDisplay(
+            backStack = topLevelBackStack.backStack,
+            onBack = { topLevelBackStack.removeLast() },
+            sceneStrategies = listOf(listDetailStrategy),
             modifier =
                 Modifier.padding(
                     top =
-                        if (currentDestination?.route != Destination.MovieDetail.route &&
-                            currentDestination?.route != Destination.TvDetail.route &&
-                            currentDestination?.route != Destination.AllSeasons.route
+                        if (currentKey !is MovieDetailKey &&
+                            currentKey !is TvDetailKey &&
+                            currentKey !is AllSeasonsKey &&
+                            currentKey !is EpisodeListKey &&
+                            currentKey !is EpisodeDetailKey
                         ) {
                             innerPadding.calculateTopPadding()
                         } else {
@@ -287,102 +308,112 @@ private fun MainAppScaffoldContent(
                         },
                     bottom = innerPadding.calculateBottomPadding(),
                 ),
-        ) {
-            composable(HomepageScreen.Trending.route) {
-                TrendingScreenTab(
-                    viewModel = trendingViewModel,
-                    onMovieSelected = { movieId ->
-                        navController.navigate(Destination.MovieDetail.createRoute(movieId))
-                    },
-                    onTvShowSelected = { tvShowId ->
-                        navController.navigate(Destination.TvDetail.createRoute(tvShowId))
-                    },
-                )
-            }
-            composable(HomepageScreen.Movies.route) {
-                MovieScreenTabs(
-                    modifier = Modifier,
-                    nowPlayingViewModel = nowPlayingViewModel,
-                    upcomingViewModel = upcomingViewModel,
-                    popularViewModel = popularViewModel,
-                    topRatedViewModel = topRatedViewModel,
-                    onMovieSelected = { movieId ->
-                        navController.navigate(Destination.MovieDetail.createRoute(movieId))
-                    },
-                )
-            }
-            composable(HomepageScreen.Tvshows.route) {
-                TvShowsScreenTab(
-                    airingTodayViewModel = airingTodayTvViewModel,
-                    onTheAirViewModel = onTheAirTvViewModel,
-                    popularViewModel = popularTvViewModel,
-                    topRatedViewModel = topRatedTvViewModel,
-                    onTvShowSelected = { tvShowId ->
-                        navController.navigate(Destination.TvDetail.createRoute(tvShowId))
-                    },
-                )
-            }
-            composable(HomepageScreen.Person.route) {
-                PersonScreenTab(viewModel = personListViewModel)
-            }
-            composable(HomepageScreen.MyFav.route) { MyFavScreenTab() }
-            composable(
-                route = Destination.MovieDetail.route,
-                arguments =
-                    listOf(
-                        androidx.navigation.navArgument(
-                            Destination.MovieDetail.ARG_MOVIE_ID,
-                        ) { type = androidx.navigation.NavType.LongType },
-                    ),
-            ) { backStackEntry ->
-                val movieId = backStackEntry.savedStateHandle.get<Long>(Destination.MovieDetail.ARG_MOVIE_ID) ?: -1L
-                com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen(
-                    movieId = movieId,
-                    windowSize = windowSize,
-                    onBackClicked = { navController.popBackStack() },
-                    onMovieClicked = { nextMovieId ->
-                        navController.navigate(Destination.MovieDetail.createRoute(nextMovieId))
-                    },
-                )
-            }
-            composable(
-                route = Destination.TvDetail.route,
-                arguments =
-                    listOf(
-                        androidx.navigation.navArgument(
-                            Destination.TvDetail.ARG_TV_SHOW_ID,
-                        ) { type = androidx.navigation.NavType.LongType },
-                    ),
-            ) { backStackEntry ->
-                val tvShowId = backStackEntry.savedStateHandle.get<Long>(Destination.TvDetail.ARG_TV_SHOW_ID) ?: -1L
-                com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.TvDetailScreen(
-                    tvShowId = tvShowId,
-                    windowSize = windowSize,
-                    onBackClicked = { navController.popBackStack() },
-                    onTvShowClicked = { nextTvShowId ->
-                        navController.navigate(Destination.TvDetail.createRoute(nextTvShowId))
-                    },
-                    onViewAllSeasonsClick = { seasonsTvShowId ->
-                        navController.navigate(Destination.AllSeasons.createRoute(seasonsTvShowId))
-                    },
-                )
-            }
-            composable(
-                route = Destination.AllSeasons.route,
-                arguments =
-                    listOf(
-                        androidx.navigation.navArgument(
-                            Destination.AllSeasons.ARG_TV_SHOW_ID,
-                        ) { type = androidx.navigation.NavType.LongType },
-                    ),
-            ) { backStackEntry ->
-                val tvShowId = backStackEntry.savedStateHandle.get<Long>(Destination.AllSeasons.ARG_TV_SHOW_ID) ?: -1L
-                com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.AllSeasonsScreen(
-                    tvShowId = tvShowId,
-                    onBackClicked = { navController.popBackStack() },
-                )
-            }
-        }
+            entryProvider =
+                entryProvider {
+                    entry<TrendingKey> {
+                        TrendingScreenTab(
+                            viewModel = trendingViewModel,
+                            onMovieSelected = { movieId ->
+                                topLevelBackStack.add(MovieDetailKey(movieId))
+                            },
+                            onTvShowSelected = { tvShowId ->
+                                topLevelBackStack.add(TvDetailKey(tvShowId))
+                            },
+                        )
+                    }
+                    entry<MoviesKey> {
+                        MovieScreenTabs(
+                            modifier = Modifier,
+                            nowPlayingViewModel = nowPlayingViewModel,
+                            upcomingViewModel = upcomingViewModel,
+                            popularViewModel = popularViewModel,
+                            topRatedViewModel = topRatedViewModel,
+                            onMovieSelected = { movieId ->
+                                topLevelBackStack.add(MovieDetailKey(movieId))
+                            },
+                        )
+                    }
+                    entry<TvShowsKey> {
+                        TvShowsScreenTab(
+                            airingTodayViewModel = airingTodayTvViewModel,
+                            onTheAirViewModel = onTheAirTvViewModel,
+                            popularViewModel = popularTvViewModel,
+                            topRatedViewModel = topRatedTvViewModel,
+                            onTvShowSelected = { tvShowId ->
+                                topLevelBackStack.add(TvDetailKey(tvShowId))
+                            },
+                        )
+                    }
+                    entry<PersonKey> {
+                        PersonScreenTab(viewModel = personListViewModel)
+                    }
+                    entry<MyFavKey> { MyFavScreenTab() }
+                    entry<MovieDetailKey> { key ->
+                        MovieDetailScreen(
+                            movieId = key.movieId,
+                            windowSize = windowSize,
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            onMovieClicked = { nextMovieId ->
+                                topLevelBackStack.add(MovieDetailKey(nextMovieId))
+                            },
+                        )
+                    }
+                    entry<TvDetailKey> { key ->
+                        TvDetailScreen(
+                            tvShowId = key.tvShowId,
+                            windowSize = windowSize,
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            onTvShowClicked = { nextTvShowId ->
+                                topLevelBackStack.add(TvDetailKey(nextTvShowId))
+                            },
+                            onViewAllSeasonsClick = { seasonsTvShowId ->
+                                topLevelBackStack.add(AllSeasonsKey(seasonsTvShowId))
+                            },
+                        )
+                    }
+                    entry<AllSeasonsKey>(
+                        metadata = ListDetailSceneStrategy.listPane(
+                            detailPlaceholder = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text("Select a season to view its episodes")
+                                }
+                            },
+                        ),
+                    ) { key ->
+                        AllSeasonsScreen(
+                            tvShowId = key.tvShowId,
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            onSeasonClicked = { seasonNumber ->
+                                topLevelBackStack.add(EpisodeListKey(key.tvShowId, seasonNumber))
+                            },
+                        )
+                    }
+                    entry<EpisodeListKey>(
+                        metadata = ListDetailSceneStrategy.detailPane(),
+                    ) { key ->
+                        EpisodeListScreen(
+                            tvShowId = key.tvShowId,
+                            seasonNumber = key.seasonNumber,
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            onEpisodeClicked = { episodeNumber ->
+                                topLevelBackStack.add(EpisodeDetailKey(key.tvShowId, key.seasonNumber, episodeNumber))
+                            },
+                        )
+                    }
+                    entry<EpisodeDetailKey> { key ->
+                        EpisodeDetailScreen(
+                            tvShowId = key.tvShowId,
+                            seasonNumber = key.seasonNumber,
+                            episodeNumber = key.episodeNumber,
+                            windowSize = windowSize,
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                        )
+                    }
+                },
+        )
     }
 }
 
@@ -415,19 +446,6 @@ private fun AppTopBar(windowSize: WindowSize) {
             }
         },
     )
-}
-
-private fun navigateWithSingleTop(
-    navController: NavHostController,
-    route: String,
-) {
-    navController.navigate(route) {
-        popUpTo(navController.graph.findStartDestination().id) {
-            saveState = true
-        }
-        launchSingleTop = true
-        restoreState = true
-    }
 }
 
 internal expect fun openUrl(url: String?)

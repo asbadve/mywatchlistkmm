@@ -28,7 +28,6 @@ kotlin {
     }
 
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
     ).forEach {
@@ -51,9 +50,9 @@ kotlin {
                 implementation(libs.adaptive)
                 implementation(libs.adaptive.layout)
                 implementation(libs.adaptive.navigation)
+                implementation(libs.adaptive.navigation3)
                 implementation(libs.material.icons.core)
                 implementation(libs.material3.window.size.class1)
-                implementation(libs.material.navigation)
                 implementation(libs.components.resources)
                 api(compose.runtime)
                 implementation(compose.material3)
@@ -74,7 +73,9 @@ kotlin {
                 implementation(libs.koin.core)
                 implementation(libs.ktor.serialization.kotlinx.json)
                 implementation(libs.ktor.client.content.negotiation)
-                implementation(libs.navigation.compose)
+                implementation(libs.navigation3.runtime)
+                implementation(libs.navigation3.ui)
+                implementation(libs.lifecycle.viewmodel.navigation3)
             }
         }
 
@@ -131,12 +132,10 @@ kotlin {
             }
         }
 
-        val iosX64Main by getting
         val iosArm64Main by getting
         val iosSimulatorArm64Main by getting
         val iosMain by getting {
             dependsOn(commonMain)
-            iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
             dependencies {
@@ -149,7 +148,7 @@ kotlin {
 
 android {
     namespace = "com.ajinkyabadve.kmmmywatchlist"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24
@@ -183,10 +182,6 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
-}
-
-compose.experimental {
-    web.application {}
 }
 
 buildConfig {

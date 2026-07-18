@@ -1,5 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.model
 
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.BackdropImage
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.ImagesResponse
@@ -122,5 +124,39 @@ data class TvSeasonDetail(
     val credits: Credits? = null,
     val videos: VideoResponse? = null,
     val images: ImagesResponse? = null,
+    @SerialName("external_ids") val externalIds: ExternalIds? = null,
+)
+
+// TMDB's /tv/{id}/season/{season_number}/episode/{episode_number} images sub-resource returns a
+// single "stills" bucket (no backdrops/posters split), unlike the movie/tv/season-level ImagesResponse.
+@Serializable
+data class EpisodeImagesResponse(
+    val stills: List<BackdropImage> = emptyList(),
+)
+
+// TMDB's episode-level credits include a "guest_stars" bucket alongside cast/crew, unlike the
+// movie/tv/season-level Credits which only expose cast.
+@Serializable
+data class EpisodeCredits(
+    val cast: List<CastMember> = emptyList(),
+    @SerialName("guest_stars") val guestStars: List<CastMember> = emptyList(),
+)
+
+// Note: TMDB's episode sub-resource only supports credits, images, external_ids and videos as
+// append_to_response values, same restriction as the season sub-resource above.
+@Serializable
+data class EpisodeDetail(
+    val id: Long = -1,
+    val name: String = "",
+    val overview: String = "",
+    @SerialName("air_date") val airDate: String? = null,
+    @SerialName("episode_number") val episodeNumber: Int = 0,
+    @SerialName("season_number") val seasonNumber: Int = 0,
+    @SerialName("still_path") val stillPath: String? = null,
+    @SerialName("vote_average") val voteAverage: Double = 0.0,
+    val runtime: Int? = null,
+    val credits: EpisodeCredits? = null,
+    val videos: VideoResponse? = null,
+    val images: EpisodeImagesResponse? = null,
     @SerialName("external_ids") val externalIds: ExternalIds? = null,
 )

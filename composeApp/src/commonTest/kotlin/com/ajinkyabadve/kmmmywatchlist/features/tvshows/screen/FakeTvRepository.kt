@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
@@ -11,6 +12,7 @@ class FakeTvRepository : TvRepository {
     var getTvShowsResult: Result<TvPageResult>? = null
     var getTvDetailsResult: Result<TvDetail>? = null
     var getSeasonDetailsResult: Result<TvSeasonDetail>? = null
+    var getEpisodeDetailsResult: Result<EpisodeDetail>? = null
 
     /** Per-seasonNumber overrides, checked before [getSeasonDetailsResult]. */
     val getSeasonDetailsResultsByNumber = mutableMapOf<Int, Result<TvSeasonDetail>>()
@@ -18,6 +20,7 @@ class FakeTvRepository : TvRepository {
     val getTvShowsCalls = mutableListOf<Pair<Int, String>>()
     val getTvDetailsCalls = mutableListOf<Long>()
     val getSeasonDetailsCalls = mutableListOf<Pair<Long, Int>>()
+    val getEpisodeDetailsCalls = mutableListOf<Triple<Long, Int, Int>>()
 
     override suspend fun getTvShows(pageNo: Int, moveFetchType: String): TvPageResult {
         getTvShowsCalls.add(pageNo to moveFetchType)
@@ -78,6 +81,26 @@ class FakeTvRepository : TvRepository {
             seasonNumber = seasonNumber,
             name = "Season $seasonNumber",
             overview = "Overview of Season $seasonNumber",
+        )
+    }
+
+    override suspend fun getEpisodeDetails(tvId: Long, seasonNumber: Int, episodeNumber: Int): EpisodeDetail {
+        getEpisodeDetailsCalls.add(Triple(tvId, seasonNumber, episodeNumber))
+
+        getEpisodeDetailsResult?.let { result ->
+            if (result.isSuccess) {
+                return result.getOrThrow()
+            } else {
+                throw result.exceptionOrNull() ?: IOException("Fake repository error")
+            }
+        }
+
+        return EpisodeDetail(
+            id = tvId,
+            seasonNumber = seasonNumber,
+            episodeNumber = episodeNumber,
+            name = "Episode $episodeNumber",
+            overview = "Overview of Episode $episodeNumber",
         )
     }
 }

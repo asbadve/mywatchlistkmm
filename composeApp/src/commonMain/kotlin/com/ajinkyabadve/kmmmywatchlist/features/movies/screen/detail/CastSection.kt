@@ -29,7 +29,7 @@ import mywatchlist.composeapp.generated.resources.baseline_person_24
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun CastSection(castList: List<CastMember>) {
+fun CastSection(castList: List<CastMember>, title: String = "Cast & Crew") {
     if (castList.isNotEmpty()) {
         val lazyRowState = rememberLazyListState()
         Column(
@@ -38,7 +38,7 @@ fun CastSection(castList: List<CastMember>) {
                 .padding(vertical = 12.dp, horizontal = 16.dp)
         ) {
             SectionHeaderWithScrollHint(
-                title = "Cast & Crew",
+                title = title,
                 listSize = castList.size.coerceAtMost(15),
                 lazyRowState = lazyRowState,
                 scrollStep = 3

@@ -14,14 +14,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,13 +31,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.navigation3.LocalListDetailSceneScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -47,33 +47,48 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
 import org.jetbrains.compose.resources.painterResource
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun AllSeasonsScreen(
+fun EpisodeListScreen(
     tvShowId: Long,
+    seasonNumber: Int,
     onBackClicked: () -> Unit,
-    onSeasonClicked: (Int) -> Unit,
-    viewModel: AllSeasonsScreenModel = viewModel(key = "AllSeasonsScreenModel:$tvShowId") { AllSeasonsScreenModel(tvShowId) },
+    onEpisodeClicked: (Int) -> Unit,
+    viewModel: EpisodeListScreenModel =
+        viewModel(key = "EpisodeListScreenModel:$tvShowId:$seasonNumber") { EpisodeListScreenModel(tvShowId, seasonNumber) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // This screen is the detail pane of the Seasons<->Episodes list-detail scaffold. When the
+    // season list is visible alongside it (wide layout), it already offers its own way back, so
+    // this screen's back arrow would be redundant - only show it when this is the only pane visible.
+    val listDetailScope = LocalListDetailSceneScope.current
+    val showBackButton = listDetailScope?.let {
+        it.scaffoldTransitionScope.scaffoldStateTransition.currentState.secondary == PaneAdaptedValue.Hidden
+    } ?: true
 
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
-                    title = { Text("Seasons", fontWeight = FontWeight.Bold) },
+                    title = {
+                        val title = (uiState as? EpisodeListState.Success)?.season?.name ?: "Episodes"
+                        Text(title, fontWeight = FontWeight.Bold)
+                    },
                     navigationIcon = {
-                        IconButton(onClick = onBackClicked) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        if (showBackButton) {
+                            IconButton(onClick = onBackClicked) {
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -88,11 +103,11 @@ fun AllSeasonsScreen(
                 .padding(innerPadding)
         ) {
             when (val state = uiState) {
-                is AllSeasonsState.Loading -> {
+                is EpisodeListState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
-                is AllSeasonsState.Error -> {
+                is EpisodeListState.Error -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -101,20 +116,28 @@ fun AllSeasonsScreen(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
-                        Button(onClick = { viewModel.loadSeasons() }) {
+                        Button(onClick = { viewModel.loadEpisodes() }) {
                             Text("Retry")
                         }
                     }
                 }
 
-                is AllSeasonsState.Success -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        items(state.seasons.sortedBy { it.seasonNumber }) { season ->
-                            SeasonListItem(season = season, onClick = { onSeasonClicked(season.seasonNumber) })
+                is EpisodeListState.Success -> {
+                    if (state.season.episodes.isEmpty()) {
+                        Text(
+                            text = "No episodes available for this season.",
+                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            items(state.season.episodes.sortedBy { it.episodeNumber }) { episode ->
+                                EpisodeListItem(episode = episode, onClick = { onEpisodeClicked(episode.episodeNumber) })
+                            }
                         }
                     }
                 }
@@ -124,25 +147,29 @@ fun AllSeasonsScreen(
 }
 
 @Composable
-private fun SeasonListItem(season: SeasonSummary, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+private fun EpisodeListItem(episode: Episode, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
         val density = LocalDensity.current.density
-        val posterUrl = ImageConfigResolver.resolve(
-            path = season.posterPath,
-            type = ImageConfigResolver.ImageType.POSTER,
-            targetWidthDp = 100,
+        val stillUrl = ImageConfigResolver.resolve(
+            path = episode.stillPath,
+            type = ImageConfigResolver.ImageType.STILL,
+            targetWidthDp = 150,
             density = density
         )
         Box(
             modifier = Modifier
-                .width(90.dp)
-                .aspectRatio(2 / 3f)
+                .width(140.dp)
+                .aspectRatio(16 / 9f)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             val fallbackPainter = painterResource(Res.drawable.baseline_tv_24)
             val painter = rememberAsyncImagePainter(
-                model = posterUrl,
+                model = stillUrl,
                 filterQuality = FilterQuality.Medium,
                 error = fallbackPainter,
                 fallback = fallbackPainter
@@ -155,7 +182,7 @@ private fun SeasonListItem(season: SeasonSummary, onClick: () -> Unit) {
             }
             Image(
                 painter = painter,
-                contentDescription = season.name,
+                contentDescription = episode.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = contentScale
             )
@@ -165,48 +192,24 @@ private fun SeasonListItem(season: SeasonSummary, onClick: () -> Unit) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = season.name,
+                text = "${episode.episodeNumber}. ${episode.name}",
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            val year = season.airDate?.takeIf { it.length >= 4 }?.take(4)
-            val metaParts = buildList {
-                add("${season.episodeCount} Episodes")
-                year?.let { add(it) }
-            }
-            Text(
-                text = metaParts.joinToString(" • "),
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-            )
-
-            if (season.voteAverage > 0) {
+            if (!episode.airDate.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Rating",
-                        tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = "${(season.voteAverage * 10).toInt() / 10.0} / 10",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
-                    )
-                }
+                Text(
+                    text = episode.airDate,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
             }
-
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = season.overview.ifEmpty { "No overview available for this season." },
+                text = episode.overview.ifEmpty { "No overview available for this episode." },
                 fontSize = 13.sp,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,

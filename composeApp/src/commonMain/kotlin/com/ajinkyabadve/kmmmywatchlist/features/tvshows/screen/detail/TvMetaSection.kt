@@ -113,11 +113,11 @@ fun TvMetaSection(detail: TvDetail) {
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(
+                LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    genreList.take(4).forEach { genre ->
+                    items(genreList) { genre ->
                         AssistChip(
                             onClick = {},
                             label = { Text(genre.name, fontSize = 12.sp) },

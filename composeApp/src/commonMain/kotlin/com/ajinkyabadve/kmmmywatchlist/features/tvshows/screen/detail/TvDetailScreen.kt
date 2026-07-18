@@ -67,7 +67,7 @@ fun TvDetailScreen(
     onBackClicked: () -> Unit,
     onTvShowClicked: (Long) -> Unit,
     onViewAllSeasonsClick: (Long) -> Unit,
-    viewModel: TvDetailScreenModel = viewModel(key = tvShowId.toString()) { TvDetailScreenModel(tvShowId) },
+    viewModel: TvDetailScreenModel = viewModel(key = "TvDetailScreenModel:$tvShowId") { TvDetailScreenModel(tvShowId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()

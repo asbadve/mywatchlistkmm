@@ -61,7 +61,7 @@ fun MovieDetailScreen(
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
     onMovieClicked: (Long) -> Unit,
-    viewModel: MovieDetailScreenModel = viewModel(key = movieId.toString()) { MovieDetailScreenModel(movieId) },
+    viewModel: MovieDetailScreenModel = viewModel(key = "MovieDetailScreenModel:$movieId") { MovieDetailScreenModel(movieId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
