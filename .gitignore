@@ -16,7 +16,6 @@ Pods/
 /gradle/wrapper/gradle-wrapper.jar
 composeApp/build/*
 .gradle/*
-/screenshots/*
 /.kotlin/metadata/*
 /.kotlin/errors/*
 /patch/*
