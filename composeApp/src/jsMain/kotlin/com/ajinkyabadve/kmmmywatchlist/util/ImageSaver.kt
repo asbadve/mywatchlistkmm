@@ -9,10 +9,7 @@ import kotlinx.browser.document
 actual class ImageSaver actual constructor() {
     actual suspend fun saveImage(bytes: ByteArray, fileName: String): String? {
         return try {
-            val bytesTyped = Int8Array(bytes.size)
-            for (i in bytes.indices) {
-                bytesTyped[i] = bytes[i]
-            }
+            val bytesTyped = Int8Array(bytes.toTypedArray())
             val blob = Blob(arrayOf(bytesTyped), BlobPropertyBag(type = "image/jpeg"))
             val url = createObjectURL(blob)
             val link = document.createElement("a") as HTMLAnchorElement
