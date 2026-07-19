@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,7 +72,11 @@ fun CurrentSeasonSection(
         }
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onViewAllSeasonsClick)
+        ) {
             val density = androidx.compose.ui.platform.LocalDensity.current.density
             val posterUrl = ImageConfigResolver.resolve(
                 path = season.posterPath,
