@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.network.builder.mediaHttpBuilder
@@ -31,7 +32,21 @@ class MovieRepositoryImpl(
                 trailingQuery = true
                 encodedPath = "$MOVIE$movieId"
                 parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                parameters.append("append_to_response", "videos,images,credits,keywords,alternative_titles,changes,external_ids,release_dates,translations,recommendations,similar,reviews")
+                parameters.append("append_to_response", "videos,images,credits,keywords,alternative_titles,changes,external_ids,release_dates,translations,recommendations,similar,reviews,watch/providers")
+            }
+        }
+        return response.body()
+    }
+
+    override suspend fun getCollectionDetails(collectionId: Long): CollectionDetail {
+        val response: HttpResponse = tmdbClient.client.get {
+            url {
+                protocol = URLProtocol.HTTPS
+                host = NetworkConstant.HOST
+                trailingQuery = true
+                encodedPath = "$COLLECTION$collectionId"
+                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                parameters.append("append_to_response", "images,translations")
             }
         }
         return response.body()
@@ -39,5 +54,6 @@ class MovieRepositoryImpl(
 
     private companion object {
         const val MOVIE = "/3/movie/"
+        const val COLLECTION = "/3/collection/"
     }
 }

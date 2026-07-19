@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
@@ -9,6 +10,8 @@ import io.ktor.utils.io.errors.IOException
 class FakeMovieRepository : MovieRepository {
     var getMoviesResult: Result<MoviePageResult>? = null
     var getMovieDetailsResult: Result<MovieDetail>? = null
+    var getCollectionDetailsResult: Result<CollectionDetail>? = null
+    val getCollectionDetailsCalls = mutableListOf<Long>()
 
     val getMoviesCalls = mutableListOf<Pair<Int, String>>()
     val getMovieDetailsCalls = mutableListOf<Long>()
@@ -72,5 +75,19 @@ class FakeMovieRepository : MovieRepository {
             similar = null,
             reviews = null
         )
+    }
+
+    override suspend fun getCollectionDetails(collectionId: Long): CollectionDetail {
+        getCollectionDetailsCalls.add(collectionId)
+
+        getCollectionDetailsResult?.let { result ->
+            if (result.isSuccess) {
+                return result.getOrThrow()
+            } else {
+                throw result.exceptionOrNull() ?: IOException("Fake repository error")
+            }
+        }
+
+        return CollectionDetail(id = collectionId, name = "Collection A")
     }
 }

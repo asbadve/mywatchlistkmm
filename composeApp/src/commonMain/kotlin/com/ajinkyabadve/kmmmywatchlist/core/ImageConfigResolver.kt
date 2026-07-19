@@ -47,7 +47,8 @@ object ImageConfigResolver {
         POSTER,
         BACKDROP,
         PROFILE,
-        STILL
+        STILL,
+        LOGO
     }
 
     /**
@@ -72,6 +73,7 @@ object ImageConfigResolver {
             ImageType.BACKDROP -> activeConfig.backdrop_sizes
             ImageType.PROFILE -> activeConfig.profile_sizes
             ImageType.STILL -> activeConfig.still_sizes
+            ImageType.LOGO -> activeConfig.logo_sizes
         }
 
         val resolvedSize = selectBestSize(sizes, targetPixels)

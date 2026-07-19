@@ -58,6 +58,7 @@ import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail.PersonDetailScreen
@@ -74,6 +75,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.EpisodeLis
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.TvDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.navigation.AllSeasonsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.AppKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.CollectionDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeListKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MovieDetailKey
@@ -299,6 +301,7 @@ private fun MainAppScaffoldContent(
                 Modifier.padding(
                     top =
                         if (currentKey !is MovieDetailKey &&
+                            currentKey !is CollectionDetailKey &&
                             currentKey !is TvDetailKey &&
                             currentKey !is PersonDetailKey &&
                             currentKey !is AllSeasonsKey &&
@@ -369,6 +372,19 @@ private fun MainAppScaffoldContent(
                             },
                             onPersonClicked = { personId ->
                                 topLevelBackStack.add(PersonDetailKey(personId))
+                            },
+                            onCollectionClicked = { collectionId ->
+                                topLevelBackStack.add(CollectionDetailKey(collectionId))
+                            },
+                        )
+                    }
+                    entry<CollectionDetailKey> { key ->
+                        CollectionDetailScreen(
+                            collectionId = key.collectionId,
+                            windowSize = windowSize,
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            onMovieClicked = { movieId ->
+                                topLevelBackStack.add(MovieDetailKey(movieId))
                             },
                         )
                     }

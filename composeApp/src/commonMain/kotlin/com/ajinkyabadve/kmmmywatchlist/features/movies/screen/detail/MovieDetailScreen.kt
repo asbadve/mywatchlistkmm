@@ -62,6 +62,7 @@ fun MovieDetailScreen(
     onBackClicked: () -> Unit,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit = {},
+    onCollectionClicked: (Long) -> Unit = {},
     viewModel: MovieDetailScreenModel = viewModel(key = "MovieDetailScreenModel:$movieId") { MovieDetailScreenModel(movieId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -163,6 +164,7 @@ fun MovieDetailScreen(
                                     lazyListState = lazyListState,
                                     onMovieClicked = onMovieClicked,
                                     onPersonClicked = onPersonClicked,
+                                    onCollectionClicked = onCollectionClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
@@ -174,6 +176,7 @@ fun MovieDetailScreen(
                                     leftLazyListState = leftLazyListState,
                                     onMovieClicked = onMovieClicked,
                                     onPersonClicked = onPersonClicked,
+                                    onCollectionClicked = onCollectionClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
@@ -261,6 +264,7 @@ private fun CompactMovieDetailContent(
     lazyListState: LazyListState,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
+    onCollectionClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     LazyColumn(
@@ -272,7 +276,7 @@ private fun CompactMovieDetailContent(
             BackdropSection(detail = detail)
         }
         item {
-            MovieMetaSection(detail = detail)
+            MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)
         }
         item {
             OverviewSection(overview = detail.overview)
@@ -325,6 +329,7 @@ private fun ExpandedMovieDetailContent(
     leftLazyListState: LazyListState,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
+    onCollectionClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
     rightColumnTopPadding: androidx.compose.ui.unit.Dp,
 ) {
@@ -342,7 +347,7 @@ private fun ExpandedMovieDetailContent(
                 BackdropSection(detail = detail)
             }
             item {
-                MovieMetaSection(detail = detail)
+                MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)
             }
             item {
                 OverviewSection(overview = detail.overview)

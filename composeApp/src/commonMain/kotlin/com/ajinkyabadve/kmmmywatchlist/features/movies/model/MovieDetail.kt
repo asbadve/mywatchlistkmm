@@ -1,5 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.model
 
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.ExternalIds
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -19,7 +21,62 @@ data class CastMember(
 
 @Serializable
 data class Credits(
-    val cast: List<CastMember> = emptyList()
+    val cast: List<CastMember> = emptyList(),
+    val crew: List<CrewMember> = emptyList(),
+)
+
+@Serializable
+data class SpokenLanguage(
+    @SerialName("english_name") val englishName: String = "",
+    @SerialName("iso_639_1") val iso639: String = "",
+    val name: String = "",
+)
+
+@Serializable
+data class ProductionCompany(
+    val id: Int = -1,
+    val name: String = "",
+    @SerialName("logo_path") val logoPath: String? = null,
+    @SerialName("origin_country") val originCountry: String = "",
+)
+
+@Serializable
+data class ProductionCountry(
+    @SerialName("iso_3166_1") val iso3166: String = "",
+    val name: String = "",
+)
+
+@Serializable
+data class CollectionInfo(
+    val id: Long = -1,
+    val name: String = "",
+    @SerialName("poster_path") val posterPath: String? = null,
+    @SerialName("backdrop_path") val backdropPath: String? = null,
+)
+
+@Serializable
+data class WatchProvider(
+    @SerialName("provider_id") val providerId: Int = -1,
+    @SerialName("provider_name") val providerName: String = "",
+    @SerialName("logo_path") val logoPath: String? = null,
+    @SerialName("display_priority") val displayPriority: Int = 0,
+)
+
+// One region's providers from the watch/providers append. The link goes to TMDB's watch page,
+// which carries the JustWatch attribution TMDB requires for this data.
+@Serializable
+data class RegionWatchProviders(
+    val link: String = "",
+    val flatrate: List<WatchProvider> = emptyList(),
+    val rent: List<WatchProvider> = emptyList(),
+    val buy: List<WatchProvider> = emptyList(),
+    val free: List<WatchProvider> = emptyList(),
+    val ads: List<WatchProvider> = emptyList(),
+)
+
+@Serializable
+data class WatchProvidersResponse(
+    val results: Map<String, RegionWatchProviders> = emptyMap(),
 )
 
 @Serializable
@@ -117,15 +174,29 @@ data class ReleaseDatesResponse(
 data class MovieDetail(
     val id: Long = -1,
     val title: String = "",
+    @SerialName("original_title") val originalTitle: String? = null,
     val overview: String = "",
+    val tagline: String? = null,
+    val status: String? = null,
     @SerialName("backdrop_path") val backdropPath: String? = null,
     @SerialName("poster_path") val posterPath: String? = null,
     @SerialName("release_date") val releaseDate: String = "",
     @SerialName("vote_average") val voteAverage: Double = 0.0,
+    @SerialName("vote_count") val voteCount: Int = 0,
+    val popularity: Double = 0.0,
     val runtime: Int? = null,
     val budget: Long? = null,
+    val revenue: Long? = null,
+    val homepage: String? = null,
     val genres: List<Genre>? = null,
     @SerialName("original_language") val originalLanguage: String = "",
+    @SerialName("origin_country") val originCountry: List<String> = emptyList(),
+    @SerialName("spoken_languages") val spokenLanguages: List<SpokenLanguage> = emptyList(),
+    @SerialName("production_companies") val productionCompanies: List<ProductionCompany> = emptyList(),
+    @SerialName("production_countries") val productionCountries: List<ProductionCountry> = emptyList(),
+    @SerialName("belongs_to_collection") val belongsToCollection: CollectionInfo? = null,
+    @SerialName("external_ids") val externalIds: ExternalIds? = null,
+    @SerialName("watch/providers") val watchProviders: WatchProvidersResponse? = null,
     val credits: Credits? = null,
     val videos: VideoResponse? = null,
     val recommendations: MoviePageResult? = null,

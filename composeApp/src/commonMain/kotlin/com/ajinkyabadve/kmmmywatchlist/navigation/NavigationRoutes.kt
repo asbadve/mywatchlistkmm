@@ -22,6 +22,7 @@ data object PersonKey : AppKey
 data object MyFavKey : AppKey
 
 data class MovieDetailKey(val movieId: Long) : AppKey
+data class CollectionDetailKey(val collectionId: Long) : AppKey
 data class TvDetailKey(val tvShowId: Long) : AppKey
 data class PersonDetailKey(val personId: Long) : AppKey
 data class AllSeasonsKey(val tvShowId: Long) : AppKey
