@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.BackdropImage
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeImagesResponse
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
@@ -47,6 +48,10 @@ class EpisodeDetailScreenModelTest {
             episodeNumber = 1,
             seasonNumber = 1,
             name = "Pilot",
+            episodeType = "finale",
+            productionCode = "101",
+            voteCount = 457,
+            crew = listOf(CrewMember(name = "Jane Doe", job = "Director", department = "Directing")),
             images = EpisodeImagesResponse(stills = listOf(BackdropImage(filePath = "/still.jpg"))),
         )
         fakeRepository.getEpisodeDetailsResult = Result.success(episode)
@@ -55,6 +60,8 @@ class EpisodeDetailScreenModelTest {
 
         val state = assertIs<EpisodeDetailState.Success>(viewModel.uiState.value)
         assertEquals(episode, state.episode)
+        assertEquals("finale", state.episode.episodeType)
+        assertEquals("Jane Doe", state.episode.allCrew.single().name)
         assertEquals(listOf(Triple(1L, 1, 1)), fakeRepository.getEpisodeDetailsCalls)
     }
 

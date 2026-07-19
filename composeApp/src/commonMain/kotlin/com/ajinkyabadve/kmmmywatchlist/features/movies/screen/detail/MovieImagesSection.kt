@@ -29,10 +29,12 @@ fun MovieImagesSection(
         val lazyRowState = rememberLazyListState()
         val photoList = images.take(10)
 
-        // Configure card layout specifics based on image category type (backdrops vs posters)
-        val isPoster = imageType == ImageConfigResolver.ImageType.POSTER
-        val cardWidth = if (isPoster) 120.dp else 200.dp
-        val aspectRatio = if (isPoster) 2 / 3f else 16 / 9f
+        // Configure card layout specifics based on image category type: posters and person
+        // profiles are portrait (2:3), backdrops and episode stills are landscape (16:9)
+        val isPortrait = imageType == ImageConfigResolver.ImageType.POSTER ||
+            imageType == ImageConfigResolver.ImageType.PROFILE
+        val cardWidth = if (isPortrait) 120.dp else 200.dp
+        val aspectRatio = if (isPortrait) 2 / 3f else 16 / 9f
 
         Column(
             modifier = Modifier
@@ -55,7 +57,7 @@ fun MovieImagesSection(
                     val imageUrl = ImageConfigResolver.resolve(
                         path = image.filePath,
                         type = imageType,
-                        targetWidthDp = if (isPoster) 150 else 200,
+                        targetWidthDp = if (isPortrait) 150 else 200,
                         density = density
                     )
                     Card(

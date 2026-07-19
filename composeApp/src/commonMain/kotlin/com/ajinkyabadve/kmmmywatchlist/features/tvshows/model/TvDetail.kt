@@ -73,6 +73,13 @@ data class ExternalIds(
     @SerialName("instagram_id") val instagramId: String? = null,
     @SerialName("twitter_id") val twitterId: String? = null,
     @SerialName("tvdb_id") val tvdbId: Long? = null,
+    @SerialName("wikidata_id") val wikidataId: String? = null,
+    @SerialName("freebase_mid") val freebaseMid: String? = null,
+    @SerialName("freebase_id") val freebaseId: String? = null,
+    @SerialName("tvrage_id") val tvrageId: Long? = null,
+    // Only returned for the person namespace; always null for movie/tv/season/episode.
+    @SerialName("tiktok_id") val tiktokId: String? = null,
+    @SerialName("youtube_id") val youtubeId: String? = null,
 )
 
 @Serializable
@@ -134,16 +141,53 @@ data class EpisodeImagesResponse(
     val stills: List<BackdropImage> = emptyList(),
 )
 
+// Episode-level crew entries carry job/department info (Director, Writer, ...) that the shared
+// CastMember shape (built around character/ordering) doesn't have.
+@Serializable
+data class CrewMember(
+    val id: Long = -1,
+    val name: String = "",
+    @SerialName("original_name") val originalName: String = "",
+    val job: String = "",
+    val department: String = "",
+    @SerialName("credit_id") val creditId: String? = null,
+    @SerialName("known_for_department") val knownForDepartment: String? = null,
+    @SerialName("profile_path") val profilePath: String? = null,
+)
+
 // TMDB's episode-level credits include a "guest_stars" bucket alongside cast/crew, unlike the
 // movie/tv/season-level Credits which only expose cast.
 @Serializable
 data class EpisodeCredits(
     val cast: List<CastMember> = emptyList(),
+    val crew: List<CrewMember> = emptyList(),
     @SerialName("guest_stars") val guestStars: List<CastMember> = emptyList(),
 )
 
-// Note: TMDB's episode sub-resource only supports credits, images, external_ids and videos as
-// append_to_response values, same restriction as the season sub-resource above.
+@Serializable
+data class TranslationData(
+    val name: String = "",
+    val overview: String = "",
+)
+
+@Serializable
+data class Translation(
+    @SerialName("iso_3166_1") val iso3166: String = "",
+    @SerialName("iso_639_1") val iso639: String = "",
+    val name: String = "",
+    @SerialName("english_name") val englishName: String = "",
+    val data: TranslationData = TranslationData(),
+)
+
+@Serializable
+data class TranslationsResponse(
+    val translations: List<Translation> = emptyList(),
+)
+
+// Note: TMDB's episode sub-resource supports credits, external_ids, images, translations and
+// videos as append_to_response values (per the episode-details OpenAPI definition; account_states
+// additionally works but needs a user session). The base payload also carries its own top-level
+// crew/guest_stars buckets with the same content as the appended credits.
 @Serializable
 data class EpisodeDetail(
     val id: Long = -1,
@@ -152,11 +196,20 @@ data class EpisodeDetail(
     @SerialName("air_date") val airDate: String? = null,
     @SerialName("episode_number") val episodeNumber: Int = 0,
     @SerialName("season_number") val seasonNumber: Int = 0,
+    @SerialName("episode_type") val episodeType: String? = null,
+    @SerialName("production_code") val productionCode: String? = null,
     @SerialName("still_path") val stillPath: String? = null,
     @SerialName("vote_average") val voteAverage: Double = 0.0,
+    @SerialName("vote_count") val voteCount: Int = 0,
     val runtime: Int? = null,
+    val crew: List<CrewMember> = emptyList(),
     val credits: EpisodeCredits? = null,
     val videos: VideoResponse? = null,
     val images: EpisodeImagesResponse? = null,
     @SerialName("external_ids") val externalIds: ExternalIds? = null,
-)
+    val translations: TranslationsResponse? = null,
+) {
+    // The top-level and credits-appended crew lists are the same data; prefer whichever arrived.
+    val allCrew: List<CrewMember>
+        get() = crew.ifEmpty { credits?.crew ?: emptyList() }
+}

@@ -52,6 +52,10 @@ xcrun simctl io <UDID> screenshot shot.png              # retry until non-empty;
 ```
 
 - Bundle id: `com.ajinkyabadve.kmmmywatchlist.iosApp`. Scheme: `iosApp`.
+- **`simctl boot` is headless** - when the user wants to SEE the simulator, also run
+  `open -a Simulator` (optionally `--args -CurrentDeviceUDID <UDID>`) to show the window.
+- Android: launcher activity is `com.ajinkyabadve.kmmmywatchlist.androidApp/com.ajinkyabadve.kmmmywatchlist.AppActivity`
+  (`./gradlew :composeApp:installDebug` then `adb shell am start -n <that activity>`).
 - Downscale screenshots before viewing: `sips -Z 1100 shot.png`.
 - **No tap/UI-driving support**: `simctl` has no tap command and `idb`/`axe` are not installed,
   so only launch-state screens can be verified on iOS. Use desktop for click-through flows.

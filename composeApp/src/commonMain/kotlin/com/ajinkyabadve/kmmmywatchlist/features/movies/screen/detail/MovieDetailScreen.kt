@@ -61,6 +61,7 @@ fun MovieDetailScreen(
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
     onMovieClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit = {},
     viewModel: MovieDetailScreenModel = viewModel(key = "MovieDetailScreenModel:$movieId") { MovieDetailScreenModel(movieId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -161,6 +162,7 @@ fun MovieDetailScreen(
                                     detail = detail,
                                     lazyListState = lazyListState,
                                     onMovieClicked = onMovieClicked,
+                                    onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
@@ -171,6 +173,7 @@ fun MovieDetailScreen(
                                     detail = detail,
                                     leftLazyListState = leftLazyListState,
                                     onMovieClicked = onMovieClicked,
+                                    onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
@@ -257,6 +260,7 @@ private fun CompactMovieDetailContent(
     detail: MovieDetail,
     lazyListState: LazyListState,
     onMovieClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     LazyColumn(
@@ -293,7 +297,7 @@ private fun CompactMovieDetailContent(
             )
         }
         item {
-            CastSection(castList = detail.credits?.cast ?: emptyList())
+            CastSection(castList = detail.credits?.cast ?: emptyList(), onPersonClicked = onPersonClicked)
         }
         item {
             RecommendationsSection(
@@ -320,6 +324,7 @@ private fun ExpandedMovieDetailContent(
     detail: MovieDetail,
     leftLazyListState: LazyListState,
     onMovieClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
     rightColumnTopPadding: androidx.compose.ui.unit.Dp,
 ) {
@@ -375,7 +380,7 @@ private fun ExpandedMovieDetailContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                CastSection(castList = detail.credits?.cast ?: emptyList())
+                CastSection(castList = detail.credits?.cast ?: emptyList(), onPersonClicked = onPersonClicked)
             }
             item {
                 RecommendationsSection(

@@ -9,7 +9,12 @@
       "Bash(xcrun simctl io *)",
       "Bash(xcrun simctl list *)",
       "Bash(./gradlew :composeApp:desktopTest)",
-      "Bash(./gradlew :composeApp:compileKotlinDesktop)"
+      "Bash(./gradlew :composeApp:compileKotlinDesktop)",
+      "Bash(./gradlew *)",
+      "Bash(curl *)",
+      "WebFetch(domain:developer.themoviedb.org)",
+      "WebFetch(domain:api.themoviedb.org)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

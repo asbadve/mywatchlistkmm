@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
@@ -54,7 +56,9 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CastSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.OverviewSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.VideoClipsSection
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeDetail
+import com.ajinkyabadve.kmmmywatchlist.openUrl
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
@@ -68,6 +72,7 @@ fun EpisodeDetailScreen(
     episodeNumber: Int,
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
+    onPersonClicked: (Long) -> Unit = {},
     viewModel: EpisodeDetailScreenModel =
         viewModel(key = "EpisodeDetailScreenModel:$tvShowId:$seasonNumber:$episodeNumber") {
             EpisodeDetailScreenModel(tvShowId, seasonNumber, episodeNumber)
@@ -125,6 +130,7 @@ fun EpisodeDetailScreen(
                     if (windowSize.isCompact()) {
                         CompactEpisodeDetailContent(
                             episode = state.episode,
+                            onPersonClicked = onPersonClicked,
                             onShowGallery = { images, index ->
                                 galleryImages = images
                                 galleryInitialIndex = index
@@ -133,6 +139,7 @@ fun EpisodeDetailScreen(
                     } else {
                         ExpandedEpisodeDetailContent(
                             episode = state.episode,
+                            onPersonClicked = onPersonClicked,
                             onShowGallery = { images, index ->
                                 galleryImages = images
                                 galleryInitialIndex = index
@@ -157,6 +164,7 @@ fun EpisodeDetailScreen(
 @Composable
 private fun CompactEpisodeDetailContent(
     episode: EpisodeDetail,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     LazyColumn(
@@ -175,7 +183,10 @@ private fun CompactEpisodeDetailContent(
             )
         }
         item {
-            CastSection(castList = episode.credits?.guestStars ?: emptyList(), title = "Guest Stars")
+            CastSection(castList = episode.credits?.cast ?: emptyList(), title = "Cast", onPersonClicked = onPersonClicked)
+        }
+        item {
+            CastSection(castList = episode.credits?.guestStars ?: emptyList(), title = "Guest Stars", onPersonClicked = onPersonClicked)
         }
     }
 }
@@ -183,6 +194,7 @@ private fun CompactEpisodeDetailContent(
 @Composable
 private fun ExpandedEpisodeDetailContent(
     episode: EpisodeDetail,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     Row(
@@ -211,7 +223,10 @@ private fun ExpandedEpisodeDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp, top = 16.dp),
         ) {
             item {
-                CastSection(castList = episode.credits?.guestStars ?: emptyList(), title = "Guest Stars")
+                CastSection(castList = episode.credits?.cast ?: emptyList(), title = "Cast", onPersonClicked = onPersonClicked)
+            }
+            item {
+                CastSection(castList = episode.credits?.guestStars ?: emptyList(), title = "Guest Stars", onPersonClicked = onPersonClicked)
             }
         }
     }
@@ -256,11 +271,29 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Text(
-            text = "Episode ${episode.episodeNumber} • Season ${episode.seasonNumber}",
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Episode ${episode.episodeNumber} • Season ${episode.seasonNumber}",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
+            // "standard" is the default episode type - only special ones (finale, mid_season)
+            // are worth a badge.
+            episode.episodeType?.takeIf { it.isNotEmpty() && it != "standard" }?.let { type ->
+                Text(
+                    text = formatEpisodeType(type),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -293,7 +326,8 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "${(episode.voteAverage * 10).toInt() / 10.0} / 10",
+                        text = "${(episode.voteAverage * 10).toInt() / 10.0} / 10" +
+                            if (episode.voteCount > 0) " (${episode.voteCount} votes)" else "",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
@@ -301,5 +335,67 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
                 }
             }
         }
+
+        if (!episode.productionCode.isNullOrEmpty()) {
+            Text(
+                text = "Production code ${episode.productionCode}",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        CrewSummary(crew = episode.allCrew)
+
+        episode.externalIds?.imdbId?.let { imdbId ->
+            Text(
+                text = "View on IMDb",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .clickable { openUrl("https://www.imdb.com/title/$imdbId/") }
+            )
+        }
     }
 }
+
+// One line per role group, e.g. "Directed by Timothy Van Patten" / "Written by D.B. Weiss, David
+// Benioff". Departments beyond directing/writing (camera, editing, ...) are collapsed into a
+// single crew count line to keep the header scannable.
+@Composable
+private fun CrewSummary(crew: List<CrewMember>) {
+    if (crew.isEmpty()) return
+    val directors = crew.filter { it.job == "Director" }.map { it.name }
+    val writers = crew.filter { it.department == "Writing" }.map { it.name }.distinct()
+    val others = crew.size - crew.count { it.job == "Director" || it.department == "Writing" }
+    Column(modifier = Modifier.padding(top = 6.dp)) {
+        if (directors.isNotEmpty()) {
+            Text(
+                text = "Directed by ${directors.joinToString(", ")}",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+            )
+        }
+        if (writers.isNotEmpty()) {
+            Text(
+                text = "Written by ${writers.joinToString(", ")}",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        if (others > 0) {
+            Text(
+                text = "$others more crew member${if (others == 1) "" else "s"}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+private fun formatEpisodeType(type: String): String =
+    type.split('_').joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }

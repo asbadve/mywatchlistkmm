@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -29,7 +30,11 @@ import mywatchlist.composeapp.generated.resources.baseline_person_24
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun CastSection(castList: List<CastMember>, title: String = "Cast & Crew") {
+fun CastSection(
+    castList: List<CastMember>,
+    title: String = "Cast & Crew",
+    onPersonClicked: (Long) -> Unit = {},
+) {
     if (castList.isNotEmpty()) {
         val lazyRowState = rememberLazyListState()
         Column(
@@ -49,7 +54,7 @@ fun CastSection(castList: List<CastMember>, title: String = "Cast & Crew") {
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(castList.take(15)) { member ->
-                    CastMemberItem(member = member)
+                    CastMemberItem(member = member, onClick = { onPersonClicked(member.id.toLong()) })
                 }
             }
         }
@@ -57,7 +62,7 @@ fun CastSection(castList: List<CastMember>, title: String = "Cast & Crew") {
 }
 
 @Composable
-private fun CastMemberItem(member: CastMember) {
+private fun CastMemberItem(member: CastMember, onClick: () -> Unit) {
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     val profileUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
         path = member.profilePath,
@@ -69,7 +74,7 @@ private fun CastMemberItem(member: CastMember) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(90.dp)
+        modifier = Modifier.width(90.dp).clickable(onClick = onClick)
     ) {
         val painter = rememberAsyncImagePainter(
             model = profileUrl,

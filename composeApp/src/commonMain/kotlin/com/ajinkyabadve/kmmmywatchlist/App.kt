@@ -60,6 +60,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail.PersonDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTab
@@ -79,6 +80,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.MovieDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MoviesKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MyFavKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.NavigationConstants
+import com.ajinkyabadve.kmmmywatchlist.navigation.PersonDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.PersonKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TopLevelBackStack
 import com.ajinkyabadve.kmmmywatchlist.navigation.TrendingKey
@@ -298,6 +300,7 @@ private fun MainAppScaffoldContent(
                     top =
                         if (currentKey !is MovieDetailKey &&
                             currentKey !is TvDetailKey &&
+                            currentKey !is PersonDetailKey &&
                             currentKey !is AllSeasonsKey &&
                             currentKey !is EpisodeListKey &&
                             currentKey !is EpisodeDetailKey
@@ -318,6 +321,9 @@ private fun MainAppScaffoldContent(
                             },
                             onTvShowSelected = { tvShowId ->
                                 topLevelBackStack.add(TvDetailKey(tvShowId))
+                            },
+                            onPersonSelected = { personId ->
+                                topLevelBackStack.add(PersonDetailKey(personId))
                             },
                         )
                     }
@@ -345,7 +351,12 @@ private fun MainAppScaffoldContent(
                         )
                     }
                     entry<PersonKey> {
-                        PersonScreenTab(viewModel = personListViewModel)
+                        PersonScreenTab(
+                            viewModel = personListViewModel,
+                            onPersonSelected = { personId ->
+                                topLevelBackStack.add(PersonDetailKey(personId))
+                            },
+                        )
                     }
                     entry<MyFavKey> { MyFavScreenTab() }
                     entry<MovieDetailKey> { key ->
@@ -355,6 +366,9 @@ private fun MainAppScaffoldContent(
                             onBackClicked = { topLevelBackStack.removeLast() },
                             onMovieClicked = { nextMovieId ->
                                 topLevelBackStack.add(MovieDetailKey(nextMovieId))
+                            },
+                            onPersonClicked = { personId ->
+                                topLevelBackStack.add(PersonDetailKey(personId))
                             },
                         )
                     }
@@ -368,6 +382,22 @@ private fun MainAppScaffoldContent(
                             },
                             onViewAllSeasonsClick = { seasonsTvShowId ->
                                 topLevelBackStack.add(AllSeasonsKey(seasonsTvShowId))
+                            },
+                            onPersonClicked = { personId ->
+                                topLevelBackStack.add(PersonDetailKey(personId))
+                            },
+                        )
+                    }
+                    entry<PersonDetailKey> { key ->
+                        PersonDetailScreen(
+                            personId = key.personId,
+                            windowSize = windowSize,
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            onMovieClicked = { movieId ->
+                                topLevelBackStack.add(MovieDetailKey(movieId))
+                            },
+                            onTvShowClicked = { tvShowId ->
+                                topLevelBackStack.add(TvDetailKey(tvShowId))
                             },
                         )
                     }
@@ -410,6 +440,9 @@ private fun MainAppScaffoldContent(
                             episodeNumber = key.episodeNumber,
                             windowSize = windowSize,
                             onBackClicked = { topLevelBackStack.removeLast() },
+                            onPersonClicked = { personId ->
+                                topLevelBackStack.add(PersonDetailKey(personId))
+                            },
                         )
                     }
                 },

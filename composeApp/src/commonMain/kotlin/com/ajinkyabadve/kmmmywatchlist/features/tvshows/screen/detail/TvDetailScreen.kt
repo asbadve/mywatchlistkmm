@@ -67,6 +67,7 @@ fun TvDetailScreen(
     onBackClicked: () -> Unit,
     onTvShowClicked: (Long) -> Unit,
     onViewAllSeasonsClick: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit = {},
     viewModel: TvDetailScreenModel = viewModel(key = "TvDetailScreenModel:$tvShowId") { TvDetailScreenModel(tvShowId) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -168,6 +169,7 @@ fun TvDetailScreen(
                                     currentSeason = state.currentSeason,
                                     lazyListState = lazyListState,
                                     onTvShowClicked = onTvShowClicked,
+                                    onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
@@ -180,6 +182,7 @@ fun TvDetailScreen(
                                     currentSeason = state.currentSeason,
                                     leftLazyListState = leftLazyListState,
                                     onTvShowClicked = onTvShowClicked,
+                                    onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
                                         galleryImages = images
                                         galleryInitialIndex = index
@@ -268,6 +271,7 @@ private fun CompactTvDetailContent(
     currentSeason: TvSeasonDetail?,
     lazyListState: LazyListState,
     onTvShowClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
     onViewAllSeasonsClick: () -> Unit,
 ) {
@@ -313,7 +317,7 @@ private fun CompactTvDetailContent(
             )
         }
         item {
-            CastSection(castList = detail.credits?.cast ?: emptyList())
+            CastSection(castList = detail.credits?.cast ?: emptyList(), onPersonClicked = onPersonClicked)
         }
         item {
             TvRecommendationsSection(
@@ -336,6 +340,7 @@ private fun ExpandedTvDetailContent(
     currentSeason: TvSeasonDetail?,
     leftLazyListState: LazyListState,
     onTvShowClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
     onViewAllSeasonsClick: () -> Unit,
     rightColumnTopPadding: androidx.compose.ui.unit.Dp,
@@ -395,7 +400,7 @@ private fun ExpandedTvDetailContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                CastSection(castList = detail.credits?.cast ?: emptyList())
+                CastSection(castList = detail.credits?.cast ?: emptyList(), onPersonClicked = onPersonClicked)
             }
             item {
                 TvRecommendationsSection(
