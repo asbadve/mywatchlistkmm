@@ -327,10 +327,10 @@ private fun ExpandedMovieDetailContent(
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // Left Column (Main details pane) - Width takes up 60% of space
+        // Left Column (Main details pane) - Width takes up half of space
         LazyColumn(
             state = leftLazyListState,
-            modifier = Modifier.weight(1.5f),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
@@ -368,7 +368,7 @@ private fun ExpandedMovieDetailContent(
             }
         }
 
-        // Right Column (Supporting details pane) - Width takes up 40% of space
+        // Right Column (Supporting details pane) - Width takes up half of space
         LazyColumn(
             modifier = Modifier.weight(1f).padding(top = rightColumnTopPadding),
             contentPadding = PaddingValues(bottom = 32.dp),

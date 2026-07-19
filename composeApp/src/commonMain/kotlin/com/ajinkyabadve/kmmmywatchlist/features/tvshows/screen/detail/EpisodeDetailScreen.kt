@@ -190,7 +190,7 @@ private fun ExpandedEpisodeDetailContent(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         LazyColumn(
-            modifier = Modifier.weight(1.5f),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item { EpisodeStillHeader(episode = episode) }

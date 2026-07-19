@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(adb shell input *)",
+      "Bash(adb devices)",
+      "Bash(android layout *)",
+      "Bash(android screen *)",
+      "Bash(android docs *)",
+      "Bash(xcrun simctl io *)",
+      "Bash(xcrun simctl list *)",
+      "Bash(./gradlew :composeApp:desktopTest)",
+      "Bash(./gradlew :composeApp:compileKotlinDesktop)"
+    ]
+  }
+}
