@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.network.builder.mediaHttpBuilder
@@ -47,6 +48,19 @@ class MovieRepositoryImpl(
                 encodedPath = "$COLLECTION$collectionId"
                 parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
                 parameters.append("append_to_response", "images,translations")
+            }
+        }
+        return response.body()
+    }
+
+    override suspend fun getMovieCredits(movieId: Long): Credits {
+        val response: HttpResponse = tmdbClient.client.get {
+            url {
+                protocol = URLProtocol.HTTPS
+                host = NetworkConstant.HOST
+                trailingQuery = true
+                encodedPath = "$MOVIE$movieId/credits"
+                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
             }
         }
         return response.body()

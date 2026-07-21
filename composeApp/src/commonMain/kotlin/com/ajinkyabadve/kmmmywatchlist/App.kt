@@ -386,6 +386,9 @@ private fun MainAppScaffoldContent(
                             onMovieClicked = { movieId ->
                                 topLevelBackStack.add(MovieDetailKey(movieId))
                             },
+                            onPersonClicked = { personId ->
+                                topLevelBackStack.add(PersonDetailKey(personId))
+                            },
                         )
                     }
                     entry<TvDetailKey> { key ->

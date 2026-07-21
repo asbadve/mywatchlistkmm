@@ -30,3 +30,63 @@ data class CollectionDetail(
     val partsInReleaseOrder: List<Movie>
         get() = parts.sortedWith(compareBy { it.releaseDate.takeIf { date -> date.isNotEmpty() } ?: "9999" })
 }
+
+/**
+ * Featured cast across a collection's movies, like themoviedb.org collection pages: actors ranked
+ * by how many of the films they appear in, then by their best billing position. Characters from
+ * all appearances are merged into one label.
+ */
+fun aggregateFeaturedCast(creditsPerMovie: List<Credits>, max: Int = 15): List<CastMember> =
+    creditsPerMovie
+        .flatMap { it.cast }
+        .groupBy { it.id }
+        .values
+        .sortedWith(
+            compareByDescending<List<CastMember>> { appearances -> appearances.size }
+                .thenBy { appearances -> appearances.minOf { it.order } },
+        )
+        .take(max)
+        .map { appearances ->
+            val first = appearances.first()
+            first.copy(
+                character = appearances
+                    .map { it.character }
+                    .filter { it.isNotEmpty() }
+                    .distinct()
+                    .joinToString(" / "),
+            )
+        }
+
+/**
+ * Featured crew across a collection's movies: directors first, then writers, then everyone else,
+ * each group ranked by appearance count. All jobs a person held are merged into one label, and the
+ * result is mapped onto [CastMember] so the shared cast row can render it (character = jobs).
+ */
+fun aggregateFeaturedCrew(creditsPerMovie: List<Credits>, max: Int = 15): List<CastMember> =
+    creditsPerMovie
+        .flatMap { it.crew }
+        .groupBy { it.id }
+        .values
+        .sortedWith(
+            compareBy<List<com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember>> { jobs ->
+                when {
+                    jobs.any { it.job == JOB_DIRECTOR } -> 0
+                    jobs.any { it.department == DEPARTMENT_WRITING } -> 1
+                    else -> 2
+                }
+            }.thenByDescending { jobs -> jobs.size },
+        )
+        .take(max)
+        .map { jobs ->
+            val first = jobs.first()
+            CastMember(
+                id = first.id.toInt(),
+                name = first.name,
+                profilePath = first.profilePath,
+                character = jobs.map { it.job }.filter { it.isNotEmpty() }.distinct().joinToString(", "),
+            )
+        }
+
+// TMDB job/department identifiers (API values, not user-facing).
+private const val JOB_DIRECTOR = "Director"
+private const val DEPARTMENT_WRITING = "Writing"

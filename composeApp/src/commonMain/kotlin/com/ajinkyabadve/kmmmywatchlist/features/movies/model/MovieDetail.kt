@@ -16,7 +16,9 @@ data class CastMember(
     val id: Int = -1,
     val name: String = "",
     @SerialName("profile_path") val profilePath: String? = null,
-    val character: String = ""
+    val character: String = "",
+    // Billing position within a movie's cast list; lower is more prominent.
+    val order: Int = 999,
 )
 
 @Serializable

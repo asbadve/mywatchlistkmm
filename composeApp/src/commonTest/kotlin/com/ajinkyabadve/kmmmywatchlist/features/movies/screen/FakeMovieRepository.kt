@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
@@ -11,6 +12,9 @@ class FakeMovieRepository : MovieRepository {
     var getMoviesResult: Result<MoviePageResult>? = null
     var getMovieDetailsResult: Result<MovieDetail>? = null
     var getCollectionDetailsResult: Result<CollectionDetail>? = null
+    // Per-movie credits for the collection featured cast/crew aggregation.
+    val getMovieCreditsResults = mutableMapOf<Long, Result<Credits>>()
+    val getMovieCreditsCalls = mutableListOf<Long>()
     val getCollectionDetailsCalls = mutableListOf<Long>()
 
     val getMoviesCalls = mutableListOf<Pair<Int, String>>()
@@ -89,5 +93,19 @@ class FakeMovieRepository : MovieRepository {
         }
 
         return CollectionDetail(id = collectionId, name = "Collection A")
+    }
+
+    override suspend fun getMovieCredits(movieId: Long): Credits {
+        getMovieCreditsCalls.add(movieId)
+
+        getMovieCreditsResults[movieId]?.let { result ->
+            if (result.isSuccess) {
+                return result.getOrThrow()
+            } else {
+                throw result.exceptionOrNull() ?: IOException("Fake repository error")
+            }
+        }
+
+        return Credits()
     }
 }

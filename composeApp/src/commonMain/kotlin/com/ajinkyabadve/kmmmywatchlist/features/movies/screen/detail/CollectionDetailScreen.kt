@@ -60,7 +60,10 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
+import mywatchlist.composeapp.generated.resources.featured_cast
+import mywatchlist.composeapp.generated.resources.featured_crew
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +72,7 @@ fun CollectionDetailScreen(
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
     onMovieClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit = {},
     viewModel: CollectionDetailScreenModel =
         viewModel(key = "CollectionDetailScreenModel:$collectionId") { CollectionDetailScreenModel(collectionId) },
 ) {
@@ -127,14 +131,16 @@ fun CollectionDetailScreen(
                     }
                     if (windowSize.isCompact()) {
                         CompactCollectionDetailContent(
-                            collection = state.collection,
+                            state = state,
                             onMovieClicked = onMovieClicked,
+                            onPersonClicked = onPersonClicked,
                             onShowGallery = onShowGallery,
                         )
                     } else {
                         ExpandedCollectionDetailContent(
-                            collection = state.collection,
+                            state = state,
                             onMovieClicked = onMovieClicked,
+                            onPersonClicked = onPersonClicked,
                             onShowGallery = onShowGallery,
                         )
                     }
@@ -155,16 +161,24 @@ fun CollectionDetailScreen(
 
 @Composable
 private fun CompactCollectionDetailContent(
-    collection: CollectionDetail,
+    state: CollectionDetailState.Success,
     onMovieClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
+    val collection = state.collection
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item { CollectionHeader(collection = collection) }
         item { CollectionMoviesList(collection = collection, onMovieClicked = onMovieClicked) }
+        item {
+            CastSection(castList = state.featuredCast, title = stringResource(Res.string.featured_cast), onPersonClicked = onPersonClicked)
+        }
+        item {
+            CastSection(castList = state.featuredCrew, title = stringResource(Res.string.featured_crew), onPersonClicked = onPersonClicked)
+        }
         item {
             MovieImagesSection(
                 images = collection.images?.backdrops ?: emptyList(),
@@ -180,10 +194,12 @@ private fun CompactCollectionDetailContent(
 // identity on the left, its movies on the right.
 @Composable
 private fun ExpandedCollectionDetailContent(
-    collection: CollectionDetail,
+    state: CollectionDetailState.Success,
     onMovieClicked: (Long) -> Unit,
+    onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
+    val collection = state.collection
     Row(
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -193,6 +209,12 @@ private fun ExpandedCollectionDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item { CollectionHeader(collection = collection) }
+            item {
+                CastSection(castList = state.featuredCast, title = stringResource(Res.string.featured_cast), onPersonClicked = onPersonClicked)
+            }
+            item {
+                CastSection(castList = state.featuredCrew, title = stringResource(Res.string.featured_crew), onPersonClicked = onPersonClicked)
+            }
             item {
                 MovieImagesSection(
                     images = collection.images?.backdrops ?: emptyList(),

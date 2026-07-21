@@ -1,7 +1,10 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -55,6 +58,56 @@ class CollectionDetailScreenModelTest {
         assertEquals(collection, state.collection)
         assertEquals("The Dark Knight", state.collection.parts.single().title)
         assertEquals(listOf(263L), fakeRepository.getCollectionDetailsCalls)
+    }
+
+    @Test
+    fun testFeaturedCreditsAggregatedFromEveryPart() = runTest(testDispatcher) {
+        val collection = CollectionDetail(
+            id = 263,
+            name = "The Dark Knight Collection",
+            parts = listOf(Movie(id = 272, title = "Batman Begins"), Movie(id = 155, title = "The Dark Knight")),
+        )
+        fakeRepository.getCollectionDetailsResult = Result.success(collection)
+        fakeRepository.getMovieCreditsResults[272L] = Result.success(
+            Credits(
+                cast = listOf(CastMember(id = 1, name = "Christian Bale", character = "Bruce Wayne", order = 0)),
+                crew = listOf(CrewMember(id = 525, name = "Christopher Nolan", job = "Director", department = "Directing")),
+            ),
+        )
+        fakeRepository.getMovieCreditsResults[155L] = Result.success(
+            Credits(
+                cast = listOf(CastMember(id = 1, name = "Christian Bale", character = "Batman", order = 0)),
+                crew = listOf(CrewMember(id = 525, name = "Christopher Nolan", job = "Director", department = "Directing")),
+            ),
+        )
+
+        val viewModel = CollectionDetailScreenModel(263, fakeRepository)
+
+        val state = assertIs<CollectionDetailState.Success>(viewModel.uiState.value)
+        assertEquals(listOf(272L, 155L), fakeRepository.getMovieCreditsCalls)
+        assertEquals("Christian Bale", state.featuredCast.single().name)
+        assertEquals("Bruce Wayne / Batman", state.featuredCast.single().character)
+        assertEquals("Christopher Nolan", state.featuredCrew.single().name)
+        assertEquals("Director", state.featuredCrew.single().character)
+    }
+
+    @Test
+    fun testFailedCreditsCallsDoNotBreakTheScreen() = runTest(testDispatcher) {
+        val collection = CollectionDetail(
+            id = 263,
+            name = "The Dark Knight Collection",
+            parts = listOf(Movie(id = 272, title = "Batman Begins"), Movie(id = 155, title = "The Dark Knight")),
+        )
+        fakeRepository.getCollectionDetailsResult = Result.success(collection)
+        fakeRepository.getMovieCreditsResults[272L] = Result.failure(IOException("boom"))
+        fakeRepository.getMovieCreditsResults[155L] = Result.success(
+            Credits(cast = listOf(CastMember(id = 5, name = "Heath Ledger", character = "Joker", order = 1))),
+        )
+
+        val viewModel = CollectionDetailScreenModel(263, fakeRepository)
+
+        val state = assertIs<CollectionDetailState.Success>(viewModel.uiState.value)
+        assertEquals("Heath Ledger", state.featuredCast.single().name)
     }
 
     @Test
