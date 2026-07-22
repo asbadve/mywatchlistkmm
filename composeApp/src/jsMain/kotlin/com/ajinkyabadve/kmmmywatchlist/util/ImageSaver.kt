@@ -1,14 +1,17 @@
 package com.ajinkyabadve.kmmmywatchlist.util
 
+import kotlinx.browser.document
 import org.khronos.webgl.Int8Array
 import org.w3c.dom.HTMLAnchorElement
 import org.w3c.files.Blob
 import org.w3c.files.BlobPropertyBag
-import kotlinx.browser.document
 
 actual class ImageSaver actual constructor() {
-    actual suspend fun saveImage(bytes: ByteArray, fileName: String): String? {
-        return try {
+    actual suspend fun saveImage(
+        bytes: ByteArray,
+        fileName: String,
+    ): String? =
+        try {
             val bytesTyped = Int8Array(bytes.toTypedArray())
             val blob = Blob(arrayOf(bytesTyped), BlobPropertyBag(type = "image/jpeg"))
             val url = createObjectURL(blob)
@@ -24,11 +27,8 @@ actual class ImageSaver actual constructor() {
             e.printStackTrace()
             null
         }
-    }
 
-    private fun createObjectURL(blob: Blob): String {
-        return js("URL.createObjectURL(blob)") as String
-    }
+    private fun createObjectURL(blob: Blob): String = js("URL.createObjectURL(blob)") as String
 
     private fun revokeObjectURL(url: String) {
         js("URL.revokeObjectURL(url)")

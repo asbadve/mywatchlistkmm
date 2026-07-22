@@ -15,7 +15,8 @@ class EpisodeDetailSerializationTest {
     // Same relevant settings as TmdbClient's Json configuration.
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val fullEpisodeJson = """
+    private val fullEpisodeJson =
+        """
         {
           "air_date": "2011-04-17",
           "episode_number": 1,
@@ -118,7 +119,7 @@ class EpisodeDetailSerializationTest {
             ]
           }
         }
-    """.trimIndent()
+        """.trimIndent()
 
     @Test
     fun parsesEveryBaseFieldFromTheOasSchema() {
@@ -200,9 +201,10 @@ class EpisodeDetailSerializationTest {
         val episode = json.decodeFromString<EpisodeDetail>(fullEpisodeJson)
         assertEquals(2, episode.allCrew.size)
 
-        val creditsOnly = EpisodeDetail(
-            credits = EpisodeCredits(crew = listOf(CrewMember(name = "Only In Credits", job = "Director"))),
-        )
+        val creditsOnly =
+            EpisodeDetail(
+                credits = EpisodeCredits(crew = listOf(CrewMember(name = "Only In Credits", job = "Director"))),
+            )
         assertEquals("Only In Credits", creditsOnly.allCrew.single().name)
 
         assertTrue(EpisodeDetail().allCrew.isEmpty())

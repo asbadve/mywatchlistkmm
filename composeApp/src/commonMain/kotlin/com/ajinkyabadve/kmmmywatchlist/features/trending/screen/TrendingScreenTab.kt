@@ -2,17 +2,28 @@
 
 package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,32 +35,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.mediaPersonRow
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_MOVIE
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_PEOPLE
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_TV
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrendingSectionState
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.ExperimentalSerializationApi
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
 
 @OptIn(ExperimentalSerializationApi::class)
 @Composable
@@ -190,7 +189,7 @@ private fun TrendingSection(
             errorMessage = section.errorMessage,
             onRetry = {
                 onChipSelected(section.selectedChipIndex, section.mediaType)
-            }
+            },
         )
     } else if (section.mediaList.isNotEmpty()) {
         TrendingMediaCarousel(section.mediaList, section.mediaType, onMovieSelected, onTvShowSelected, onPersonSelected)
@@ -248,45 +247,50 @@ private fun TrendingMediaCarousel(
         val item = mediaTrendResult[i]
         val density = androidx.compose.ui.platform.LocalDensity.current.density
         val targetWidth = 200
-        val imageType = if (mediaType == MEDIA_TYPE_PEOPLE) {
-            com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE
-        } else {
-            com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER
-        }
-        val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
-            path = item.posterPath,
-            type = imageType,
-            targetWidthDp = targetWidth,
-            density = density
-        )
+        val imageType =
+            if (mediaType == MEDIA_TYPE_PEOPLE) {
+                com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE
+            } else {
+                com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER
+            }
+        val imageUrl =
+            com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                path = item.posterPath,
+                type = imageType,
+                targetWidthDp = targetWidth,
+                density = density,
+            )
         when (mediaType) {
-            MEDIA_TYPE_TV -> mediaTvShowRow(
-                imageUrl = imageUrl,
-                title = item.title,
-                modifier = Modifier,
-                onClick = {
-                    Napier.d { "title " + item.title }
-                    onTvShowSelected(item.id.toLong())
-                },
-            )
-            MEDIA_TYPE_PEOPLE -> mediaPersonRow(
-                imageUrl = imageUrl,
-                name = item.title,
-                modifier = Modifier,
-                onClick = {
-                    Napier.d { "title " + item.title }
-                    onPersonSelected(item.id.toLong())
-                },
-            )
-            else -> mediaMovieRow(
-                imageUrl = imageUrl,
-                title = item.title,
-                modifier = Modifier,
-                onClick = {
-                    Napier.d { "title " + item.title }
-                    onMovieSelected(item.id.toLong())
-                },
-            )
+            MEDIA_TYPE_TV ->
+                mediaTvShowRow(
+                    imageUrl = imageUrl,
+                    title = item.title,
+                    modifier = Modifier,
+                    onClick = {
+                        Napier.d { "title " + item.title }
+                        onTvShowSelected(item.id.toLong())
+                    },
+                )
+            MEDIA_TYPE_PEOPLE ->
+                mediaPersonRow(
+                    imageUrl = imageUrl,
+                    name = item.title,
+                    modifier = Modifier,
+                    onClick = {
+                        Napier.d { "title " + item.title }
+                        onPersonSelected(item.id.toLong())
+                    },
+                )
+            else ->
+                mediaMovieRow(
+                    imageUrl = imageUrl,
+                    title = item.title,
+                    modifier = Modifier,
+                    onClick = {
+                        Napier.d { "title " + item.title }
+                        onMovieSelected(item.id.toLong())
+                    },
+                )
         }
     }
 }
@@ -319,17 +323,20 @@ private fun TrendingErrorState(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        )
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+            ),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {

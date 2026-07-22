@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
+import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
@@ -12,6 +13,10 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.SerializationException
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.error_network
+import mywatchlist.composeapp.generated.resources.error_unexpected_movie_details
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -21,7 +26,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MovieDetailScreenModelTest {
-
     private val testDispatcher = UnconfinedTestDispatcher()
     private val fakeRepository = FakeMovieRepository()
 
@@ -44,59 +48,64 @@ class MovieDetailScreenModelTest {
     }
 
     @Test
-    fun testSuccessLoadsMovieDetail() = runTest(testDispatcher) {
-        val detail = MovieDetail(id = 42, title = "Fixture Movie")
-        fakeRepository.getMovieDetailsResult = Result.success(detail)
+    fun testSuccessLoadsMovieDetail() =
+        runTest(testDispatcher) {
+            val detail = MovieDetail(id = 42, title = "Fixture Movie")
+            fakeRepository.getMovieDetailsResult = Result.success(detail)
 
-        val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            val viewModel = MovieDetailScreenModel(42, fakeRepository)
 
-        val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
-        assertEquals(detail, state.movieDetail)
-        assertEquals(listOf(42L), fakeRepository.getMovieDetailsCalls)
-    }
-
-    @Test
-    fun testHttpExceptionsSetsErrorWithResponseMessage() = runTest(testDispatcher) {
-        fakeRepository.getMovieDetailsResult = Result.failure(notFoundException)
-
-        val viewModel = MovieDetailScreenModel(42, fakeRepository)
-
-        val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
-        assertEquals(notFoundException.message, state.message)
-    }
+            val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
+            assertEquals(detail, state.movieDetail)
+            assertEquals(listOf(42L), fakeRepository.getMovieDetailsCalls)
+        }
 
     @Test
-    fun testIOExceptionSetsNetworkErrorMessage() = runTest(testDispatcher) {
-        fakeRepository.getMovieDetailsResult = Result.failure(IOException("Mock network failure"))
+    fun testHttpExceptionsSetsErrorWithResponseMessage() =
+        runTest(testDispatcher) {
+            fakeRepository.getMovieDetailsResult = Result.failure(notFoundException)
 
-        val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            val viewModel = MovieDetailScreenModel(42, fakeRepository)
 
-        val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
-        assertEquals("Network Connection Error. Please check your internet connectivity.", state.message)
-    }
-
-    @Test
-    fun testUnexpectedExceptionSetsGenericErrorMessage() = runTest(testDispatcher) {
-        fakeRepository.getMovieDetailsResult = Result.failure(RuntimeException("Boom"))
-
-        val viewModel = MovieDetailScreenModel(42, fakeRepository)
-
-        val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
-        assertEquals("An unexpected error occurred while loading movie details. Please try again.", state.message)
-    }
+            val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
+            assertEquals(UiText.Plain(notFoundException.message), state.message)
+        }
 
     @Test
-    fun testRetryAfterErrorSucceeds() = runTest(testDispatcher) {
-        fakeRepository.getMovieDetailsResult = Result.failure(IOException("Mock network failure"))
-        val viewModel = MovieDetailScreenModel(42, fakeRepository)
-        assertIs<MovieDetailState.Error>(viewModel.uiState.value)
+    fun testIOExceptionSetsNetworkErrorMessage() =
+        runTest(testDispatcher) {
+            fakeRepository.getMovieDetailsResult = Result.failure(IOException("Mock network failure"))
 
-        val detail = MovieDetail(id = 42, title = "Fixture Movie")
-        fakeRepository.getMovieDetailsResult = Result.success(detail)
-        viewModel.loadMovieDetails()
+            val viewModel = MovieDetailScreenModel(42, fakeRepository)
 
-        val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
-        assertEquals(detail, state.movieDetail)
-        assertTrue(fakeRepository.getMovieDetailsCalls.size == 2)
-    }
+            val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
+            assertEquals(UiText.Resource(Res.string.error_network), state.message)
+        }
+
+    @Test
+    fun testSerializationExceptionSetsGenericErrorMessage() =
+        runTest(testDispatcher) {
+            fakeRepository.getMovieDetailsResult = Result.failure(SerializationException("Boom"))
+
+            val viewModel = MovieDetailScreenModel(42, fakeRepository)
+
+            val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
+            assertEquals(UiText.Resource(Res.string.error_unexpected_movie_details), state.message)
+        }
+
+    @Test
+    fun testRetryAfterErrorSucceeds() =
+        runTest(testDispatcher) {
+            fakeRepository.getMovieDetailsResult = Result.failure(IOException("Mock network failure"))
+            val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            assertIs<MovieDetailState.Error>(viewModel.uiState.value)
+
+            val detail = MovieDetail(id = 42, title = "Fixture Movie")
+            fakeRepository.getMovieDetailsResult = Result.success(detail)
+            viewModel.loadMovieDetails()
+
+            val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
+            assertEquals(detail, state.movieDetail)
+            assertTrue(fakeRepository.getMovieDetailsCalls.size == 2)
+        }
 }

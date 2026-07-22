@@ -5,6 +5,4 @@ import platform.Foundation.NSUserDefaults
 
 actual fun getPlatformName(): String = "iOS"
 
-actual fun createSettings(): com.russhwolf.settings.Settings {
-    return NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults)
-}
+actual fun createSettings(): com.russhwolf.settings.Settings = NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults)

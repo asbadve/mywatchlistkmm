@@ -21,10 +21,11 @@ data class CollectionDetail(
 ) {
     // Average of the rated parts, matching the collection score themoviedb.org displays.
     val averageVote: Double?
-        get() = parts
-            .filter { it.voteAverage > 0 }
-            .takeIf { it.isNotEmpty() }
-            ?.let { rated -> rated.sumOf { it.voteAverage } / rated.size }
+        get() =
+            parts
+                .filter { it.voteAverage > 0 }
+                .takeIf { it.isNotEmpty() }
+                ?.let { rated -> rated.sumOf { it.voteAverage } / rated.size }
 
     // Parts sorted oldest-first (release order), undated entries (unreleased) last.
     val partsInReleaseOrder: List<Movie>
@@ -36,7 +37,10 @@ data class CollectionDetail(
  * by how many of the films they appear in, then by their best billing position. Characters from
  * all appearances are merged into one label.
  */
-fun aggregateFeaturedCast(creditsPerMovie: List<Credits>, max: Int = 15): List<CastMember> =
+fun aggregateFeaturedCast(
+    creditsPerMovie: List<Credits>,
+    max: Int = 15,
+): List<CastMember> =
     creditsPerMovie
         .flatMap { it.cast }
         .groupBy { it.id }
@@ -44,16 +48,16 @@ fun aggregateFeaturedCast(creditsPerMovie: List<Credits>, max: Int = 15): List<C
         .sortedWith(
             compareByDescending<List<CastMember>> { appearances -> appearances.size }
                 .thenBy { appearances -> appearances.minOf { it.order } },
-        )
-        .take(max)
+        ).take(max)
         .map { appearances ->
             val first = appearances.first()
             first.copy(
-                character = appearances
-                    .map { it.character }
-                    .filter { it.isNotEmpty() }
-                    .distinct()
-                    .joinToString(" / "),
+                character =
+                    appearances
+                        .map { it.character }
+                        .filter { it.isNotEmpty() }
+                        .distinct()
+                        .joinToString(" / "),
             )
         }
 
@@ -62,7 +66,10 @@ fun aggregateFeaturedCast(creditsPerMovie: List<Credits>, max: Int = 15): List<C
  * each group ranked by appearance count. All jobs a person held are merged into one label, and the
  * result is mapped onto [CastMember] so the shared cast row can render it (character = jobs).
  */
-fun aggregateFeaturedCrew(creditsPerMovie: List<Credits>, max: Int = 15): List<CastMember> =
+fun aggregateFeaturedCrew(
+    creditsPerMovie: List<Credits>,
+    max: Int = 15,
+): List<CastMember> =
     creditsPerMovie
         .flatMap { it.crew }
         .groupBy { it.id }
@@ -75,15 +82,19 @@ fun aggregateFeaturedCrew(creditsPerMovie: List<Credits>, max: Int = 15): List<C
                     else -> 2
                 }
             }.thenByDescending { jobs -> jobs.size },
-        )
-        .take(max)
+        ).take(max)
         .map { jobs ->
             val first = jobs.first()
             CastMember(
                 id = first.id.toInt(),
                 name = first.name,
                 profilePath = first.profilePath,
-                character = jobs.map { it.job }.filter { it.isNotEmpty() }.distinct().joinToString(", "),
+                character =
+                    jobs
+                        .map { it.job }
+                        .filter { it.isNotEmpty() }
+                        .distinct()
+                        .joinToString(", "),
             )
         }
 

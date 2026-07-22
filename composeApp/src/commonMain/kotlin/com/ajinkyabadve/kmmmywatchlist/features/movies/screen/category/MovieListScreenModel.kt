@@ -12,11 +12,13 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
 import io.github.aakira.napier.log
+import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 
 class MovieListScreenModel(
     private val movieFetchType: String,
@@ -33,7 +35,6 @@ class MovieListScreenModel(
         loadMovies()
     }
 
-    @Suppress("detekt:TooGenericExceptionCaught")
     internal fun loadMovies() {
         viewModelScope.launch(Dispatchers.Main) {
             if (isFirstPage() || isNotFirstPageAndCanPaginate() && (isListStateLoadable())) {
@@ -73,10 +74,11 @@ class MovieListScreenModel(
                     e.printStackTrace()
                     log { "IOException" }
                     listState = ListState.NETWORK_ERROR
-                } catch (e: Exception) {
-                    // todo right now there is no way to find out specific exception
-                    e.printStackTrace()
-                    log { "Exception" }
+                } catch (e: ContentConvertException) {
+                    log { "Malformed response: ${e.message}" }
+                    listState = ListState.ERROR
+                } catch (e: SerializationException) {
+                    log { "Malformed response: ${e.message}" }
                     listState = ListState.ERROR
                 }
             }

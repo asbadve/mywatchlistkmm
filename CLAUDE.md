@@ -5,6 +5,7 @@ Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions
 - Catch/throw specific exception types only - never bare `Exception`.
 - No magic strings: internal strings become `private const val`s; user-facing text goes in
   `composeApp/src/commonMain/composeResources/values/strings.xml` via `Res.string.*`.
+- No wildcard imports - import every symbol explicitly.
 
 ## Other project skills
 - `.claude/skills/tmdb-api/SKILL.md` - how to look up TMDB endpoint schemas (OpenAPI) and
@@ -13,5 +14,6 @@ Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions
   changes run tests + compile checks only; the user launches and verifies apps themselves.
 
 ## Verify
-`./gradlew :composeApp:desktopTest` (tests) and `:composeApp:compileKotlinDesktop` +
-`:composeApp:assembleDebug` (compile checks).
+`./gradlew :composeApp:desktopTest` (tests), `:composeApp:compileKotlinDesktop` +
+`:composeApp:assembleDebug` (compile checks), and `:composeApp:ktlintCheck` (lint - must be
+zero violations before finalizing; `ktlintFormat` auto-fixes most).

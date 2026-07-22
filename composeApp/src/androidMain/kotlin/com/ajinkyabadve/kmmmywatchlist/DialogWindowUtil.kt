@@ -1,18 +1,18 @@
 package com.ajinkyabadve.kmmmywatchlist
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
+import android.view.View
+import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
-import android.view.Window
-import android.view.ViewGroup
-import android.graphics.drawable.ColorDrawable
-import android.graphics.Color
-import android.view.WindowManager
-import android.view.View
-import android.view.WindowInsets
-import android.view.WindowInsetsController
-import android.os.Build
 
 @Composable
 actual fun ConfigureDialogWindow() {
@@ -23,7 +23,7 @@ actual fun ConfigureDialogWindow() {
 
     DisposableEffect(view) {
         var window: Window? = null
-        
+
         // 1. Try resolving Dialog via view's context wrappers
         var ctx = view.context
         while (ctx is android.content.ContextWrapper) {
@@ -38,7 +38,7 @@ actual fun ConfigureDialogWindow() {
         if (window == null && view is DialogWindowProvider) {
             window = view.window
         }
-        
+
         // 3. Walk up parents to find DialogWindowProvider or window reference
         if (window == null) {
             var parent = view.parent
@@ -72,7 +72,7 @@ actual fun ConfigureDialogWindow() {
                 w.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
                 w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 w.setBackgroundDrawable(ColorDrawable(Color.BLACK))
-                
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     w.attributes?.let { lp ->
                         lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -84,10 +84,10 @@ actual fun ConfigureDialogWindow() {
                 if (!isLargeScreen) {
                     w.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
                 }
-                
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     w.insetsController?.hide(
-                        WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars()
+                        WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars(),
                     )
                     w.insetsController?.systemBarsBehavior =
                         WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -95,11 +95,11 @@ actual fun ConfigureDialogWindow() {
                     @Suppress("DEPRECATION")
                     w.decorView.systemUiVisibility = (
                         View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                     )
                 }
             } catch (e: IllegalArgumentException) {
@@ -118,11 +118,10 @@ actual fun ConfigureDialogWindow() {
 
 actual fun getDialogProperties(
     dismissOnBackPress: Boolean,
-    dismissOnClickOutside: Boolean
-): androidx.compose.ui.window.DialogProperties {
-    return androidx.compose.ui.window.DialogProperties(
+    dismissOnClickOutside: Boolean,
+): androidx.compose.ui.window.DialogProperties =
+    androidx.compose.ui.window.DialogProperties(
         usePlatformDefaultWidth = false,
         dismissOnBackPress = dismissOnBackPress,
-        dismissOnClickOutside = dismissOnClickOutside
+        dismissOnClickOutside = dismissOnClickOutside,
     )
-}

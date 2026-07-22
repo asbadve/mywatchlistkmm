@@ -5,18 +5,20 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
 import io.github.aakira.napier.log
+import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 
 class TvListScreenModel(
     private val tvFetchType: String,
@@ -33,7 +35,6 @@ class TvListScreenModel(
         loadTvShows()
     }
 
-    @Suppress("detekt:TooGenericExceptionCaught")
     internal fun loadTvShows() {
         viewModelScope.launch(Dispatchers.Main) {
             if (isFirstPage() || isNotFirstPageAndCanPaginate() && (isListStateLoadable())) {
@@ -69,9 +70,11 @@ class TvListScreenModel(
                     e.printStackTrace()
                     log { "IOException" }
                     listState = ListState.NETWORK_ERROR
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    log { "Exception" }
+                } catch (e: ContentConvertException) {
+                    log { "Malformed response: ${e.message}" }
+                    listState = ListState.ERROR
+                } catch (e: SerializationException) {
+                    log { "Malformed response: ${e.message}" }
                     listState = ListState.ERROR
                 }
             }

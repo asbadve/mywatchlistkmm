@@ -7,11 +7,10 @@ actual fun ConfigureDialogWindow() {}
 
 actual fun getDialogProperties(
     dismissOnBackPress: Boolean,
-    dismissOnClickOutside: Boolean
-): androidx.compose.ui.window.DialogProperties {
-    return androidx.compose.ui.window.DialogProperties(
+    dismissOnClickOutside: Boolean,
+): androidx.compose.ui.window.DialogProperties =
+    androidx.compose.ui.window.DialogProperties(
         usePlatformDefaultWidth = false,
         dismissOnBackPress = dismissOnBackPress,
-        dismissOnClickOutside = dismissOnClickOutside
+        dismissOnClickOutside = dismissOnClickOutside,
     )
-}

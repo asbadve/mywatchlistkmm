@@ -8,8 +8,7 @@ import platform.UIKit.UIViewController
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Suppress("ktlint:standard:function-naming")
-fun MainViewController(): UIViewController {
-    return ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) {
+fun MainViewController(): UIViewController =
+    ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) {
         App(calculateWindowSizeClass())
     }
-}

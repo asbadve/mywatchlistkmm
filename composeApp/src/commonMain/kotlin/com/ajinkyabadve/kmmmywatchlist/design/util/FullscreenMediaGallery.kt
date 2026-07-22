@@ -3,40 +3,56 @@ package com.ajinkyabadve.kmmmywatchlist.design.util
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.isCtrlPressed
-import androidx.compose.ui.input.pointer.isMetaPressed
-import compose.icons.feathericons.ZoomIn
-import compose.icons.feathericons.ZoomOut
-import compose.icons.FeatherIcons
-import compose.icons.feathericons.Download
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil3.compose.rememberAsyncImagePainter
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Download
+import compose.icons.feathericons.ZoomIn
+import compose.icons.feathericons.ZoomOut
 import kotlinx.coroutines.launch
-import androidx.compose.ui.text.font.FontWeight
 
 /**
  * Reusable full-screen media/photo gallery component supporting pinch-to-zoom gestures,
@@ -48,21 +64,23 @@ fun FullscreenMediaGallery(
     images: List<String>,
     initialIndex: Int,
     onDismiss: () -> Unit,
-    onDownload: (suspend (imageUrl: String) -> String?)? = null
+    onDownload: (suspend (imageUrl: String) -> String?)? = null,
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = com.ajinkyabadve.kmmmywatchlist.getDialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
+        properties =
+            com.ajinkyabadve.kmmmywatchlist.getDialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true,
+            ),
     ) {
         com.ajinkyabadve.kmmmywatchlist.ConfigureDialogWindow()
 
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
         ) {
             val scope = rememberCoroutineScope()
             var downloadStatus by remember { mutableStateOf<String?>(null) }
@@ -82,7 +100,7 @@ fun FullscreenMediaGallery(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = !isZoomed
+                userScrollEnabled = !isZoomed,
             ) { page ->
                 val imageUrl = images[page]
 
@@ -93,98 +111,103 @@ fun FullscreenMediaGallery(
 
                 var hasMultiplePointers by remember { mutableStateOf(false) }
 
-                val state = rememberTransformableState { zoomChange, offsetChange, _ ->
-                    if (isCurrent) {
-                        activeScale = (activeScale * zoomChange).coerceIn(1f, 5f)
-                        isZoomed = activeScale > 1.02f
-                        if (activeScale > 1.02f) {
-                            activeOffset += offsetChange
-                        } else {
-                            activeOffset = Offset.Zero
+                val state =
+                    rememberTransformableState { zoomChange, offsetChange, _ ->
+                        if (isCurrent) {
+                            activeScale = (activeScale * zoomChange).coerceIn(1f, 5f)
+                            isZoomed = activeScale > 1.02f
+                            if (activeScale > 1.02f) {
+                                activeOffset += offsetChange
+                            } else {
+                                activeOffset = Offset.Zero
+                            }
                         }
                     }
-                }
 
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    val activePointers = event.changes.filter { it.pressed }
-                                    hasMultiplePointers = activePointers.size > 1
-                                }
-                            }
-                        }
-                        .let { modifier ->
-                            if (isCurrent && scale > 1.02f) {
-                                modifier.pointerInput(scale) {
-                                    detectDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        activeOffset += dragAmount
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val activePointers = event.changes.filter { it.pressed }
+                                        hasMultiplePointers = activePointers.size > 1
                                     }
                                 }
-                            } else {
-                                modifier
-                            }
-                        }
-                        .let { modifier ->
-                            if (isCurrent && com.ajinkyabadve.kmmmywatchlist.getPlatformName() == "Desktop") {
-                                modifier.pointerInput(Unit) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            val event = awaitPointerEvent()
-                                            if (event.type == PointerEventType.Scroll) {
-                                                val isCtrlOrMeta = event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
-                                                if (isCtrlOrMeta) {
-                                                    val scrollDelta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
-                                                    if (scrollDelta != 0f) {
-                                                        val zoomFactor = if (scrollDelta > 0) 0.9f else 1.1f
-                                                        activeScale = (activeScale * zoomFactor).coerceIn(1f, 5f)
-                                                        isZoomed = activeScale > 1.02f
-                                                        if (activeScale <= 1.02f) {
-                                                            activeOffset = Offset.Zero
+                            }.let { modifier ->
+                                if (isCurrent && scale > 1.02f) {
+                                    modifier.pointerInput(scale) {
+                                        detectDragGestures { change, dragAmount ->
+                                            change.consume()
+                                            activeOffset += dragAmount
+                                        }
+                                    }
+                                } else {
+                                    modifier
+                                }
+                            }.let { modifier ->
+                                if (isCurrent && com.ajinkyabadve.kmmmywatchlist.getPlatformName() == "Desktop") {
+                                    modifier.pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                if (event.type == PointerEventType.Scroll) {
+                                                    val isCtrlOrMeta =
+                                                        event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
+                                                    if (isCtrlOrMeta) {
+                                                        val scrollDelta =
+                                                            event.changes
+                                                                .firstOrNull()
+                                                                ?.scrollDelta
+                                                                ?.y ?: 0f
+                                                        if (scrollDelta != 0f) {
+                                                            val zoomFactor = if (scrollDelta > 0) 0.9f else 1.1f
+                                                            activeScale = (activeScale * zoomFactor).coerceIn(1f, 5f)
+                                                            isZoomed = activeScale > 1.02f
+                                                            if (activeScale <= 1.02f) {
+                                                                activeOffset = Offset.Zero
+                                                            }
+                                                            event.changes.forEach { it.consume() }
                                                         }
-                                                        event.changes.forEach { it.consume() }
                                                     }
                                                 }
                                             }
                                         }
                                     }
+                                } else {
+                                    modifier
                                 }
-                            } else {
-                                modifier
-                            }
-                        }
-                        .transformable(state = state, enabled = hasMultiplePointers || isZoomed)
-                        .graphicsLayer(
-                            scaleX = scale,
-                            scaleY = scale,
-                            translationX = offset.x,
-                            translationY = offset.y
-                        ),
-                    contentAlignment = Alignment.Center
+                            }.transformable(state = state, enabled = hasMultiplePointers || isZoomed)
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offset.x,
+                                translationY = offset.y,
+                            ),
+                    contentAlignment = Alignment.Center,
                 ) {
                     val painter = rememberAsyncImagePainter(model = imageUrl)
                     Image(
                         painter = painter,
                         contentDescription = "Gallery Image $page",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Fit,
                     )
                 }
             }
 
             // Top action bar
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Optional download button
                 if (onDownload != null) {
@@ -193,21 +216,22 @@ fun FullscreenMediaGallery(
                             scope.launch {
                                 downloadStatus = "Downloading..."
                                 val savedPath = onDownload(images[pagerState.currentPage])
-                                downloadStatus = if (savedPath != null) {
-                                    "Saved to:\n$savedPath"
-                                } else {
-                                    "Failed to save image"
-                                }
+                                downloadStatus =
+                                    if (savedPath != null) {
+                                        "Saved to:\n$savedPath"
+                                    } else {
+                                        "Failed to save image"
+                                    }
                                 kotlinx.coroutines.delay(3000)
                                 downloadStatus = null
                             }
                         },
-                        modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape),
                     ) {
                         Icon(
                             imageVector = FeatherIcons.Download,
                             contentDescription = "Download Photo",
-                            tint = Color.White
+                            tint = Color.White,
                         )
                     }
                 } else {
@@ -217,54 +241,57 @@ fun FullscreenMediaGallery(
                 // Close button
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close gallery",
-                        tint = Color.White
+                        tint = Color.White,
                     )
                 }
             }
 
             // Bottom pagination overlay (e.g. "3 / 10")
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
                     text = "${pagerState.currentPage + 1} / ${images.size}",
                     color = Color.White,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
                 )
             }
 
             // Zoom indicator (bottom-left guidance for accessibility and screen reader users)
             val zoomPercent = (activeScale * 100).toInt()
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 32.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 16.dp, bottom = 32.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
                     text = "Zoom: $zoomPercent%",
                     color = Color.White,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
                 )
             }
 
             // Zoom controls panel (floating on the right center)
             Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // Zoom In Button
                 IconButton(
@@ -272,12 +299,12 @@ fun FullscreenMediaGallery(
                         activeScale = (activeScale + 0.5f).coerceIn(1f, 5f)
                         isZoomed = activeScale > 1.02f
                     },
-                    modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape),
                 ) {
                     Icon(
                         imageVector = FeatherIcons.ZoomIn,
                         contentDescription = "Zoom In (Current: $zoomPercent%)",
-                        tint = Color.White
+                        tint = Color.White,
                     )
                 }
 
@@ -291,12 +318,12 @@ fun FullscreenMediaGallery(
                             activeOffset = Offset.Zero
                         }
                     },
-                    modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape),
                 ) {
                     Icon(
                         imageVector = FeatherIcons.ZoomOut,
                         contentDescription = "Zoom Out (Current: $zoomPercent%)",
-                        tint = Color.White
+                        tint = Color.White,
                     )
                 }
             }
@@ -304,11 +331,12 @@ fun FullscreenMediaGallery(
             // Download status Toast overlay
             downloadStatus?.let { status ->
                 Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .align(Alignment.Center)
+                            .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = status,
@@ -316,7 +344,7 @@ fun FullscreenMediaGallery(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        lineHeight = 20.sp
+                        lineHeight = 20.sp,
                     )
                 }
             }

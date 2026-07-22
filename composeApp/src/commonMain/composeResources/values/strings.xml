@@ -1,5 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Errors -->
+    <string name="error_network">Network Connection Error. Please check your internet connectivity.</string>
+    <string name="error_unexpected_movie_details">An unexpected error occurred while loading movie details. Please try again.</string>
+    <string name="error_unexpected_tv_details">An unexpected error occurred while loading tv show details. Please try again.</string>
+    <string name="error_unexpected_seasons">An unexpected error occurred while loading seasons. Please try again.</string>
+    <string name="error_unexpected_episodes">An unexpected error occurred while loading episodes. Please try again.</string>
+    <string name="error_unexpected_episode">An unexpected error occurred while loading the episode. Please try again.</string>
+    <string name="error_unexpected_person">An unexpected error occurred while loading the person. Please try again.</string>
+    <string name="error_unexpected_collection">An unexpected error occurred while loading the collection. Please try again.</string>
+
+    <!-- Actions -->
+    <string name="action_retry">Retry</string>
+    <string name="action_close">Close</string>
+    <string name="action_read_more">Read more</string>
+    <string name="action_read_less">Read less</string>
+    <string name="action_view_all">View All</string>
+    <string name="action_view_on_imdb">View on IMDb</string>
+    <string name="action_view_collection">View collection ›</string>
+
+    <!-- Screen titles -->
+    <string name="title_seasons">Seasons</string>
+    <string name="title_episodes">Episodes</string>
+    <string name="title_episode">Episode</string>
+    <string name="title_person">Person</string>
+    <string name="title_collection">Collection</string>
+
+    <!-- Section titles -->
+    <string name="section_overview">Overview</string>
+    <string name="section_cast">Cast</string>
+    <string name="section_cast_and_crew">Cast &amp; Crew</string>
+    <string name="section_guest_stars">Guest Stars</string>
     <string name="featured_cast">Featured Cast</string>
     <string name="featured_crew">Featured Crew</string>
+    <string name="section_biography">Biography</string>
+    <string name="section_filmography">Filmography</string>
+    <string name="section_known_for">Known For</string>
+    <string name="section_photos">Photos</string>
+    <string name="section_images">Images</string>
+    <string name="section_backdrops">Backdrops</string>
+    <string name="section_posters">Posters</string>
+    <string name="section_movies">Movies</string>
+    <string name="section_facts">Facts</string>
+    <string name="section_where_to_watch">Where to watch</string>
+    <string name="section_genres">Genres</string>
+    <string name="section_keywords">Keywords</string>
+    <string name="section_reviews">Reviews</string>
+    <string name="label_review_by">A review by %1$s</string>
+    <string name="title_review_by">Review by %1$s</string>
+    <string name="myfav_placeholder">MyFav (Sub-Tab of Home)</string>
+    <string name="section_trailers_clips">Trailers &amp; Clips</string>
+    <string name="section_recommendations">Recommendations</string>
+    <string name="section_similar_movies">Similar Movies</string>
+    <string name="section_similar_tv">Similar Tv Shows</string>
+
+    <!-- Labels and templates -->
+    <string name="label_directed_by">Directed by %1$s</string>
+    <string name="label_written_by">Written by %1$s</string>
+    <string name="label_part_of_collection">Part of the %1$s</string>
+    <string name="label_production_code">Production code %1$s</string>
+    <string name="languages_dialog_title">Languages (%1$d)</string>
+    <string name="languages_chip">%1$d Langs</string>
+    <string name="justwatch_attribution">Streaming availability by JustWatch</string>
+    <string name="search_hint">Search for Movies &amp; Tv shows</string>
+
+    <!-- Placeholders / empty states -->
+    <string name="placeholder_select_season">Select a season to view its episodes</string>
+    <string name="no_episodes_available">No episodes available for this season.</string>
+    <string name="no_overview_available">No overview available.</string>
+    <string name="no_overview_available_episode">No overview available for this episode.</string>
+    <string name="no_filmography_matches">No credits match the selected filters.</string>
+
+    <!-- Filters -->
+    <string name="filter_all">All</string>
+    <string name="filter_movies">Movies</string>
+    <string name="filter_tv_shows">TV shows</string>
+    <string name="filter_all_departments">All departments</string>
 </resources>

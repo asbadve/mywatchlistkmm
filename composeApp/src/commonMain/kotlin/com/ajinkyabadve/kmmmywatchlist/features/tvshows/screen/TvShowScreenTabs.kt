@@ -28,10 +28,15 @@ import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.tvShowScreenContent
 
-sealed class TvTab(val title: String) {
+sealed class TvTab(
+    val title: String,
+) {
     data object AiringToday : TvTab("Airing Today")
+
     data object OnTheAir : TvTab("On The Air")
+
     data object Popular : TvTab("Popular")
+
     data object TopRated : TvTab("Top Rated")
 }
 
@@ -43,16 +48,17 @@ fun TvShowScreenTabs(
     onTheAirViewModel: TvListScreenModel,
     popularViewModel: TvListScreenModel,
     topRatedViewModel: TvListScreenModel,
-    onTvShowSelected: (tvShowId: Long) -> Unit
+    onTvShowSelected: (tvShowId: Long) -> Unit,
 ) {
-    val tabs = remember {
-        listOf(
-            TvTab.AiringToday,
-            TvTab.OnTheAir,
-            TvTab.Popular,
-            TvTab.TopRated
-        )
-    }
+    val tabs =
+        remember {
+            listOf(
+                TvTab.AiringToday,
+                TvTab.OnTheAir,
+                TvTab.Popular,
+                TvTab.TopRated,
+            )
+        }
     var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
 
     val airingTodayGridState = rememberLazyGridState()
@@ -63,7 +69,7 @@ fun TvShowScreenTabs(
     Column(modifier = modifier.fillMaxWidth()) {
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             val tabsWidth = 400.dp
             val calculatedPadding = (maxWidth - tabsWidth) / 2
@@ -76,22 +82,23 @@ fun TvShowScreenTabs(
                 containerColor = Color.Transparent,
                 indicator = {
                     Box(
-                        modifier = Modifier
-                            .tabIndicatorOffset(selectedTabIndex)
-                            .padding(horizontal = 24.dp)
-                            .height(4.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                            )
+                        modifier =
+                            Modifier
+                                .tabIndicatorOffset(selectedTabIndex)
+                                .padding(horizontal = 24.dp)
+                                .height(4.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp),
+                                ),
                     )
-                }
+                },
             ) {
                 tabs.forEachIndexed { index, tab ->
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
-                        text = { Text(tab.title) }
+                        text = { Text(tab.title) },
                     )
                 }
             }
@@ -109,7 +116,7 @@ fun TvShowScreenTabs(
 fun TvListTab(
     viewModel: TvListScreenModel,
     lazyGridState: LazyGridState,
-    onTvShowSelected: (tvShowId: Long) -> Unit
+    onTvShowSelected: (tvShowId: Long) -> Unit,
 ) {
     tvShowScreenContent(viewModel = viewModel, lazyColumnListState = lazyGridState, onTvShowSelected = onTvShowSelected)
 }

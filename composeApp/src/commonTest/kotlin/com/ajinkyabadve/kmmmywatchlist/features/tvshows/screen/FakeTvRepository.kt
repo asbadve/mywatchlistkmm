@@ -22,7 +22,10 @@ class FakeTvRepository : TvRepository {
     val getSeasonDetailsCalls = mutableListOf<Pair<Long, Int>>()
     val getEpisodeDetailsCalls = mutableListOf<Triple<Long, Int, Int>>()
 
-    override suspend fun getTvShows(pageNo: Int, moveFetchType: String): TvPageResult {
+    override suspend fun getTvShows(
+        pageNo: Int,
+        moveFetchType: String,
+    ): TvPageResult {
         getTvShowsCalls.add(pageNo to moveFetchType)
 
         getTvShowsResult?.let { result ->
@@ -33,14 +36,15 @@ class FakeTvRepository : TvRepository {
             }
         }
 
-        val tvShows = listOf(
-            Tv(id = 201, title = "Tv Show A", originalTitle = "Tv Show A")
-        )
+        val tvShows =
+            listOf(
+                Tv(id = 201, title = "Tv Show A", originalTitle = "Tv Show A"),
+            )
         return TvPageResult(
             page = 1,
             list = tvShows,
             totalResults = tvShows.size,
-            totalPages = 1
+            totalPages = 1,
         )
     }
 
@@ -65,7 +69,10 @@ class FakeTvRepository : TvRepository {
         )
     }
 
-    override suspend fun getSeasonDetails(tvId: Long, seasonNumber: Int): TvSeasonDetail {
+    override suspend fun getSeasonDetails(
+        tvId: Long,
+        seasonNumber: Int,
+    ): TvSeasonDetail {
         getSeasonDetailsCalls.add(tvId to seasonNumber)
 
         (getSeasonDetailsResultsByNumber[seasonNumber] ?: getSeasonDetailsResult)?.let { result ->
@@ -84,7 +91,11 @@ class FakeTvRepository : TvRepository {
         )
     }
 
-    override suspend fun getEpisodeDetails(tvId: Long, seasonNumber: Int, episodeNumber: Int): EpisodeDetail {
+    override suspend fun getEpisodeDetails(
+        tvId: Long,
+        seasonNumber: Int,
+        episodeNumber: Int,
+    ): EpisodeDetail {
         getEpisodeDetailsCalls.add(Triple(tvId, seasonNumber, episodeNumber))
 
         getEpisodeDetailsResult?.let { result ->

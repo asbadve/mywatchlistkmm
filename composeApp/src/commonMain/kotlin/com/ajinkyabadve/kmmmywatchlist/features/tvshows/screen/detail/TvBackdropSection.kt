@@ -33,56 +33,62 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 fun TvBackdropSection(detail: TvDetail) {
     val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val backdropUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
-        path = detail.backdropPath,
-        type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
-        targetWidthDp = 500,
-        density = density
-    )
+    val backdropUrl =
+        com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+            path = detail.backdropPath,
+            type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
+            targetWidthDp = 500,
+            density = density,
+        )
     val fallbackPainter = painterResource(Res.drawable.baseline_tv_24)
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16 / 9f)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16 / 9f)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        val painter = rememberAsyncImagePainter(
-            model = backdropUrl,
-            filterQuality = FilterQuality.Medium,
-            error = fallbackPainter,
-            fallback = fallbackPainter
-        )
+        val painter =
+            rememberAsyncImagePainter(
+                model = backdropUrl,
+                filterQuality = FilterQuality.Medium,
+                error = fallbackPainter,
+                fallback = fallbackPainter,
+            )
         val painterState by painter.state.collectAsState()
-        val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-            ContentScale.Crop
-        } else {
-            ContentScale.Fit
-        }
+        val contentScale =
+            if (painterState is AsyncImagePainter.State.Success) {
+                ContentScale.Crop
+            } else {
+                ContentScale.Fit
+            }
 
         Image(
             painter = painter,
             contentDescription = "Backdrop for ${detail.title}",
             modifier = Modifier.fillMaxSize(),
-            contentScale = contentScale
+            contentScale = contentScale,
         )
 
         // Gradient overlay for visual contrast
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                        startY = 100f
-                    )
-                )
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                            startY = 100f,
+                        ),
+                    ),
         )
 
         // Trailer Play Button (overlaid in center of backdrop if youtube key is present)
-        val youtubeTrailer = detail.videos?.results?.firstOrNull {
-            it.site.equals("YouTube", ignoreCase = true) && it.type.equals("Trailer", ignoreCase = true)
-        }
+        val youtubeTrailer =
+            detail.videos?.results?.firstOrNull {
+                it.site.equals("YouTube", ignoreCase = true) && it.type.equals("Trailer", ignoreCase = true)
+            }
 
         if (youtubeTrailer != null) {
             FloatingActionButton(
@@ -92,12 +98,12 @@ fun TvBackdropSection(detail: TvDetail) {
                 },
                 modifier = Modifier.align(Alignment.Center),
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = "Play Trailer",
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 )
             }
         }

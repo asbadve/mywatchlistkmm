@@ -1,6 +1,14 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -8,46 +16,50 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.section_recommendations
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun RecommendationsSection(
     recommendations: List<Movie>,
-    onMovieClicked: (Long) -> Unit
+    onMovieClicked: (Long) -> Unit,
 ) {
     if (recommendations.isNotEmpty()) {
         val lazyRowState = rememberLazyListState()
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 16.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 16.dp),
         ) {
             SectionHeaderWithScrollHint(
-                title = "Recommendations",
+                title = stringResource(Res.string.section_recommendations),
                 listSize = recommendations.size.coerceAtMost(10),
                 lazyRowState = lazyRowState,
-                scrollStep = 2
+                scrollStep = 2,
             )
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(
                 state = lazyRowState,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(recommendations.take(10)) { movie ->
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
-                    val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
-                        path = movie.posterPath,
-                        type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
-                        targetWidthDp = 140,
-                        density = density
-                    )
+                    val imageUrl =
+                        com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                            path = movie.posterPath,
+                            type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                            targetWidthDp = 140,
+                            density = density,
+                        )
                     Box(modifier = Modifier.width(140.dp)) {
                         mediaMovieRow(
                             imageUrl = imageUrl,
                             title = movie.title,
                             modifier = Modifier,
-                            onClick = { onMovieClicked(movie.id.toLong()) }
+                            onClick = { onMovieClicked(movie.id.toLong()) },
                         )
                     }
                 }

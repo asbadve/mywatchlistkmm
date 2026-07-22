@@ -39,11 +39,12 @@ data class PersonCredit(
 
     // Short user-facing hint for whether a credit is a film or a series.
     val mediaTypeLabel: String?
-        get() = when (mediaType) {
-            "movie" -> "Movie"
-            "tv" -> "TV"
-            else -> null
-        }
+        get() =
+            when (mediaType) {
+                "movie" -> "Movie"
+                "tv" -> "TV"
+                else -> null
+            }
 }
 
 @Serializable
@@ -59,8 +60,7 @@ data class PersonCombinedCredits(
  * filmography to one medium, like the media filter on themoviedb.org.
  */
 fun PersonCombinedCredits.filmographySections(mediaType: String? = null): List<Pair<String, List<PersonCredit>>> {
-    fun List<PersonCredit>.byMediaType() =
-        if (mediaType == null) this else filter { it.mediaType == mediaType }
+    fun List<PersonCredit>.byMediaType() = if (mediaType == null) this else filter { it.mediaType == mediaType }
 
     val sections = mutableListOf<Pair<String, List<PersonCredit>>>()
     val filteredCast = cast.byMediaType()
@@ -99,7 +99,10 @@ private fun List<PersonCredit>.sortedForFilmography(): List<PersonCredit> =
     sortedWith(compareByDescending { it.displayDate?.takeIf { date -> date.isNotEmpty() } ?: "9999" })
 
 /** Whole years between two ISO yyyy-mm-dd dates, or null when either doesn't parse. */
-fun yearsBetween(fromDate: String?, toDate: String?): Int? {
+fun yearsBetween(
+    fromDate: String?,
+    toDate: String?,
+): Int? {
     if (fromDate.isNullOrEmpty() || toDate.isNullOrEmpty()) return null
     return try {
         LocalDate.parse(fromDate).yearsUntil(LocalDate.parse(toDate))
@@ -161,12 +164,13 @@ data class PersonDetail(
 ) {
     // TMDB gender codes: 0 = not specified, 1 = female, 2 = male, 3 = non-binary.
     val genderLabel: String?
-        get() = when (gender) {
-            1 -> "Female"
-            2 -> "Male"
-            3 -> "Non-binary"
-            else -> null
-        }
+        get() =
+            when (gender) {
+                1 -> "Female"
+                2 -> "Male"
+                3 -> "Non-binary"
+                else -> null
+            }
 
     // "Known Credits" on themoviedb.org person pages: every cast and crew credit combined.
     val knownCreditsCount: Int

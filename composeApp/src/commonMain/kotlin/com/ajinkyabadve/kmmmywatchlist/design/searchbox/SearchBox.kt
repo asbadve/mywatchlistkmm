@@ -7,11 +7,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -78,8 +76,9 @@ private fun InternalSearchBox(
 ) {
     Column(
         verticalArrangement = Arrangement.Center,
-        modifier = modifier
-            .padding(end = 16.dp)
+        modifier =
+            modifier
+                .padding(end = 16.dp),
     ) {
         BoxWithConstraints(
             contentAlignment = Alignment.Center,
@@ -103,9 +102,11 @@ private fun InternalSearchBox(
             // Hint text — centered in the full pill
             Text(
                 hint,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 48.dp), // leave room for icon on left
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 48.dp),
+                // leave room for icon on left
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,

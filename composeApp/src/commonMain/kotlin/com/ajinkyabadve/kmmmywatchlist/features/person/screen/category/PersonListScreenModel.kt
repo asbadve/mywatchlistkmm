@@ -5,18 +5,20 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.PersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.PersonRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
 import io.github.aakira.napier.log
+import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 
 class PersonListScreenModel(
     private val personRepository: PersonRepository = PersonRepositoryImpl(),
@@ -32,7 +34,6 @@ class PersonListScreenModel(
         loadPopularPeople()
     }
 
-    @Suppress("detekt:TooGenericExceptionCaught")
     internal fun loadPopularPeople() {
         viewModelScope.launch(Dispatchers.Main) {
             if (isFirstPage() || isNotFirstPageAndCanPaginate() && (isListStateLoadable())) {
@@ -68,9 +69,11 @@ class PersonListScreenModel(
                     e.printStackTrace()
                     log { "IOException" }
                     listState = ListState.NETWORK_ERROR
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    log { "Exception" }
+                } catch (e: ContentConvertException) {
+                    log { "Malformed response: ${e.message}" }
+                    listState = ListState.ERROR
+                } catch (e: SerializationException) {
+                    log { "Malformed response: ${e.message}" }
                     listState = ListState.ERROR
                 }
             }

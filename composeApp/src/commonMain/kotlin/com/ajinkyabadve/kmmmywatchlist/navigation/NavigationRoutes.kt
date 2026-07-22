@@ -16,20 +16,51 @@ import org.jetbrains.compose.resources.DrawableResource
 sealed interface AppKey : NavKey
 
 data object TrendingKey : AppKey
+
 data object MoviesKey : AppKey
+
 data object TvShowsKey : AppKey
+
 data object PersonKey : AppKey
+
 data object MyFavKey : AppKey
 
-data class MovieDetailKey(val movieId: Long) : AppKey
-data class CollectionDetailKey(val collectionId: Long) : AppKey
-data class TvDetailKey(val tvShowId: Long) : AppKey
-data class PersonDetailKey(val personId: Long) : AppKey
-data class AllSeasonsKey(val tvShowId: Long) : AppKey
-data class EpisodeListKey(val tvShowId: Long, val seasonNumber: Int) : AppKey
-data class EpisodeDetailKey(val tvShowId: Long, val seasonNumber: Int, val episodeNumber: Int) : AppKey
+data class MovieDetailKey(
+    val movieId: Long,
+) : AppKey
 
-data class BottomNavItem(val key: AppKey, val label: String, val icon: DrawableResource)
+data class CollectionDetailKey(
+    val collectionId: Long,
+) : AppKey
+
+data class TvDetailKey(
+    val tvShowId: Long,
+) : AppKey
+
+data class PersonDetailKey(
+    val personId: Long,
+) : AppKey
+
+data class AllSeasonsKey(
+    val tvShowId: Long,
+) : AppKey
+
+data class EpisodeListKey(
+    val tvShowId: Long,
+    val seasonNumber: Int,
+) : AppKey
+
+data class EpisodeDetailKey(
+    val tvShowId: Long,
+    val seasonNumber: Int,
+    val episodeNumber: Int,
+) : AppKey
+
+data class BottomNavItem(
+    val key: AppKey,
+    val label: String,
+    val icon: DrawableResource,
+)
 
 val bottomNavItems =
     listOf(
@@ -40,10 +71,17 @@ val bottomNavItems =
         BottomNavItem(MyFavKey, "My Fav", Res.drawable.baseline_favorite_24),
     )
 
-sealed class MovieScreenTab(val route: String, val label: String, val icon: DrawableResource?) {
+sealed class MovieScreenTab(
+    val route: String,
+    val label: String,
+    val icon: DrawableResource?,
+) {
     object NowPlaying : MovieScreenTab("now_playing_movie_tab", "Now Playing", null)
+
     object Upcoming : MovieScreenTab("upcoming_movie_tab", "Upcoming", null)
+
     object Popular : MovieScreenTab("popular_movie_tab", "Popular", null)
+
     object TopRated : MovieScreenTab("top_rated_movie_tab", "Top Rated", null)
 }
 
@@ -61,7 +99,9 @@ val movieScreenTab =
  * flattens them into the single list [NavDisplay] needs. Modeled on Android's own Navigation 3
  * "top level back stack" recipe for bottom navigation.
  */
-class TopLevelBackStack(startKey: AppKey) {
+class TopLevelBackStack(
+    startKey: AppKey,
+) {
     private val topLevelStack = ArrayDeque<AppKey>().apply { addLast(startKey) }
     private val topLevelChildStacks = mutableMapOf<AppKey, NavBackStack<AppKey>>(startKey to NavBackStack(startKey))
 

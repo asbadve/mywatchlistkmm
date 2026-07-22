@@ -54,14 +54,20 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
 import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
 import mywatchlist.composeapp.generated.resources.featured_cast
 import mywatchlist.composeapp.generated.resources.featured_crew
+import mywatchlist.composeapp.generated.resources.no_overview_available
+import mywatchlist.composeapp.generated.resources.section_images
+import mywatchlist.composeapp.generated.resources.section_movies
+import mywatchlist.composeapp.generated.resources.title_collection
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -85,7 +91,8 @@ fun CollectionDetailScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
                     title = {
-                        val title = (uiState as? CollectionDetailState.Success)?.collection?.name ?: "Collection"
+                        val title =
+                            (uiState as? CollectionDetailState.Success)?.collection?.name ?: stringResource(Res.string.title_collection)
                         Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     },
                     navigationIcon = {
@@ -100,9 +107,10 @@ fun CollectionDetailScreen(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             when (val state = uiState) {
                 is CollectionDetailState.Loading -> {
@@ -111,15 +119,16 @@ fun CollectionDetailScreen(
 
                 is CollectionDetailState.Error -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
+                        Text(state.message.asString(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
                         Button(onClick = { viewModel.loadCollectionDetails() }) {
-                            Text("Retry")
+                            Text(stringResource(Res.string.action_retry))
                         }
                     }
                 }
@@ -182,7 +191,7 @@ private fun CompactCollectionDetailContent(
         item {
             MovieImagesSection(
                 images = collection.images?.backdrops ?: emptyList(),
-                title = "Images",
+                title = stringResource(Res.string.section_images),
                 imageType = ImageConfigResolver.ImageType.BACKDROP,
                 onShowGallery = onShowGallery,
             )
@@ -210,15 +219,23 @@ private fun ExpandedCollectionDetailContent(
         ) {
             item { CollectionHeader(collection = collection) }
             item {
-                CastSection(castList = state.featuredCast, title = stringResource(Res.string.featured_cast), onPersonClicked = onPersonClicked)
+                CastSection(
+                    castList = state.featuredCast,
+                    title = stringResource(Res.string.featured_cast),
+                    onPersonClicked = onPersonClicked,
+                )
             }
             item {
-                CastSection(castList = state.featuredCrew, title = stringResource(Res.string.featured_crew), onPersonClicked = onPersonClicked)
+                CastSection(
+                    castList = state.featuredCrew,
+                    title = stringResource(Res.string.featured_crew),
+                    onPersonClicked = onPersonClicked,
+                )
             }
             item {
                 MovieImagesSection(
                     images = collection.images?.backdrops ?: emptyList(),
-                    title = "Images",
+                    title = stringResource(Res.string.section_images),
                     imageType = ImageConfigResolver.ImageType.BACKDROP,
                     onShowGallery = onShowGallery,
                 )
@@ -238,17 +255,19 @@ private fun ExpandedCollectionDetailContent(
 private fun CollectionHeader(collection: CollectionDetail) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val density = LocalDensity.current.density
-        val backdropUrl = ImageConfigResolver.resolve(
-            path = collection.backdropPath ?: collection.posterPath,
-            type = ImageConfigResolver.ImageType.BACKDROP,
-            targetWidthDp = 800,
-            density = density,
-        )
+        val backdropUrl =
+            ImageConfigResolver.resolve(
+                path = collection.backdropPath ?: collection.posterPath,
+                type = ImageConfigResolver.ImageType.BACKDROP,
+                targetWidthDp = 800,
+                density = density,
+            )
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16 / 9f)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16 / 9f)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             backdropUrl?.let { url ->
                 Image(
@@ -312,11 +331,14 @@ private fun CollectionHeader(collection: CollectionDetail) {
 }
 
 @Composable
-private fun CollectionMoviesList(collection: CollectionDetail, onMovieClicked: (Long) -> Unit) {
+private fun CollectionMoviesList(
+    collection: CollectionDetail,
+    onMovieClicked: (Long) -> Unit,
+) {
     if (collection.parts.isEmpty()) return
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Movies",
+            text = stringResource(Res.string.section_movies),
             fontWeight = FontWeight.SemiBold,
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground,
@@ -330,40 +352,48 @@ private fun CollectionMoviesList(collection: CollectionDetail, onMovieClicked: (
 }
 
 @Composable
-private fun CollectionMovieItem(movie: Movie, onClick: () -> Unit) {
+private fun CollectionMovieItem(
+    movie: Movie,
+    onClick: () -> Unit,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         val density = LocalDensity.current.density
-        val posterUrl = ImageConfigResolver.resolve(
-            path = movie.posterPath,
-            type = ImageConfigResolver.ImageType.POSTER,
-            targetWidthDp = 90,
-            density = density,
-        )
+        val posterUrl =
+            ImageConfigResolver.resolve(
+                path = movie.posterPath,
+                type = ImageConfigResolver.ImageType.POSTER,
+                targetWidthDp = 90,
+                density = density,
+            )
         Box(
-            modifier = Modifier
-                .width(80.dp)
-                .aspectRatio(2 / 3f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+            modifier =
+                Modifier
+                    .width(80.dp)
+                    .aspectRatio(2 / 3f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             val fallbackPainter = painterResource(Res.drawable.baseline_movie_24)
-            val painter = rememberAsyncImagePainter(
-                model = posterUrl,
-                filterQuality = FilterQuality.Medium,
-                error = fallbackPainter,
-                fallback = fallbackPainter,
-            )
+            val painter =
+                rememberAsyncImagePainter(
+                    model = posterUrl,
+                    filterQuality = FilterQuality.Medium,
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
+                )
             val painterState by painter.state.collectAsState()
-            val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-                ContentScale.Crop
-            } else {
-                ContentScale.Fit
-            }
+            val contentScale =
+                if (painterState is AsyncImagePainter.State.Success) {
+                    ContentScale.Crop
+                } else {
+                    ContentScale.Fit
+                }
             Image(
                 painter = painter,
                 contentDescription = movie.title,
@@ -395,7 +425,7 @@ private fun CollectionMovieItem(movie: Movie, onClick: () -> Unit) {
                 )
             }
             Text(
-                text = movie.overview.ifEmpty { "No overview available." },
+                text = movie.overview.ifEmpty { stringResource(Res.string.no_overview_available) },
                 fontSize = 13.sp,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,

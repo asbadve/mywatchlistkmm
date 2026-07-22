@@ -33,7 +33,6 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.SIXTH_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.THIRD_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -50,7 +49,9 @@ fun screenContent(
         remember {
             derivedStateOf {
                 (
-                    lazyColumnListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                    lazyColumnListState.layoutInfo.visibleItemsInfo
+                        .lastOrNull()
+                        ?.index
                         ?: -SIXTH_INDEX
                 ) >= (lazyColumnListState.layoutInfo.totalItemsCount - THIRD_INDEX)
             }
@@ -67,12 +68,13 @@ fun screenContent(
     ) {
         items(movies) {
             val density = androidx.compose.ui.platform.LocalDensity.current.density
-            val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
-                path = it.posterPath,
-                type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
-                targetWidthDp = 150,
-                density = density
-            )
+            val imageUrl =
+                com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                    path = it.posterPath,
+                    type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                    targetWidthDp = 150,
+                    density = density,
+                )
             mediaMovieRow(
                 imageUrl,
                 it.title,

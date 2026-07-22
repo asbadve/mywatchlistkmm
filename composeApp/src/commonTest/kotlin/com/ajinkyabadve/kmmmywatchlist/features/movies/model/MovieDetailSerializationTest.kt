@@ -16,7 +16,8 @@ class MovieDetailSerializationTest {
     // Same relevant settings as TmdbClient's Json configuration.
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val fullMovieJson = """
+    private val fullMovieJson =
+        """
         {
           "id": 1368337,
           "title": "The Odyssey",
@@ -83,7 +84,7 @@ class MovieDetailSerializationTest {
             }
           }
         }
-    """.trimIndent()
+        """.trimIndent()
 
     @Test
     fun parsesAllNewBaseFields() {

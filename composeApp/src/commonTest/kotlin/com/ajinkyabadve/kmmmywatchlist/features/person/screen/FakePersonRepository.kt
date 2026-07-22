@@ -38,14 +38,15 @@ class FakePersonRepository : PersonRepository {
             }
         }
 
-        val people = listOf(
-            Person(id = 301, name = "Person A")
-        )
+        val people =
+            listOf(
+                Person(id = 301, name = "Person A"),
+            )
         return PersonPageResult(
             page = 1,
             list = people,
             totalResults = people.size,
-            totalPages = 1
+            totalPages = 1,
         )
     }
 }

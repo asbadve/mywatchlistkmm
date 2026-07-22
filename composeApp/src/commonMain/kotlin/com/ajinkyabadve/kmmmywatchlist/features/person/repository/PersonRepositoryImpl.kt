@@ -16,23 +16,25 @@ class PersonRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
 ) : PersonRepository {
     override suspend fun getPopularPeople(pageNo: Int): PersonPageResult {
-        val response: HttpResponse = tmdbClient.client.get {
-            mediaHttpBuilder(POPULAR, pageNo.toString(), PERSON)
-        }
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                mediaHttpBuilder(POPULAR, pageNo.toString(), PERSON)
+            }
         return response.body()
     }
 
     override suspend fun getPersonDetails(personId: Long): PersonDetail {
-        val response: HttpResponse = tmdbClient.client.get {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = NetworkConstant.HOST
-                trailingQuery = true
-                encodedPath = "$PERSON$personId"
-                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                parameters.append("append_to_response", APPEND_TO_RESPONSE)
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$PERSON$personId"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                    parameters.append("append_to_response", APPEND_TO_RESPONSE)
+                }
             }
-        }
         return response.body()
     }
 

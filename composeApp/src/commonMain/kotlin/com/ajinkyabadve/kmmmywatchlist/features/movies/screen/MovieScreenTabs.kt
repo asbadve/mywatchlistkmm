@@ -1,15 +1,12 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,20 +23,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.screenContent
 
-sealed class MovieTab(val title: String) {
+sealed class MovieTab(
+    val title: String,
+) {
     data object NowPlaying : MovieTab("Now Playing")
+
     data object Upcoming : MovieTab("Upcoming")
+
     data object Popular : MovieTab("Popular")
+
     data object TopRated : MovieTab("Top Rated")
 }
 
@@ -54,16 +51,17 @@ fun MovieScreenTabs(
     upcomingViewModel: MovieListScreenModel,
     popularViewModel: MovieListScreenModel,
     topRatedViewModel: MovieListScreenModel,
-    onMovieSelected: (movieId: Long) -> Unit
+    onMovieSelected: (movieId: Long) -> Unit,
 ) {
-    val tabs = remember {
-        listOf(
-            MovieTab.NowPlaying,
-            MovieTab.Upcoming,
-            MovieTab.Popular,
-            MovieTab.TopRated
-        )
-    }
+    val tabs =
+        remember {
+            listOf(
+                MovieTab.NowPlaying,
+                MovieTab.Upcoming,
+                MovieTab.Popular,
+                MovieTab.TopRated,
+            )
+        }
     var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
 
     val nowPlayingGridState = rememberLazyGridState()
@@ -74,7 +72,7 @@ fun MovieScreenTabs(
     Column(modifier = modifier.fillMaxWidth()) {
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             val tabsWidth = 400.dp
             val calculatedPadding = (maxWidth - tabsWidth) / 2
@@ -87,22 +85,23 @@ fun MovieScreenTabs(
                 containerColor = Color.Transparent,
                 indicator = {
                     Box(
-                        modifier = Modifier
-                            .tabIndicatorOffset(selectedTabIndex)
-                            .padding(horizontal = 24.dp)
-                            .height(4.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                            )
+                        modifier =
+                            Modifier
+                                .tabIndicatorOffset(selectedTabIndex)
+                                .padding(horizontal = 24.dp)
+                                .height(4.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp),
+                                ),
                     )
-                }
+                },
             ) {
                 tabs.forEachIndexed { index, tab ->
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
-                        text = { Text(tab.title) }
+                        text = { Text(tab.title) },
                     )
                 }
             }
@@ -120,7 +119,7 @@ fun MovieScreenTabs(
 fun MovieListTab(
     viewModel: MovieListScreenModel,
     lazyGridState: LazyGridState,
-    onMovieSelected: (movieId: Long) -> Unit
+    onMovieSelected: (movieId: Long) -> Unit,
 ) {
     screenContent(viewModel = viewModel, lazyColumnListState = lazyGridState, onMovieSelected = onMovieSelected)
 }

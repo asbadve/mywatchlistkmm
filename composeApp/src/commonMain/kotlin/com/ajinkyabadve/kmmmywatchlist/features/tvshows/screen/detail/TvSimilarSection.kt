@@ -17,44 +17,49 @@ import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.SectionHeaderWithScrollHint
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.section_similar_tv
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun TvSimilarSection(
     similarTvShows: List<Tv>,
-    onTvShowClicked: (Long) -> Unit
+    onTvShowClicked: (Long) -> Unit,
 ) {
     if (similarTvShows.isNotEmpty()) {
         val lazyRowState = rememberLazyListState()
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 16.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 16.dp),
         ) {
             SectionHeaderWithScrollHint(
-                title = "Similar Tv Shows",
+                title = stringResource(Res.string.section_similar_tv),
                 listSize = similarTvShows.size.coerceAtMost(10),
                 lazyRowState = lazyRowState,
-                scrollStep = 2
+                scrollStep = 2,
             )
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(
                 state = lazyRowState,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 items(similarTvShows.take(10)) { tvShow ->
                     val density = androidx.compose.ui.platform.LocalDensity.current.density
-                    val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
-                        path = tvShow.posterPath,
-                        type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
-                        targetWidthDp = 140,
-                        density = density
-                    )
+                    val imageUrl =
+                        com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                            path = tvShow.posterPath,
+                            type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                            targetWidthDp = 140,
+                            density = density,
+                        )
                     Box(modifier = Modifier.width(140.dp)) {
                         mediaTvShowRow(
                             imageUrl = imageUrl,
                             title = tvShow.title,
                             modifier = Modifier,
-                            onClick = { onTvShowClicked(tvShow.id.toLong()) }
+                            onClick = { onTvShowClicked(tvShow.id.toLong()) },
                         )
                     }
                 }

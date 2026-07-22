@@ -88,6 +88,7 @@ androidx-material3-window-size-class1-android = { group = "androidx.compose.mate
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 [plugins]
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "13.1.0" }
 
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }

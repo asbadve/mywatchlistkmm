@@ -25,19 +25,19 @@ fun SectionHeaderWithScrollHint(
     title: String,
     listSize: Int,
     lazyRowState: LazyListState,
-    scrollStep: Int = 3
+    scrollStep: Int = 3,
 ) {
     val coroutineScope = rememberCoroutineScope()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
         )
         if (listSize > scrollStep) {
             IconButton(
@@ -47,12 +47,12 @@ fun SectionHeaderWithScrollHint(
                         lazyRowState.animateScrollToItem(nextIndex)
                     }
                 },
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(28.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
                     contentDescription = "Scroll $title Right",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -64,21 +64,22 @@ fun formatFullReleaseDate(rawDate: String): String {
     val parts = rawDate.split("-")
     if (parts.size != 3) return rawDate
     val year = parts[0]
-    val month = when (parts[1]) {
-        "01" -> "Jan"
-        "02" -> "Feb"
-        "03" -> "Mar"
-        "04" -> "Apr"
-        "05" -> "May"
-        "06" -> "Jun"
-        "07" -> "Jul"
-        "08" -> "Aug"
-        "09" -> "Sep"
-        "10" -> "Oct"
-        "11" -> "Nov"
-        "12" -> "Dec"
-        else -> parts[1]
-    }
+    val month =
+        when (parts[1]) {
+            "01" -> "Jan"
+            "02" -> "Feb"
+            "03" -> "Mar"
+            "04" -> "Apr"
+            "05" -> "May"
+            "06" -> "Jun"
+            "07" -> "Jul"
+            "08" -> "Aug"
+            "09" -> "Sep"
+            "10" -> "Oct"
+            "11" -> "Nov"
+            "12" -> "Dec"
+            else -> parts[1]
+        }
     val day = parts[2].toIntOrNull()?.toString() ?: parts[2]
     return "$month $day, $year"
 }

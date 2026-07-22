@@ -12,26 +12,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.section_overview
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun OverviewSection(overview: String) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 16.dp),
     ) {
         Text(
-            text = "Overview",
+            text = stringResource(Res.string.section_overview),
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = overview.ifEmpty { "No overview available." },
             fontSize = 15.sp,
             lineHeight = 22.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
         )
     }
 }

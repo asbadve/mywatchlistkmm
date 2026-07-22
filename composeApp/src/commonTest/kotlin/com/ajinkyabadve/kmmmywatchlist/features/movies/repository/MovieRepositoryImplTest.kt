@@ -21,78 +21,86 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalSerializationApi::class)
 class MovieRepositoryImplTest {
+    @Test
+    fun testGetMoviesReturnsParsedPageResult() =
+        runTest {
+            val expected =
+                MoviePageResult(
+                    page = 1,
+                    list = listOf(Movie(id = 1, title = "Popular Movie")),
+                    totalResults = 1,
+                    totalPages = 1,
+                )
+            var requestedPath: String? = null
+            var requestedQuery: String? = null
+            val mockEngine =
+                MockEngine { request ->
+                    requestedPath = request.url.encodedPath
+                    requestedQuery = request.url.encodedQuery
+                    respond(
+                        content = Json.encodeToString(MoviePageResult.serializer(), expected),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
+
+            val result = repository.getMovies(pageNo = 1, moveFetchType = "popular")
+
+            assertEquals(expected, result)
+            assertEquals("/3/movie/popular", requestedPath)
+            assertTrue(requestedQuery.orEmpty().contains("page=1"))
+        }
 
     @Test
-    fun testGetMoviesReturnsParsedPageResult() = runTest {
-        val expected = MoviePageResult(
-            page = 1,
-            list = listOf(Movie(id = 1, title = "Popular Movie")),
-            totalResults = 1,
-            totalPages = 1
-        )
-        var requestedPath: String? = null
-        var requestedQuery: String? = null
-        val mockEngine = MockEngine { request ->
-            requestedPath = request.url.encodedPath
-            requestedQuery = request.url.encodedQuery
-            respond(
-                content = Json.encodeToString(MoviePageResult.serializer(), expected),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+    fun testGetMoviesReturnsEmptyList() =
+        runTest {
+            val expected = MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0)
+            val mockEngine =
+                MockEngine {
+                    respond(
+                        content = Json.encodeToString(MoviePageResult.serializer(), expected),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
+
+            val result = repository.getMovies(pageNo = 1, moveFetchType = "popular")
+
+            assertTrue(result.list.orEmpty().isEmpty())
         }
-        val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
-
-        val result = repository.getMovies(pageNo = 1, moveFetchType = "popular")
-
-        assertEquals(expected, result)
-        assertEquals("/3/movie/popular", requestedPath)
-        assertTrue(requestedQuery.orEmpty().contains("page=1"))
-    }
 
     @Test
-    fun testGetMoviesReturnsEmptyList() = runTest {
-        val expected = MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0)
-        val mockEngine = MockEngine {
-            respond(
-                content = Json.encodeToString(MoviePageResult.serializer(), expected),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+    fun testGetMovieDetailsReturnsParsedDetail() =
+        runTest {
+            val expected = MovieDetail(id = 42, title = "Fixture Movie", overview = "An overview")
+            val mockEngine =
+                MockEngine {
+                    respond(
+                        content = Json.encodeToString(MovieDetail.serializer(), expected),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
+
+            val result = repository.getMovieDetails(42)
+
+            assertEquals(expected, result)
         }
-        val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
-
-        val result = repository.getMovies(pageNo = 1, moveFetchType = "popular")
-
-        assertTrue(result.list.orEmpty().isEmpty())
-    }
 
     @Test
-    fun testGetMovieDetailsReturnsParsedDetail() = runTest {
-        val expected = MovieDetail(id = 42, title = "Fixture Movie", overview = "An overview")
-        val mockEngine = MockEngine {
-            respond(
-                content = Json.encodeToString(MovieDetail.serializer(), expected),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+    fun testGetMoviesThrowsHttpExceptionsOnErrorStatus() =
+        runTest {
+            val mockEngine =
+                MockEngine {
+                    respond(content = "", status = HttpStatusCode.NotFound, headers = headersOf())
+                }
+            val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
+
+            assertFailsWith<HttpExceptions> {
+                repository.getMovies(pageNo = 1, moveFetchType = "popular")
+            }
         }
-        val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
-
-        val result = repository.getMovieDetails(42)
-
-        assertEquals(expected, result)
-    }
-
-    @Test
-    fun testGetMoviesThrowsHttpExceptionsOnErrorStatus() = runTest {
-        val mockEngine = MockEngine {
-            respond(content = "", status = HttpStatusCode.NotFound, headers = headersOf())
-        }
-        val repository = MovieRepositoryImpl(TmdbClient(mockEngine))
-
-        assertFailsWith<HttpExceptions> {
-            repository.getMovies(pageNo = 1, moveFetchType = "popular")
-        }
-    }
 }

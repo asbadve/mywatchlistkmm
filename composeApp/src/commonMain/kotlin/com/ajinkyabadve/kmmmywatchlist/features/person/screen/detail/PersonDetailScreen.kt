@@ -4,10 +4,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,10 +27,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +61,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
@@ -74,9 +75,23 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_read_less
+import mywatchlist.composeapp.generated.resources.action_read_more
+import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
 import mywatchlist.composeapp.generated.resources.baseline_person_24
+import mywatchlist.composeapp.generated.resources.filter_all
+import mywatchlist.composeapp.generated.resources.filter_all_departments
+import mywatchlist.composeapp.generated.resources.filter_movies
+import mywatchlist.composeapp.generated.resources.filter_tv_shows
+import mywatchlist.composeapp.generated.resources.no_filmography_matches
+import mywatchlist.composeapp.generated.resources.section_biography
+import mywatchlist.composeapp.generated.resources.section_filmography
+import mywatchlist.composeapp.generated.resources.section_known_for
+import mywatchlist.composeapp.generated.resources.section_photos
+import mywatchlist.composeapp.generated.resources.title_person
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +113,7 @@ fun PersonDetailScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
                     title = {
-                        val title = (uiState as? PersonDetailState.Success)?.person?.name ?: "Person"
+                        val title = (uiState as? PersonDetailState.Success)?.person?.name ?: stringResource(Res.string.title_person)
                         Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     },
                     navigationIcon = {
@@ -113,9 +128,10 @@ fun PersonDetailScreen(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             when (val state = uiState) {
                 is PersonDetailState.Loading -> {
@@ -124,15 +140,16 @@ fun PersonDetailScreen(
 
                 is PersonDetailState.Error -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
+                        Text(state.message.asString(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
                         Button(onClick = { viewModel.loadPersonDetails() }) {
-                            Text("Retry")
+                            Text(stringResource(Res.string.action_retry))
                         }
                     }
                 }
@@ -190,7 +207,7 @@ private fun CompactPersonDetailContent(
         item {
             MovieImagesSection(
                 images = person.images?.profiles ?: emptyList(),
-                title = "Photos",
+                title = stringResource(Res.string.section_photos),
                 imageType = ImageConfigResolver.ImageType.PROFILE,
                 onShowGallery = onShowGallery,
             )
@@ -221,7 +238,7 @@ private fun ExpandedPersonDetailContent(
             item {
                 MovieImagesSection(
                     images = person.images?.profiles ?: emptyList(),
-                    title = "Photos",
+                    title = stringResource(Res.string.section_photos),
                     imageType = ImageConfigResolver.ImageType.PROFILE,
                     onShowGallery = onShowGallery,
                 )
@@ -242,32 +259,36 @@ private fun ExpandedPersonDetailContent(
 private fun PersonHeader(person: PersonDetail) {
     Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         val density = LocalDensity.current.density
-        val profileUrl = ImageConfigResolver.resolve(
-            path = person.profilePath,
-            type = ImageConfigResolver.ImageType.PROFILE,
-            targetWidthDp = 140,
-            density = density,
-        )
+        val profileUrl =
+            ImageConfigResolver.resolve(
+                path = person.profilePath,
+                type = ImageConfigResolver.ImageType.PROFILE,
+                targetWidthDp = 140,
+                density = density,
+            )
         Box(
-            modifier = Modifier
-                .width(120.dp)
-                .aspectRatio(2 / 3f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+            modifier =
+                Modifier
+                    .width(120.dp)
+                    .aspectRatio(2 / 3f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             val fallbackPainter = painterResource(Res.drawable.baseline_person_24)
-            val painter = rememberAsyncImagePainter(
-                model = profileUrl,
-                filterQuality = FilterQuality.Medium,
-                error = fallbackPainter,
-                fallback = fallbackPainter,
-            )
+            val painter =
+                rememberAsyncImagePainter(
+                    model = profileUrl,
+                    filterQuality = FilterQuality.Medium,
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
+                )
             val painterState by painter.state.collectAsState()
-            val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-                ContentScale.Crop
-            } else {
-                ContentScale.Fit
-            }
+            val contentScale =
+                if (painterState is AsyncImagePainter.State.Success) {
+                    ContentScale.Crop
+                } else {
+                    ContentScale.Fit
+                }
             Image(
                 painter = painter,
                 contentDescription = person.name,
@@ -285,9 +306,10 @@ private fun PersonHeader(person: PersonDetail) {
                 fontSize = 20.sp,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            val subtitle = listOfNotNull(person.knownForDepartment, person.genderLabel)
-                .filter { it.isNotEmpty() }
-                .joinToString(" • ")
+            val subtitle =
+                listOfNotNull(person.knownForDepartment, person.genderLabel)
+                    .filter { it.isNotEmpty() }
+                    .joinToString(" • ")
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
@@ -300,15 +322,17 @@ private fun PersonHeader(person: PersonDetail) {
             person.birthday?.takeIf { it.isNotEmpty() }?.let { birthday ->
                 val place = person.placeOfBirth?.takeIf { it.isNotEmpty() }
                 // Show current age while alive; the age at death is shown on the "Died" line.
-                val age = if (deathday == null) {
-                    yearsBetween(birthday, Clock.System.todayIn(TimeZone.currentSystemDefault()).toString())
-                } else {
-                    null
-                }
+                val age =
+                    if (deathday == null) {
+                        yearsBetween(birthday, Clock.System.todayIn(TimeZone.currentSystemDefault()).toString())
+                    } else {
+                        null
+                    }
                 Text(
-                    text = "Born $birthday" +
-                        (age?.let { " (age $it)" } ?: "") +
-                        (place?.let { " in $it" } ?: ""),
+                    text =
+                        "Born $birthday" +
+                            (age?.let { " (age $it)" } ?: "") +
+                            (place?.let { " in $it" } ?: ""),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 8.dp),
@@ -350,23 +374,25 @@ private fun PersonHeader(person: PersonDetail) {
 @Composable
 private fun PersonLinksRow(person: PersonDetail) {
     val ids = person.externalIds
-    val links = buildList {
-        (person.imdbId ?: ids?.imdbId)?.let { add("IMDb" to "https://www.imdb.com/name/$it/") }
-        person.homepage?.takeIf { it.isNotEmpty() }?.let { add("Homepage" to it) }
-        ids?.instagramId?.let { add("Instagram" to "https://www.instagram.com/$it/") }
-        ids?.twitterId?.let { add("X" to "https://x.com/$it") }
-        ids?.facebookId?.let { add("Facebook" to "https://www.facebook.com/$it") }
-        ids?.tiktokId?.let { add("TikTok" to "https://www.tiktok.com/@$it") }
-        ids?.youtubeId?.let { add("YouTube" to "https://www.youtube.com/$it") }
-    }
+    val links =
+        buildList {
+            (person.imdbId ?: ids?.imdbId)?.let { add("IMDb" to "https://www.imdb.com/name/$it/") }
+            person.homepage?.takeIf { it.isNotEmpty() }?.let { add("Homepage" to it) }
+            ids?.instagramId?.let { add("Instagram" to "https://www.instagram.com/$it/") }
+            ids?.twitterId?.let { add("X" to "https://x.com/$it") }
+            ids?.facebookId?.let { add("Facebook" to "https://www.facebook.com/$it") }
+            ids?.tiktokId?.let { add("TikTok" to "https://www.tiktok.com/@$it") }
+            ids?.youtubeId?.let { add("YouTube" to "https://www.youtube.com/$it") }
+        }
     if (links.isEmpty()) return
     // Material 3 assist chips: the M3 chips guidance treats actions that hand off to another
     // app/site (opening IMDb, socials) as assist-chip territory, laid out as a wrapping group.
     @OptIn(ExperimentalLayoutApi::class)
     FlowRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         links.forEach { (label, url) ->
@@ -385,12 +411,13 @@ private fun BiographySection(biography: String) {
     var expanded by remember { mutableStateOf(false) }
     var hasOverflow by remember { mutableStateOf(false) }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 16.dp),
     ) {
         Text(
-            text = "Biography",
+            text = stringResource(Res.string.section_biography),
             fontWeight = FontWeight.SemiBold,
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground,
@@ -408,22 +435,26 @@ private fun BiographySection(biography: String) {
         )
         if (hasOverflow || expanded) {
             Text(
-                text = if (expanded) "Read less" else "Read more",
+                text = stringResource(if (expanded) Res.string.action_read_less else Res.string.action_read_more),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .clickable { expanded = !expanded },
+                modifier =
+                    Modifier
+                        .padding(top = 4.dp)
+                        .clickable { expanded = !expanded },
             )
         }
     }
 }
 
 @Composable
-private fun KnownForRow(person: PersonDetail, onCreditClicked: (PersonCredit) -> Unit) {
+private fun KnownForRow(
+    person: PersonDetail,
+    onCreditClicked: (PersonCredit) -> Unit,
+) {
     PersonCreditsRow(
-        title = "Known For",
+        title = stringResource(Res.string.section_known_for),
         credits = person.knownForCredits(MAX_CREDITS),
         caption = { it.character?.takeIf { c -> c.isNotEmpty() } ?: it.job },
         onCreditClicked = onCreditClicked,
@@ -434,8 +465,17 @@ private fun KnownForRow(person: PersonDetail, onCreditClicked: (PersonCredit) ->
 // department, every credit listed newest-first with its year, role and episode count.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FilmographySection(person: PersonDetail, onCreditClicked: (PersonCredit) -> Unit) {
-    if (person.combinedCredits?.filmographySections().orEmpty().isEmpty()) return
+private fun FilmographySection(
+    person: PersonDetail,
+    onCreditClicked: (PersonCredit) -> Unit,
+) {
+    if (person.combinedCredits
+            ?.filmographySections()
+            .orEmpty()
+            .isEmpty()
+    ) {
+        return
+    }
 
     // null = All for both filters, mirroring the media/department filters on themoviedb.org.
     var mediaFilter by remember { mutableStateOf<String?>(null) }
@@ -446,47 +486,57 @@ private fun FilmographySection(person: PersonDetail, onCreditClicked: (PersonCre
         if (departmentFilter == null) sections else sections.filter { it.first == departmentFilter }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
     ) {
         Text(
-            text = "Filmography",
+            text = stringResource(Res.string.section_filmography),
             fontWeight = FontWeight.SemiBold,
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
         FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            listOf<Pair<String, String?>>("All" to null, "Movies" to "movie", "TV shows" to "tv")
-                .forEach { (label, value) ->
-                    FilmographyFilterChip(
-                        selected = mediaFilter == value,
-                        label = label,
-                        onClick = { mediaFilter = value },
-                    )
-                }
+            listOf<Pair<String, String?>>(
+                stringResource(Res.string.filter_all) to null,
+                stringResource(Res.string.filter_movies) to MEDIA_TYPE_MOVIE,
+                stringResource(Res.string.filter_tv_shows) to MEDIA_TYPE_TV,
+            ).forEach { (label, value) ->
+                FilmographyFilterChip(
+                    selected = mediaFilter == value,
+                    label = label,
+                    onClick = { mediaFilter = value },
+                )
+            }
         }
         // Department chips reflect what exists for the current media filter; a department that
         // disappears (e.g. no TV writing credits) resets the selection back to All.
-        val departments = person.combinedCredits?.filmographySections(mediaFilter).orEmpty().map { it.first }
+        val departments =
+            person.combinedCredits
+                ?.filmographySections(mediaFilter)
+                .orEmpty()
+                .map { it.first }
         if (departmentFilter != null && departmentFilter !in departments) departmentFilter = null
         if (departments.size > 1) {
             FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 (listOf<String?>(null) + departments).forEach { department ->
                     FilmographyFilterChip(
                         selected = departmentFilter == department,
-                        label = department ?: "All departments",
+                        label = department ?: stringResource(Res.string.filter_all_departments),
                         onClick = { departmentFilter = department },
                     )
                 }
@@ -494,7 +544,7 @@ private fun FilmographySection(person: PersonDetail, onCreditClicked: (PersonCre
         }
         if (visibleSections.isEmpty()) {
             Text(
-                text = "No credits match the selected filters.",
+                text = stringResource(Res.string.no_filmography_matches),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -516,12 +566,16 @@ private fun FilmographySection(person: PersonDetail, onCreditClicked: (PersonCre
 }
 
 @Composable
-private fun FilmographyRow(credit: PersonCredit, onClick: () -> Unit) {
+private fun FilmographyRow(
+    credit: PersonCredit,
+    onClick: () -> Unit,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Text(
             text = credit.displayDate?.take(4)?.takeIf { it.isNotEmpty() } ?: "—",
@@ -538,11 +592,13 @@ private fun FilmographyRow(credit: PersonCredit, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            val role = credit.character?.takeIf { it.isNotEmpty() }?.let { "as $it" }
-                ?: credit.job?.takeIf { it.isNotEmpty() }
-            val episodes = credit.episodeCount?.takeIf { it > 0 }?.let { count ->
-                "$count episode" + if (count == 1) "" else "s"
-            }
+            val role =
+                credit.character?.takeIf { it.isNotEmpty() }?.let { "as $it" }
+                    ?: credit.job?.takeIf { it.isNotEmpty() }
+            val episodes =
+                credit.episodeCount?.takeIf { it > 0 }?.let { count ->
+                    "$count episode" + if (count == 1) "" else "s"
+                }
             val caption = listOfNotNull(credit.mediaTypeLabel, role, episodes).joinToString(" • ")
             if (caption.isNotEmpty()) {
                 Text(
@@ -566,9 +622,10 @@ private fun PersonCreditsRow(
 ) {
     if (credits.isEmpty()) return
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
     ) {
         Text(
             text = title,
@@ -590,35 +647,43 @@ private fun PersonCreditsRow(
 }
 
 @Composable
-private fun PersonCreditCard(credit: PersonCredit, caption: String?, onClick: () -> Unit) {
+private fun PersonCreditCard(
+    credit: PersonCredit,
+    caption: String?,
+    onClick: () -> Unit,
+) {
     Column(modifier = Modifier.width(120.dp).clickable(onClick = onClick)) {
         val density = LocalDensity.current.density
-        val posterUrl = ImageConfigResolver.resolve(
-            path = credit.posterPath,
-            type = ImageConfigResolver.ImageType.POSTER,
-            targetWidthDp = 120,
-            density = density,
-        )
+        val posterUrl =
+            ImageConfigResolver.resolve(
+                path = credit.posterPath,
+                type = ImageConfigResolver.ImageType.POSTER,
+                targetWidthDp = 120,
+                density = density,
+            )
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(2 / 3f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2 / 3f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             val fallbackPainter = painterResource(Res.drawable.baseline_movie_24)
-            val painter = rememberAsyncImagePainter(
-                model = posterUrl,
-                filterQuality = FilterQuality.Medium,
-                error = fallbackPainter,
-                fallback = fallbackPainter,
-            )
+            val painter =
+                rememberAsyncImagePainter(
+                    model = posterUrl,
+                    filterQuality = FilterQuality.Medium,
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
+                )
             val painterState by painter.state.collectAsState()
-            val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-                ContentScale.Crop
-            } else {
-                ContentScale.Fit
-            }
+            val contentScale =
+                if (painterState is AsyncImagePainter.State.Success) {
+                    ContentScale.Crop
+                } else {
+                    ContentScale.Fit
+                }
             Image(
                 painter = painter,
                 contentDescription = credit.displayTitle,
@@ -631,11 +696,12 @@ private fun PersonCreditCard(credit: PersonCredit, caption: String?, onClick: ()
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
-                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
                 )
             }
         }
@@ -648,10 +714,11 @@ private fun PersonCreditCard(credit: PersonCredit, caption: String?, onClick: ()
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        val subtitle = listOfNotNull(
-            credit.displayDate?.take(4)?.takeIf { it.isNotEmpty() },
-            caption?.takeIf { it.isNotEmpty() },
-        ).joinToString(" • ")
+        val subtitle =
+            listOfNotNull(
+                credit.displayDate?.take(4)?.takeIf { it.isNotEmpty() },
+                caption?.takeIf { it.isNotEmpty() },
+            ).joinToString(" • ")
         if (subtitle.isNotEmpty()) {
             Text(
                 text = subtitle,
@@ -675,19 +742,24 @@ private fun FilmographyFilterChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
-        leadingIcon = if (selected) {
-            {
-                Icon(
-                    imageVector = Icons.Filled.Done,
-                    contentDescription = "Selected",
-                    modifier = Modifier.size(FilterChipDefaults.IconSize),
-                )
-            }
-        } else {
-            null
-        },
+        leadingIcon =
+            if (selected) {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Done,
+                        contentDescription = "Selected",
+                        modifier = Modifier.size(FilterChipDefaults.IconSize),
+                    )
+                }
+            } else {
+                null
+            },
     )
 }
 
 private const val MAX_CREDITS = 20
+
+// TMDB media_type identifiers (API values, not user-facing).
+private const val MEDIA_TYPE_MOVIE = "movie"
+private const val MEDIA_TYPE_TV = "tv"
 private const val BIOGRAPHY_PREVIEW_LINES = 5

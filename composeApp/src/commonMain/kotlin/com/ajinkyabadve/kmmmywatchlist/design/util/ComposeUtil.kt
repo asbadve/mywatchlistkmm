@@ -15,8 +15,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-fun Modifier.addShimmerLoadingAnimation(targetValue: Float = 1000f): Modifier {
-    return composed {
+fun Modifier.addShimmerLoadingAnimation(targetValue: Float = 1000f): Modifier =
+    composed {
         val shimmerColors = ShimmerAnimationData(isLightMode = !isSystemInDarkTheme()).getColours()
 
         val transition = rememberInfiniteTransition()
@@ -41,13 +41,12 @@ fun Modifier.addShimmerLoadingAnimation(targetValue: Float = 1000f): Modifier {
             shape = RoundedCornerShape(4.dp),
         )
     }
-}
 
 data class ShimmerAnimationData(
     private val isLightMode: Boolean,
 ) {
-    fun getColours(): List<Color> {
-        return if (isLightMode) {
+    fun getColours(): List<Color> =
+        if (isLightMode) {
             val color = Color.White
 
             listOf(
@@ -68,5 +67,4 @@ data class ShimmerAnimationData(
                 color.copy(alpha = 0.0f),
             )
         }
-    }
 }

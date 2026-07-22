@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.network.client
 
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
+import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
@@ -8,15 +9,14 @@ import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import io.github.aakira.napier.Napier
 
 private const val TIME_OUT = 30000L
 
@@ -48,11 +48,12 @@ private val tmdbClientConfig: HttpClientConfig<*>.() -> Unit = {
         )
     }
     install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) {
-                Napier.d(tag = "HTTP Client") { message }
+        logger =
+            object : Logger {
+                override fun log(message: String) {
+                    Napier.d(tag = "HTTP Client") { message }
+                }
             }
-        }
         level = LogLevel.ALL
     }
     HttpResponseValidator {
@@ -82,7 +83,9 @@ private val tmdbClientConfig: HttpClientConfig<*>.() -> Unit = {
     }
 }
 
-class TmdbClient(engine: HttpClientEngine? = null) {
+class TmdbClient(
+    engine: HttpClientEngine? = null,
+) {
     internal val client: HttpClient =
         if (engine != null) HttpClient(engine, tmdbClientConfig) else HttpClient(tmdbClientConfig)
 

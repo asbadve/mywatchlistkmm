@@ -24,26 +24,24 @@ enum class WindowSize {
                 windowSizeClass.widthSizeClass,
             )
 
-        fun basedOnWindowSizeClass(windowWidthType: WindowWidthSizeClass): WindowSize {
-            return when (windowWidthType) {
+        fun basedOnWindowSizeClass(windowWidthType: WindowWidthSizeClass): WindowSize =
+            when (windowWidthType) {
                 WindowWidthSizeClass.Compact -> COMPACT
                 WindowWidthSizeClass.Medium -> MEDIUM
                 else -> EXPANDED
             }
-        }
 
-        fun basedOnWidth(windowWidth: Dp): WindowSize {
-            return when {
+        fun basedOnWidth(windowWidth: Dp): WindowSize =
+            when {
                 windowWidth < 600.dp -> COMPACT
                 windowWidth < 840.dp -> MEDIUM
                 else -> EXPANDED
             }
-        }
     }
 }
 
-fun WindowSizeClass.getGridColumn(): Int {
-    return when (WindowSize.basedOnWindowSizeClass(this.widthSizeClass)) {
+fun WindowSizeClass.getGridColumn(): Int =
+    when (WindowSize.basedOnWindowSizeClass(this.widthSizeClass)) {
         WindowSize.COMPACT -> {
             2
         }
@@ -56,10 +54,9 @@ fun WindowSizeClass.getGridColumn(): Int {
             3
         }
     }
-}
 
-fun WindowSizeClass.getHorizontalPadding(): Dp {
-    return when (WindowSize.basedOnWindowSizeClass(this.widthSizeClass)) {
+fun WindowSizeClass.getHorizontalPadding(): Dp =
+    when (WindowSize.basedOnWindowSizeClass(this.widthSizeClass)) {
         WindowSize.COMPACT -> {
             0.dp
         }
@@ -72,4 +69,3 @@ fun WindowSizeClass.getHorizontalPadding(): Dp {
             0.dp
         }
     }
-}

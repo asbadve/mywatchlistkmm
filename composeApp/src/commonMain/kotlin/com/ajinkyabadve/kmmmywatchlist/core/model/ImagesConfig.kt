@@ -10,10 +10,10 @@ data class ImagesConfig(
     val logo_sizes: List<String>,
     val poster_sizes: List<String>,
     val profile_sizes: List<String>,
-    val still_sizes: List<String>
+    val still_sizes: List<String>,
 )
 
 @Serializable
 data class TmdbConfiguration(
-    val images: ImagesConfig
+    val images: ImagesConfig,
 )

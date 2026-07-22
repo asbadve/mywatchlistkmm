@@ -15,7 +15,8 @@ class CollectionDetailSerializationTest {
     // Same relevant settings as TmdbClient's Json configuration.
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val fullCollectionJson = """
+    private val fullCollectionJson =
+        """
         {
           "id": 263,
           "name": "The Dark Knight Collection",
@@ -69,7 +70,7 @@ class CollectionDetailSerializationTest {
             ]
           }
         }
-    """.trimIndent()
+        """.trimIndent()
 
     @Test
     fun parsesBasePartsImagesAndTranslations() {
@@ -81,7 +82,14 @@ class CollectionDetailSerializationTest {
         assertEquals(3, collection.parts.size)
         assertEquals("Batman Begins", collection.parts.first().title)
         assertEquals("/b1.jpg", assertNotNull(collection.images).backdrops.single().filePath)
-        assertEquals("Localized overview.", assertNotNull(collection.translations).translations.single().data?.overview)
+        assertEquals(
+            "Localized overview.",
+            assertNotNull(collection.translations)
+                .translations
+                .single()
+                .data
+                ?.overview,
+        )
     }
 
     @Test

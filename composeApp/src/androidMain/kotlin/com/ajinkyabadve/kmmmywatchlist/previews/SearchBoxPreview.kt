@@ -8,7 +8,7 @@ import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 @Preview(
     showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_NO,
-    name = "Light Theme"
+    name = "Light Theme",
 )
 @Composable
 fun SearchBoxPreview() {
@@ -18,10 +18,9 @@ fun SearchBoxPreview() {
 @Preview(
     showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES,
-    name = "Light Theme"
+    name = "Light Theme",
 )
 @Composable
 fun SearchBoxPreviewNight() {
     SearchBox(onClick = {})
 }
-

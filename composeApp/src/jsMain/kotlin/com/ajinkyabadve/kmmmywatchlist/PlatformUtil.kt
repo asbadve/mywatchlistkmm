@@ -5,6 +5,4 @@ import kotlinx.browser.localStorage
 
 actual fun getPlatformName(): String = "Browser"
 
-actual fun createSettings(): com.russhwolf.settings.Settings {
-    return StorageSettings(localStorage)
-}
+actual fun createSettings(): com.russhwolf.settings.Settings = StorageSettings(localStorage)

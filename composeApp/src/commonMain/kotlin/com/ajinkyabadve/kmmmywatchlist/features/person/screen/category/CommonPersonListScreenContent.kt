@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant.IMAGE_BASE_URL
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.mediaPersonRow
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
@@ -48,7 +47,9 @@ fun personListScreenContent(
         remember {
             derivedStateOf {
                 (
-                    lazyColumnListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                    lazyColumnListState.layoutInfo.visibleItemsInfo
+                        .lastOrNull()
+                        ?.index
                         ?: -6
                 ) >= (lazyColumnListState.layoutInfo.totalItemsCount - 3)
             }
@@ -65,12 +66,13 @@ fun personListScreenContent(
     ) {
         items(people) {
             val density = androidx.compose.ui.platform.LocalDensity.current.density
-            val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
-                path = it.profilePath,
-                type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE,
-                targetWidthDp = 150,
-                density = density
-            )
+            val imageUrl =
+                com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                    path = it.profilePath,
+                    type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE,
+                    targetWidthDp = 150,
+                    density = density,
+                )
             mediaPersonRow(
                 imageUrl,
                 it.name,

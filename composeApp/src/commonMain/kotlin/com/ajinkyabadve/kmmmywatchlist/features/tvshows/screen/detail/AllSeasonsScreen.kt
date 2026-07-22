@@ -47,14 +47,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
+import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
 import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
+import mywatchlist.composeapp.generated.resources.title_seasons
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +74,7 @@ fun AllSeasonsScreen(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
-                    title = { Text("Seasons", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(Res.string.title_seasons), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBackClicked) {
                             Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -83,9 +87,10 @@ fun AllSeasonsScreen(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             when (val state = uiState) {
                 is AllSeasonsState.Loading -> {
@@ -94,15 +99,16 @@ fun AllSeasonsScreen(
 
                 is AllSeasonsState.Error -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
+                        Text(state.message.asString(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
                         Button(onClick = { viewModel.loadSeasons() }) {
-                            Text("Retry")
+                            Text(stringResource(Res.string.action_retry))
                         }
                     }
                 }
@@ -111,7 +117,7 @@ fun AllSeasonsScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
                     ) {
                         items(state.seasons.sortedBy { it.seasonNumber }) { season ->
                             SeasonListItem(season = season, onClick = { onSeasonClicked(season.seasonNumber) })
@@ -124,40 +130,47 @@ fun AllSeasonsScreen(
 }
 
 @Composable
-private fun SeasonListItem(season: SeasonSummary, onClick: () -> Unit) {
+private fun SeasonListItem(
+    season: SeasonSummary,
+    onClick: () -> Unit,
+) {
     Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         val density = LocalDensity.current.density
-        val posterUrl = ImageConfigResolver.resolve(
-            path = season.posterPath,
-            type = ImageConfigResolver.ImageType.POSTER,
-            targetWidthDp = 100,
-            density = density
-        )
+        val posterUrl =
+            ImageConfigResolver.resolve(
+                path = season.posterPath,
+                type = ImageConfigResolver.ImageType.POSTER,
+                targetWidthDp = 100,
+                density = density,
+            )
         Box(
-            modifier = Modifier
-                .width(90.dp)
-                .aspectRatio(2 / 3f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+            modifier =
+                Modifier
+                    .width(90.dp)
+                    .aspectRatio(2 / 3f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             val fallbackPainter = painterResource(Res.drawable.baseline_tv_24)
-            val painter = rememberAsyncImagePainter(
-                model = posterUrl,
-                filterQuality = FilterQuality.Medium,
-                error = fallbackPainter,
-                fallback = fallbackPainter
-            )
+            val painter =
+                rememberAsyncImagePainter(
+                    model = posterUrl,
+                    filterQuality = FilterQuality.Medium,
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
+                )
             val painterState by painter.state.collectAsState()
-            val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-                ContentScale.Crop
-            } else {
-                ContentScale.Fit
-            }
+            val contentScale =
+                if (painterState is AsyncImagePainter.State.Success) {
+                    ContentScale.Crop
+                } else {
+                    ContentScale.Fit
+                }
             Image(
                 painter = painter,
                 contentDescription = season.name,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = contentScale
+                contentScale = contentScale,
             )
         }
 
@@ -168,38 +181,39 @@ private fun SeasonListItem(season: SeasonSummary, onClick: () -> Unit) {
                 text = season.name,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(modifier = Modifier.height(4.dp))
 
             val year = season.airDate?.takeIf { it.length >= 4 }?.take(4)
-            val metaParts = buildList {
-                add("${season.episodeCount} Episodes")
-                year?.let { add(it) }
-            }
+            val metaParts =
+                buildList {
+                    add("${season.episodeCount} Episodes")
+                    year?.let { add(it) }
+                }
             Text(
                 text = metaParts.joinToString(" • "),
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             )
 
             if (season.voteAverage > 0) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = "Rating",
                         tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(14.dp),
                     )
                     Text(
                         text = "${(season.voteAverage * 10).toInt() / 10.0} / 10",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                     )
                 }
             }
@@ -210,7 +224,7 @@ private fun SeasonListItem(season: SeasonSummary, onClick: () -> Unit) {
                 fontSize = 13.sp,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
             )
         }
     }

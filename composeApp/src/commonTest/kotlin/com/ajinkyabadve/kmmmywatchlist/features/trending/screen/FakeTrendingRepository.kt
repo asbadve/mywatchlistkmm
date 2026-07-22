@@ -7,18 +7,22 @@ import kotlinx.serialization.ExperimentalSerializationApi
 
 @OptIn(ExperimentalSerializationApi::class)
 class FakeTrendingRepository : TrendingRepository {
-    var getTrendingResult: Result<MoviePageResult> = Result.success(
-        MoviePageResult(
-            page = 1,
-            list = emptyList(),
-            totalResults = 0,
-            totalPages = 0
+    var getTrendingResult: Result<MoviePageResult> =
+        Result.success(
+            MoviePageResult(
+                page = 1,
+                list = emptyList(),
+                totalResults = 0,
+                totalPages = 0,
+            ),
         )
-    )
-    
+
     val getTrendingCalls = mutableListOf<Pair<String, String>>()
 
-    override suspend fun getTrending(timeWindow: String, mediaType: String): MoviePageResult {
+    override suspend fun getTrending(
+        timeWindow: String,
+        mediaType: String,
+    ): MoviePageResult {
         getTrendingCalls.add(timeWindow to mediaType)
         val result = getTrendingResult
         if (result.isSuccess) {

@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
 import androidx.lifecycle.ViewModel
+import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.aggregateFeaturedCast
@@ -9,6 +10,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositor
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
+import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +23,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.error_network
+import mywatchlist.composeapp.generated.resources.error_unexpected_collection
 
 sealed interface CollectionDetailState {
     data object Loading : CollectionDetailState
@@ -33,14 +38,15 @@ sealed interface CollectionDetailState {
         val featuredCrew: List<CastMember> = emptyList(),
     ) : CollectionDetailState
 
-    data class Error(val message: String) : CollectionDetailState
+    data class Error(
+        val message: UiText,
+    ) : CollectionDetailState
 }
 
 class CollectionDetailScreenModel(
     private val collectionId: Long,
-    private val movieRepository: MovieRepository = MovieRepositoryImpl()
+    private val movieRepository: MovieRepository = MovieRepositoryImpl(),
 ) : ViewModel() {
-
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
     private val _uiState = MutableStateFlow<CollectionDetailState>(CollectionDetailState.Loading)
@@ -50,7 +56,6 @@ class CollectionDetailScreenModel(
         loadCollectionDetails()
     }
 
-    @Suppress("detekt:TooGenericExceptionCaught")
     fun loadCollectionDetails() {
         _uiState.value = CollectionDetailState.Loading
         viewModelScope.launch(Dispatchers.Main) {
@@ -62,17 +67,18 @@ class CollectionDetailScreenModel(
                 Napier.e(tag = TAG, throwable = httpExceptions) {
                     "HTTP Error fetching collection details for collectionId: $collectionId"
                 }
-                _uiState.value = CollectionDetailState.Error(httpExceptions.message)
+                _uiState.value = CollectionDetailState.Error(UiText.Plain(httpExceptions.message))
             } catch (e: IOException) {
                 Napier.e(tag = TAG, throwable = e) {
                     "IO/Network Error fetching collection details for collectionId: $collectionId"
                 }
-                _uiState.value = CollectionDetailState.Error("Network Connection Error. Please check your internet connectivity.")
-            } catch (e: Exception) {
-                Napier.e(tag = TAG, throwable = e) {
-                    "Unexpected Error fetching collection details for collectionId: $collectionId"
-                }
-                _uiState.value = CollectionDetailState.Error("An unexpected error occurred while loading the collection. Please try again.")
+                _uiState.value = CollectionDetailState.Error(UiText.Resource(Res.string.error_network))
+            } catch (e: ContentConvertException) {
+                logMalformedResponse(e)
+                _uiState.value = CollectionDetailState.Error(UiText.Resource(Res.string.error_unexpected_collection))
+            } catch (e: SerializationException) {
+                logMalformedResponse(e)
+                _uiState.value = CollectionDetailState.Error(UiText.Resource(Res.string.error_unexpected_collection))
             }
         }
     }
@@ -82,37 +88,42 @@ class CollectionDetailScreenModel(
     // sections stay hidden only if nothing loads.
     private suspend fun loadFeaturedCredits(collection: CollectionDetail) {
         if (collection.parts.isEmpty()) return
-        val creditsPerMovie = coroutineScope {
-            collection.parts
-                .map { part ->
-                    async {
-                        try {
-                            movieRepository.getMovieCredits(part.id.toLong())
-                        } catch (e: HttpExceptions) {
-                            logCreditsFailure(part.id, e)
-                            null
-                        } catch (e: IOException) {
-                            logCreditsFailure(part.id, e)
-                            null
-                        } catch (e: SerializationException) {
-                            logCreditsFailure(part.id, e)
-                            null
+        val creditsPerMovie =
+            coroutineScope {
+                collection.parts
+                    .map { part ->
+                        async {
+                            try {
+                                movieRepository.getMovieCredits(part.id.toLong())
+                            } catch (e: HttpExceptions) {
+                                logCreditsFailure(part.id, e)
+                                null
+                            } catch (e: IOException) {
+                                logCreditsFailure(part.id, e)
+                                null
+                            } catch (e: SerializationException) {
+                                logCreditsFailure(part.id, e)
+                                null
+                            }
                         }
-                    }
-                }.awaitAll()
-                .filterNotNull()
-        }
+                    }.awaitAll()
+                    .filterNotNull()
+            }
         if (creditsPerMovie.isEmpty()) return
         val current = _uiState.value
         if (current is CollectionDetailState.Success && current.collection.id == collection.id) {
-            _uiState.value = current.copy(
-                featuredCast = aggregateFeaturedCast(creditsPerMovie),
-                featuredCrew = aggregateFeaturedCrew(creditsPerMovie),
-            )
+            _uiState.value =
+                current.copy(
+                    featuredCast = aggregateFeaturedCast(creditsPerMovie),
+                    featuredCrew = aggregateFeaturedCrew(creditsPerMovie),
+                )
         }
     }
 
-    private fun logCreditsFailure(partId: Int, throwable: Throwable) {
+    private fun logCreditsFailure(
+        partId: Int,
+        throwable: Throwable,
+    ) {
         Napier.e(tag = TAG, throwable = throwable) {
             "Failed to fetch credits for part $partId of collection $collectionId"
         }
@@ -121,6 +132,12 @@ class CollectionDetailScreenModel(
     override fun onCleared() {
         viewModelScope.cancel()
         super.onCleared()
+    }
+
+    private fun logMalformedResponse(throwable: Throwable) {
+        Napier.e(tag = TAG, throwable = throwable) {
+            "Malformed response while loading collection details"
+        }
     }
 
     private companion object {

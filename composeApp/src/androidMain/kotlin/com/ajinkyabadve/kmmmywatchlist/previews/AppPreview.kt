@@ -10,7 +10,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 @Preview(
     showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_NO,
-    name = "Light Theme"
+    name = "Light Theme",
 )
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,7 +21,7 @@ fun topAppBarPreview() {
 @Preview(
     showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES,
-    name = "Dark Theme"
+    name = "Dark Theme",
 )
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

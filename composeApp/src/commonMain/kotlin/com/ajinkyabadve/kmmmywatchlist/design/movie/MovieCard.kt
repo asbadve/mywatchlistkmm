@@ -45,7 +45,8 @@ fun MediaCard(
                     .semantics(mergeDescendants = true, properties = {
                         contentDescription =
                             accessibilityContentDescription ?: "$movieTitle, double tap to activate"
-                    }).addShimmerLoadingAnimation(),
+                    })
+                    .addShimmerLoadingAnimation(),
         )
     } else {
         painter?.let {
@@ -108,8 +109,7 @@ private fun InternalMediaCard(
                                 .5F to Color.Black.copy(alpha = 0.5F),
                                 1F to Color.Black.copy(alpha = 0.8F),
                             ),
-                        )
-                        .padding(8.dp)
+                        ).padding(8.dp)
                         .align(Alignment.BottomStart),
             )
         }

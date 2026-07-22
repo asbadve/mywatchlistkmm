@@ -51,6 +51,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CastSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
@@ -61,8 +62,18 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeDetail
 import com.ajinkyabadve.kmmmywatchlist.openUrl
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
 import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_retry
+import mywatchlist.composeapp.generated.resources.action_view_on_imdb
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
+import mywatchlist.composeapp.generated.resources.label_directed_by
+import mywatchlist.composeapp.generated.resources.label_production_code
+import mywatchlist.composeapp.generated.resources.label_written_by
+import mywatchlist.composeapp.generated.resources.section_cast
+import mywatchlist.composeapp.generated.resources.section_guest_stars
+import mywatchlist.composeapp.generated.resources.section_images
+import mywatchlist.composeapp.generated.resources.title_episode
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +98,7 @@ fun EpisodeDetailScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
                     title = {
-                        val title = (uiState as? EpisodeDetailState.Success)?.episode?.name ?: "Episode"
+                        val title = (uiState as? EpisodeDetailState.Success)?.episode?.name ?: stringResource(Res.string.title_episode)
                         Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     },
                     navigationIcon = {
@@ -102,9 +113,10 @@ fun EpisodeDetailScreen(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             when (val state = uiState) {
                 is EpisodeDetailState.Loading -> {
@@ -113,15 +125,16 @@ fun EpisodeDetailScreen(
 
                 is EpisodeDetailState.Error -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
+                        Text(state.message.asString(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
                         Button(onClick = { viewModel.loadEpisodeDetails() }) {
-                            Text("Retry")
+                            Text(stringResource(Res.string.action_retry))
                         }
                     }
                 }
@@ -177,16 +190,24 @@ private fun CompactEpisodeDetailContent(
         item {
             MovieImagesSection(
                 images = episode.images?.stills ?: emptyList(),
-                title = "Images",
+                title = stringResource(Res.string.section_images),
                 imageType = ImageConfigResolver.ImageType.STILL,
                 onShowGallery = onShowGallery,
             )
         }
         item {
-            CastSection(castList = episode.credits?.cast ?: emptyList(), title = "Cast", onPersonClicked = onPersonClicked)
+            CastSection(
+                castList = episode.credits?.cast ?: emptyList(),
+                title = stringResource(Res.string.section_cast),
+                onPersonClicked = onPersonClicked,
+            )
         }
         item {
-            CastSection(castList = episode.credits?.guestStars ?: emptyList(), title = "Guest Stars", onPersonClicked = onPersonClicked)
+            CastSection(
+                castList = episode.credits?.guestStars ?: emptyList(),
+                title = stringResource(Res.string.section_guest_stars),
+                onPersonClicked = onPersonClicked,
+            )
         }
     }
 }
@@ -211,7 +232,7 @@ private fun ExpandedEpisodeDetailContent(
             item {
                 MovieImagesSection(
                     images = episode.images?.stills ?: emptyList(),
-                    title = "Images",
+                    title = stringResource(Res.string.section_images),
                     imageType = ImageConfigResolver.ImageType.STILL,
                     onShowGallery = onShowGallery,
                 )
@@ -223,10 +244,18 @@ private fun ExpandedEpisodeDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp, top = 16.dp),
         ) {
             item {
-                CastSection(castList = episode.credits?.cast ?: emptyList(), title = "Cast", onPersonClicked = onPersonClicked)
+                CastSection(
+                    castList = episode.credits?.cast ?: emptyList(),
+                    title = stringResource(Res.string.section_cast),
+                    onPersonClicked = onPersonClicked,
+                )
             }
             item {
-                CastSection(castList = episode.credits?.guestStars ?: emptyList(), title = "Guest Stars", onPersonClicked = onPersonClicked)
+                CastSection(
+                    castList = episode.credits?.guestStars ?: emptyList(),
+                    title = stringResource(Res.string.section_guest_stars),
+                    onPersonClicked = onPersonClicked,
+                )
             }
         }
     }
@@ -236,36 +265,40 @@ private fun ExpandedEpisodeDetailContent(
 private fun EpisodeStillHeader(episode: EpisodeDetail) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         val density = LocalDensity.current.density
-        val stillUrl = ImageConfigResolver.resolve(
-            path = episode.stillPath,
-            type = ImageConfigResolver.ImageType.STILL,
-            targetWidthDp = 600,
-            density = density
-        )
+        val stillUrl =
+            ImageConfigResolver.resolve(
+                path = episode.stillPath,
+                type = ImageConfigResolver.ImageType.STILL,
+                targetWidthDp = 600,
+                density = density,
+            )
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16 / 9f)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16 / 9f)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             val fallbackPainter = painterResource(Res.drawable.baseline_tv_24)
-            val painter = rememberAsyncImagePainter(
-                model = stillUrl,
-                filterQuality = FilterQuality.Medium,
-                error = fallbackPainter,
-                fallback = fallbackPainter
-            )
+            val painter =
+                rememberAsyncImagePainter(
+                    model = stillUrl,
+                    filterQuality = FilterQuality.Medium,
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
+                )
             val painterState by painter.state.collectAsState()
-            val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-                ContentScale.Crop
-            } else {
-                ContentScale.Fit
-            }
+            val contentScale =
+                if (painterState is AsyncImagePainter.State.Success) {
+                    ContentScale.Crop
+                } else {
+                    ContentScale.Fit
+                }
             Image(
                 painter = painter,
                 contentDescription = episode.name,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = contentScale
+                contentScale = contentScale,
             )
         }
 
@@ -278,7 +311,7 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
             Text(
                 text = "Episode ${episode.episodeNumber} • Season ${episode.seasonNumber}",
                 fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             )
             // "standard" is the default episode type - only special ones (finale, mid_season)
             // are worth a badge.
@@ -288,9 +321,10 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                    modifier =
+                        Modifier
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
             }
         }
@@ -298,39 +332,40 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = 4.dp),
         ) {
             if (!episode.airDate.isNullOrEmpty()) {
                 Text(
                     text = episode.airDate,
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 )
             }
             episode.runtime?.let { runtime ->
                 Text(
                     text = "$runtime min",
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 )
             }
             if (episode.voteAverage > 0) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = "Rating",
                         tint = Color(0xFFFFD700),
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(14.dp),
                     )
                     Text(
-                        text = "${(episode.voteAverage * 10).toInt() / 10.0} / 10" +
-                            if (episode.voteCount > 0) " (${episode.voteCount} votes)" else "",
+                        text =
+                            "${(episode.voteAverage * 10).toInt() / 10.0} / 10" +
+                                if (episode.voteCount > 0) " (${episode.voteCount} votes)" else "",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                     )
                 }
             }
@@ -338,10 +373,10 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
 
         if (!episode.productionCode.isNullOrEmpty()) {
             Text(
-                text = "Production code ${episode.productionCode}",
+                text = stringResource(Res.string.label_production_code, episode.productionCode),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
 
@@ -349,13 +384,14 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
 
         episode.externalIds?.imdbId?.let { imdbId ->
             Text(
-                text = "View on IMDb",
+                text = stringResource(Res.string.action_view_on_imdb),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .clickable { openUrl("https://www.imdb.com/title/$imdbId/") }
+                modifier =
+                    Modifier
+                        .padding(top = 8.dp)
+                        .clickable { openUrl("https://www.imdb.com/title/$imdbId/") },
             )
         }
     }
@@ -373,17 +409,17 @@ private fun CrewSummary(crew: List<CrewMember>) {
     Column(modifier = Modifier.padding(top = 6.dp)) {
         if (directors.isNotEmpty()) {
             Text(
-                text = "Directed by ${directors.joinToString(", ")}",
+                text = stringResource(Res.string.label_directed_by, directors.joinToString(", ")),
                 fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
             )
         }
         if (writers.isNotEmpty()) {
             Text(
-                text = "Written by ${writers.joinToString(", ")}",
+                text = stringResource(Res.string.label_written_by, writers.joinToString(", ")),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                modifier = Modifier.padding(top = 2.dp)
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
         if (others > 0) {
@@ -391,7 +427,7 @@ private fun CrewSummary(crew: List<CrewMember>) {
                 text = "$others more crew member${if (others == 1) "" else "s"}",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 2.dp)
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
     }

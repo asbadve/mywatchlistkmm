@@ -9,10 +9,10 @@ import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.personLis
 fun PersonScreenTab(
     modifier: Modifier = Modifier,
     viewModel: PersonListScreenModel,
-    onPersonSelected: (personId: Long) -> Unit = {}
+    onPersonSelected: (personId: Long) -> Unit = {},
 ) {
     personListScreenContent(
         viewModel = viewModel,
-        onPersonSelected = onPersonSelected
+        onPersonSelected = onPersonSelected,
     )
 }

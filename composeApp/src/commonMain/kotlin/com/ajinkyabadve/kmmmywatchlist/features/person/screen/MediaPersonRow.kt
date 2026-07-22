@@ -41,12 +41,13 @@ fun mediaPersonRow(
 
         if (imageUrl != null) {
             // Observe state so we switch from Fit → Crop once the image loads successfully
-            val asyncPainter = rememberAsyncImagePainter(
-                model = imageUrl,
-                filterQuality = FilterQuality.Medium,
-                error = fallbackPainter,
-                fallback = fallbackPainter,
-            )
+            val asyncPainter =
+                rememberAsyncImagePainter(
+                    model = imageUrl,
+                    filterQuality = FilterQuality.Medium,
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
+                )
             val painterState by asyncPainter.state.collectAsState()
             val contentScale =
                 if (painterState is AsyncImagePainter.State.Success) ContentScale.Crop else ContentScale.Fit

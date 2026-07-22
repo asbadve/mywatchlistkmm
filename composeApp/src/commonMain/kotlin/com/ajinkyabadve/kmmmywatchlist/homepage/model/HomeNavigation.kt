@@ -1,6 +1,5 @@
 package com.ajinkyabadve.kmmmywatchlist.homepage.model
 
-
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.baseline_favorite_24
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
@@ -17,8 +16,8 @@ data class HomeNavigation(
 )
 
 object TabNavigation {
-    fun getNavigation(): List<HomeNavigation> {
-        return listOf(
+    fun getNavigation(): List<HomeNavigation> =
+        listOf(
             HomeNavigation(
                 drawableResource = Res.drawable.trending_up_24,
                 label = AppTabs.TRENDING,
@@ -50,7 +49,6 @@ object TabNavigation {
                 iconContentDescription = AppTabs.FAV,
             ),
         )
-    }
 }
 
 object AppTabs {

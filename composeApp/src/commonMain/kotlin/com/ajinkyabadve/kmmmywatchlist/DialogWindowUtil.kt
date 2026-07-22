@@ -7,5 +7,5 @@ expect fun ConfigureDialogWindow()
 
 expect fun getDialogProperties(
     dismissOnBackPress: Boolean = true,
-    dismissOnClickOutside: Boolean = true
+    dismissOnClickOutside: Boolean = true,
 ): androidx.compose.ui.window.DialogProperties

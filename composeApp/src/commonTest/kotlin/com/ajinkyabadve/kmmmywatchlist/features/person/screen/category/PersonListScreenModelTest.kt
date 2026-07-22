@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.SerializationException
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -22,7 +23,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PersonListScreenModelTest {
-
     private val testDispatcher = UnconfinedTestDispatcher()
     private val fakeRepository = FakePersonRepository()
 
@@ -44,84 +44,95 @@ class PersonListScreenModelTest {
     }
 
     @Test
-    fun testInitialLoadPopulatesListAndAllowsPagination() = runTest(testDispatcher) {
-        fakeRepository.getPopularPeopleResult = Result.success(
-            PersonPageResult(page = 1, list = listOf(Person(id = 1, name = "Person X")), totalResults = 1, totalPages = 2)
-        )
+    fun testInitialLoadPopulatesListAndAllowsPagination() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult =
+                Result.success(
+                    PersonPageResult(page = 1, list = listOf(Person(id = 1, name = "Person X")), totalResults = 1, totalPages = 2),
+                )
 
-        val viewModel = PersonListScreenModel(fakeRepository)
+            val viewModel = PersonListScreenModel(fakeRepository)
 
-        assertEquals(ListState.IDLE, viewModel.listState)
-        assertEquals(listOf(Person(id = 1, name = "Person X")), viewModel.personList)
-        assertEquals(listOf(1), fakeRepository.getPopularPeopleCalls)
-    }
-
-    @Test
-    fun testEmptyListResultSetsPaginationExhaust() = runTest(testDispatcher) {
-        fakeRepository.getPopularPeopleResult = Result.success(
-            PersonPageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0)
-        )
-
-        val viewModel = PersonListScreenModel(fakeRepository)
-
-        assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
-        assertTrue(viewModel.personList.isEmpty())
-    }
+            assertEquals(ListState.IDLE, viewModel.listState)
+            assertEquals(listOf(Person(id = 1, name = "Person X")), viewModel.personList)
+            assertEquals(listOf(1), fakeRepository.getPopularPeopleCalls)
+        }
 
     @Test
-    fun testLoadPopularPeopleAppendsNextPageWithoutClearingPreviousResults() = runTest(testDispatcher) {
-        fakeRepository.getPopularPeopleResult = Result.success(
-            PersonPageResult(page = 1, list = listOf(Person(id = 1, name = "Person X")), totalResults = 2, totalPages = 2)
-        )
-        val viewModel = PersonListScreenModel(fakeRepository)
-        assertEquals(ListState.IDLE, viewModel.listState)
+    fun testEmptyListResultSetsPaginationExhaust() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult =
+                Result.success(
+                    PersonPageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0),
+                )
 
-        fakeRepository.getPopularPeopleResult = Result.success(
-            PersonPageResult(page = 2, list = listOf(Person(id = 2, name = "Person Y")), totalResults = 2, totalPages = 2)
-        )
-        viewModel.loadPopularPeople()
+            val viewModel = PersonListScreenModel(fakeRepository)
 
-        assertEquals(
-            listOf(Person(id = 1, name = "Person X"), Person(id = 2, name = "Person Y")),
-            viewModel.personList
-        )
-        assertEquals(listOf(1, 2), fakeRepository.getPopularPeopleCalls)
-    }
+            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
+            assertTrue(viewModel.personList.isEmpty())
+        }
 
     @Test
-    fun testIOExceptionSetsNetworkErrorState() = runTest(testDispatcher) {
-        fakeRepository.getPopularPeopleResult = Result.failure(IOException("Mock network failure"))
+    fun testLoadPopularPeopleAppendsNextPageWithoutClearingPreviousResults() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult =
+                Result.success(
+                    PersonPageResult(page = 1, list = listOf(Person(id = 1, name = "Person X")), totalResults = 2, totalPages = 2),
+                )
+            val viewModel = PersonListScreenModel(fakeRepository)
+            assertEquals(ListState.IDLE, viewModel.listState)
 
-        val viewModel = PersonListScreenModel(fakeRepository)
+            fakeRepository.getPopularPeopleResult =
+                Result.success(
+                    PersonPageResult(page = 2, list = listOf(Person(id = 2, name = "Person Y")), totalResults = 2, totalPages = 2),
+                )
+            viewModel.loadPopularPeople()
 
-        assertEquals(ListState.NETWORK_ERROR, viewModel.listState)
-        assertTrue(viewModel.personList.isEmpty())
-    }
-
-    @Test
-    fun testUnexpectedExceptionSetsErrorState() = runTest(testDispatcher) {
-        fakeRepository.getPopularPeopleResult = Result.failure(RuntimeException("Boom"))
-
-        val viewModel = PersonListScreenModel(fakeRepository)
-
-        assertEquals(ListState.ERROR, viewModel.listState)
-    }
-
-    @Test
-    fun testHttpExceptionsBadRequestSetsNetworkErrorState() = runTest(testDispatcher) {
-        fakeRepository.getPopularPeopleResult = Result.failure(badRequestException)
-
-        val viewModel = PersonListScreenModel(fakeRepository)
-
-        assertEquals(ListState.NETWORK_ERROR, viewModel.listState)
-    }
+            assertEquals(
+                listOf(Person(id = 1, name = "Person X"), Person(id = 2, name = "Person Y")),
+                viewModel.personList,
+            )
+            assertEquals(listOf(1, 2), fakeRepository.getPopularPeopleCalls)
+        }
 
     @Test
-    fun testHttpExceptionsNotFoundSetsErrorState() = runTest(testDispatcher) {
-        fakeRepository.getPopularPeopleResult = Result.failure(notFoundException)
+    fun testIOExceptionSetsNetworkErrorState() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult = Result.failure(IOException("Mock network failure"))
 
-        val viewModel = PersonListScreenModel(fakeRepository)
+            val viewModel = PersonListScreenModel(fakeRepository)
 
-        assertEquals(ListState.ERROR, viewModel.listState)
-    }
+            assertEquals(ListState.NETWORK_ERROR, viewModel.listState)
+            assertTrue(viewModel.personList.isEmpty())
+        }
+
+    @Test
+    fun testUnexpectedExceptionSetsErrorState() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult = Result.failure(SerializationException("Boom"))
+
+            val viewModel = PersonListScreenModel(fakeRepository)
+
+            assertEquals(ListState.ERROR, viewModel.listState)
+        }
+
+    @Test
+    fun testHttpExceptionsBadRequestSetsNetworkErrorState() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult = Result.failure(badRequestException)
+
+            val viewModel = PersonListScreenModel(fakeRepository)
+
+            assertEquals(ListState.NETWORK_ERROR, viewModel.listState)
+        }
+
+    @Test
+    fun testHttpExceptionsNotFoundSetsErrorState() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult = Result.failure(notFoundException)
+
+            val viewModel = PersonListScreenModel(fakeRepository)
+
+            assertEquals(ListState.ERROR, viewModel.listState)
+        }
 }

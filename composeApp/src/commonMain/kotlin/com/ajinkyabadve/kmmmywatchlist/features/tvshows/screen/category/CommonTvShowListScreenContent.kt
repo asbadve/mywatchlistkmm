@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.SIXTH_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.THIRD_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
@@ -50,7 +49,9 @@ fun tvShowScreenContent(
         remember {
             derivedStateOf {
                 (
-                    lazyColumnListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                    lazyColumnListState.layoutInfo.visibleItemsInfo
+                        .lastOrNull()
+                        ?.index
                         ?: -SIXTH_INDEX
                 ) >= (lazyColumnListState.layoutInfo.totalItemsCount - THIRD_INDEX)
             }
@@ -67,12 +68,13 @@ fun tvShowScreenContent(
     ) {
         items(tvShows) {
             val density = androidx.compose.ui.platform.LocalDensity.current.density
-            val imageUrl = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
-                path = it.posterPath,
-                type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
-                targetWidthDp = 150,
-                density = density
-            )
+            val imageUrl =
+                com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.resolve(
+                    path = it.posterPath,
+                    type = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
+                    targetWidthDp = 150,
+                    density = density,
+                )
             mediaTvShowRow(
                 imageUrl,
                 it.title,

@@ -16,7 +16,8 @@ class PersonDetailSerializationTest {
     // Same relevant settings as TmdbClient's Json configuration.
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val fullPersonJson = """
+    private val fullPersonJson =
+        """
         {
           "adult": false,
           "also_known_as": ["Thomas Cruise Mapother IV", "توم كروز"],
@@ -103,7 +104,7 @@ class PersonDetailSerializationTest {
             ]
           }
         }
-    """.trimIndent()
+        """.trimIndent()
 
     @Test
     fun parsesEveryBaseFieldFromTheOasSchema() {
@@ -180,17 +181,20 @@ class PersonDetailSerializationTest {
 
     @Test
     fun filmographySectionsGroupActingFirstThenDepartmentsNewestFirst() {
-        val credits = PersonCombinedCredits(
-            cast = listOf(
-                PersonCredit(id = 1, title = "Old Movie", releaseDate = "1999-01-01", mediaType = "movie"),
-                PersonCredit(id = 2, title = "New Movie", releaseDate = "2024-05-01", mediaType = "movie"),
-                PersonCredit(id = 3, title = "Upcoming", releaseDate = null, mediaType = "movie"),
-            ),
-            crew = listOf(
-                PersonCredit(id = 4, title = "Produced Thing", department = "Production", job = "Producer"),
-                PersonCredit(id = 5, title = "Directed Thing", department = "Directing", job = "Director"),
-            ),
-        )
+        val credits =
+            PersonCombinedCredits(
+                cast =
+                    listOf(
+                        PersonCredit(id = 1, title = "Old Movie", releaseDate = "1999-01-01", mediaType = "movie"),
+                        PersonCredit(id = 2, title = "New Movie", releaseDate = "2024-05-01", mediaType = "movie"),
+                        PersonCredit(id = 3, title = "Upcoming", releaseDate = null, mediaType = "movie"),
+                    ),
+                crew =
+                    listOf(
+                        PersonCredit(id = 4, title = "Produced Thing", department = "Production", job = "Producer"),
+                        PersonCredit(id = 5, title = "Directed Thing", department = "Directing", job = "Director"),
+                    ),
+            )
 
         val sections = credits.filmographySections()
 
@@ -204,19 +208,44 @@ class PersonDetailSerializationTest {
     fun knownForUsesTheKnownForDepartmentRankedByVotes() {
         // Christopher Nolan case: cast credits are talk-show cameos, the real "known for" titles
         // are his Directing crew credits ranked by vote count.
-        val director = PersonDetail(
-            knownForDepartment = "Directing",
-            combinedCredits = PersonCombinedCredits(
-                cast = listOf(
-                    PersonCredit(id = 1, name = "The Late Show", mediaType = "tv", voteCount = 100, character = "Self"),
-                ),
-                crew = listOf(
-                    PersonCredit(id = 2, title = "Inception", mediaType = "movie", department = "Directing", job = "Director", voteCount = 39576),
-                    PersonCredit(id = 3, title = "Interstellar", mediaType = "movie", department = "Directing", job = "Director", voteCount = 40333),
-                    PersonCredit(id = 4, title = "Oppenheimer", mediaType = "movie", department = "Production", job = "Producer", voteCount = 9000),
-                ),
-            ),
-        )
+        val director =
+            PersonDetail(
+                knownForDepartment = "Directing",
+                combinedCredits =
+                    PersonCombinedCredits(
+                        cast =
+                            listOf(
+                                PersonCredit(id = 1, name = "The Late Show", mediaType = "tv", voteCount = 100, character = "Self"),
+                            ),
+                        crew =
+                            listOf(
+                                PersonCredit(
+                                    id = 2,
+                                    title = "Inception",
+                                    mediaType = "movie",
+                                    department = "Directing",
+                                    job = "Director",
+                                    voteCount = 39576,
+                                ),
+                                PersonCredit(
+                                    id = 3,
+                                    title = "Interstellar",
+                                    mediaType = "movie",
+                                    department = "Directing",
+                                    job = "Director",
+                                    voteCount = 40333,
+                                ),
+                                PersonCredit(
+                                    id = 4,
+                                    title = "Oppenheimer",
+                                    mediaType = "movie",
+                                    department = "Production",
+                                    job = "Producer",
+                                    voteCount = 9000,
+                                ),
+                            ),
+                    ),
+            )
         assertEquals(listOf("Interstellar", "Inception"), director.knownForCredits().map { it.displayTitle })
 
         // Actors keep their cast credits.
@@ -232,15 +261,18 @@ class PersonDetailSerializationTest {
 
     @Test
     fun filmographySectionsFilterByMediaType() {
-        val credits = PersonCombinedCredits(
-            cast = listOf(
-                PersonCredit(id = 1, title = "A Movie", mediaType = "movie", releaseDate = "2020-01-01"),
-                PersonCredit(id = 2, name = "A Show", mediaType = "tv", firstAirDate = "2021-01-01"),
-            ),
-            crew = listOf(
-                PersonCredit(id = 3, title = "Directed Movie", mediaType = "movie", department = "Directing"),
-            ),
-        )
+        val credits =
+            PersonCombinedCredits(
+                cast =
+                    listOf(
+                        PersonCredit(id = 1, title = "A Movie", mediaType = "movie", releaseDate = "2020-01-01"),
+                        PersonCredit(id = 2, name = "A Show", mediaType = "tv", firstAirDate = "2021-01-01"),
+                    ),
+                crew =
+                    listOf(
+                        PersonCredit(id = 3, title = "Directed Movie", mediaType = "movie", department = "Directing"),
+                    ),
+            )
 
         val movieSections = credits.filmographySections(mediaType = "movie")
         assertEquals(listOf("Acting", "Directing"), movieSections.map { it.first })

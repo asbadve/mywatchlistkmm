@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
+import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
@@ -13,6 +14,10 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.SerializationException
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.error_network
+import mywatchlist.composeapp.generated.resources.error_unexpected_seasons
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -22,7 +27,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AllSeasonsScreenModelTest {
-
     private val testDispatcher = UnconfinedTestDispatcher()
     private val fakeRepository = FakeTvRepository()
 
@@ -45,77 +49,84 @@ class AllSeasonsScreenModelTest {
     }
 
     @Test
-    fun testSuccessReturnsSeasons() = runTest(testDispatcher) {
-        val seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2))
-        fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = seasons))
+    fun testSuccessReturnsSeasons() =
+        runTest(testDispatcher) {
+            val seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2))
+            fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = seasons))
 
-        val viewModel = AllSeasonsScreenModel(1, fakeRepository)
+            val viewModel = AllSeasonsScreenModel(1, fakeRepository)
 
-        val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
-        assertEquals(seasons, state.seasons)
-    }
-
-    @Test
-    fun testNullSeasonsResolvesToEmptyList() = runTest(testDispatcher) {
-        fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = null))
-
-        val viewModel = AllSeasonsScreenModel(1, fakeRepository)
-
-        val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
-        assertTrue(state.seasons.isEmpty())
-    }
+            val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
+            assertEquals(seasons, state.seasons)
+        }
 
     @Test
-    fun testEmptySeasonsList() = runTest(testDispatcher) {
-        fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = emptyList()))
+    fun testNullSeasonsResolvesToEmptyList() =
+        runTest(testDispatcher) {
+            fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = null))
 
-        val viewModel = AllSeasonsScreenModel(1, fakeRepository)
+            val viewModel = AllSeasonsScreenModel(1, fakeRepository)
 
-        val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
-        assertTrue(state.seasons.isEmpty())
-    }
-
-    @Test
-    fun testHttpExceptionsSetsErrorWithResponseMessage() = runTest(testDispatcher) {
-        fakeRepository.getTvDetailsResult = Result.failure(notFoundException)
-
-        val viewModel = AllSeasonsScreenModel(1, fakeRepository)
-
-        val state = assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
-        assertEquals(notFoundException.message, state.message)
-    }
+            val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
+            assertTrue(state.seasons.isEmpty())
+        }
 
     @Test
-    fun testIOExceptionSetsNetworkErrorMessage() = runTest(testDispatcher) {
-        fakeRepository.getTvDetailsResult = Result.failure(IOException("Mock network failure"))
+    fun testEmptySeasonsList() =
+        runTest(testDispatcher) {
+            fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = emptyList()))
 
-        val viewModel = AllSeasonsScreenModel(1, fakeRepository)
+            val viewModel = AllSeasonsScreenModel(1, fakeRepository)
 
-        val state = assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
-        assertEquals("Network Connection Error. Please check your internet connectivity.", state.message)
-    }
-
-    @Test
-    fun testUnexpectedExceptionSetsGenericErrorMessage() = runTest(testDispatcher) {
-        fakeRepository.getTvDetailsResult = Result.failure(RuntimeException("Boom"))
-
-        val viewModel = AllSeasonsScreenModel(1, fakeRepository)
-
-        val state = assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
-        assertEquals("An unexpected error occurred while loading seasons. Please try again.", state.message)
-    }
+            val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
+            assertTrue(state.seasons.isEmpty())
+        }
 
     @Test
-    fun testRetryAfterErrorSucceeds() = runTest(testDispatcher) {
-        fakeRepository.getTvDetailsResult = Result.failure(IOException("Mock network failure"))
-        val viewModel = AllSeasonsScreenModel(1, fakeRepository)
-        assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
+    fun testHttpExceptionsSetsErrorWithResponseMessage() =
+        runTest(testDispatcher) {
+            fakeRepository.getTvDetailsResult = Result.failure(notFoundException)
 
-        val seasons = listOf(SeasonSummary(seasonNumber = 1))
-        fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = seasons))
-        viewModel.loadSeasons()
+            val viewModel = AllSeasonsScreenModel(1, fakeRepository)
 
-        val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
-        assertEquals(seasons, state.seasons)
-    }
+            val state = assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
+            assertEquals(UiText.Plain(notFoundException.message), state.message)
+        }
+
+    @Test
+    fun testIOExceptionSetsNetworkErrorMessage() =
+        runTest(testDispatcher) {
+            fakeRepository.getTvDetailsResult = Result.failure(IOException("Mock network failure"))
+
+            val viewModel = AllSeasonsScreenModel(1, fakeRepository)
+
+            val state = assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
+            assertEquals(UiText.Resource(Res.string.error_network), state.message)
+        }
+
+    @Test
+    fun testSerializationExceptionSetsGenericErrorMessage() =
+        runTest(testDispatcher) {
+            fakeRepository.getTvDetailsResult = Result.failure(SerializationException("Boom"))
+
+            val viewModel = AllSeasonsScreenModel(1, fakeRepository)
+
+            val state = assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
+            assertEquals(UiText.Resource(Res.string.error_unexpected_seasons), state.message)
+        }
+
+    @Test
+    fun testRetryAfterErrorSucceeds() =
+        runTest(testDispatcher) {
+            fakeRepository.getTvDetailsResult = Result.failure(IOException("Mock network failure"))
+            val viewModel = AllSeasonsScreenModel(1, fakeRepository)
+            assertIs<AllSeasonsState.Error>(viewModel.uiState.value)
+
+            val seasons = listOf(SeasonSummary(seasonNumber = 1))
+            fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show", seasons = seasons))
+            viewModel.loadSeasons()
+
+            val state = assertIs<AllSeasonsState.Success>(viewModel.uiState.value)
+            assertEquals(seasons, state.seasons)
+        }
 }

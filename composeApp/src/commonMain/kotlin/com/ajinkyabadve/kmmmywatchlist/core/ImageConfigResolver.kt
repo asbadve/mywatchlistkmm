@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object ImageConfigResolver {
-
     private var activeConfig: ImagesConfig = ConfigurationConstants.defaultImagesConfig
     private var repository: ConfigurationRepository = ConfigurationRepositoryImpl()
 
@@ -48,7 +47,7 @@ object ImageConfigResolver {
         BACKDROP,
         PROFILE,
         STILL,
-        LOGO
+        LOGO,
     }
 
     /**
@@ -63,44 +62,50 @@ object ImageConfigResolver {
         path: String?,
         type: ImageType,
         targetWidthDp: Int,
-        density: Float
+        density: Float,
     ): String? {
         if (path.isNullOrEmpty()) return null
         val targetPixels = targetWidthDp * density
         val cleanPath = if (path.startsWith("/")) path else "/$path"
-        val sizes = when (type) {
-            ImageType.POSTER -> activeConfig.poster_sizes
-            ImageType.BACKDROP -> activeConfig.backdrop_sizes
-            ImageType.PROFILE -> activeConfig.profile_sizes
-            ImageType.STILL -> activeConfig.still_sizes
-            ImageType.LOGO -> activeConfig.logo_sizes
-        }
+        val sizes =
+            when (type) {
+                ImageType.POSTER -> activeConfig.poster_sizes
+                ImageType.BACKDROP -> activeConfig.backdrop_sizes
+                ImageType.PROFILE -> activeConfig.profile_sizes
+                ImageType.STILL -> activeConfig.still_sizes
+                ImageType.LOGO -> activeConfig.logo_sizes
+            }
 
         val resolvedSize = selectBestSize(sizes, targetPixels)
         return "${activeConfig.secure_base_url}$resolvedSize$cleanPath"
     }
 
-    private fun selectBestSize(sizes: List<String>, targetPixels: Float): String {
+    private fun selectBestSize(
+        sizes: List<String>,
+        targetPixels: Float,
+    ): String {
         if (sizes.isEmpty()) return "original"
-        
+
         // Map size names (e.g. "w185") to their numeric pixel widths
-        val sizePairs = sizes.mapNotNull { size ->
-            if (size.equals("original", ignoreCase = true)) {
-                size to Float.MAX_VALUE
-            } else {
-                val numericPart = size.filter { it.isDigit() }.toIntOrNull()
-                if (numericPart != null) {
-                    size to numericPart.toFloat()
+        val sizePairs =
+            sizes.mapNotNull { size ->
+                if (size.equals("original", ignoreCase = true)) {
+                    size to Float.MAX_VALUE
                 } else {
-                    null
+                    val numericPart = size.filter { it.isDigit() }.toIntOrNull()
+                    if (numericPart != null) {
+                        size to numericPart.toFloat()
+                    } else {
+                        null
+                    }
                 }
             }
-        }
 
         // Find the smallest size that is greater than or equal to targetPixels
-        val bestMatch = sizePairs
-            .filter { it.second >= targetPixels }
-            .minByOrNull { it.second }
+        val bestMatch =
+            sizePairs
+                .filter { it.second >= targetPixels }
+                .minByOrNull { it.second }
 
         return bestMatch?.first ?: sizes.last()
     }

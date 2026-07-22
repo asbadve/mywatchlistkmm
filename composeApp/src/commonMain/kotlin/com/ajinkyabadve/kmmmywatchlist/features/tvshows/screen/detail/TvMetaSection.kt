@@ -30,24 +30,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.formatFullReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.section_genres
+import mywatchlist.composeapp.generated.resources.section_keywords
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TvMetaSection(detail: TvDetail) {
-    val contentRating = detail.contentRatings?.results
-        ?.firstOrNull { it.iso3166 == "US" && it.rating.isNotEmpty() }
-        ?.rating
+    val contentRating =
+        detail.contentRatings
+            ?.results
+            ?.firstOrNull { it.iso3166 == "US" && it.rating.isNotEmpty() }
+            ?.rating
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp, horizontal = 16.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp, horizontal = 16.dp),
     ) {
         Text(
             text = detail.title,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -56,13 +63,13 @@ fun TvMetaSection(detail: TvDetail) {
         FlowRow(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             if (detail.firstAirDate.isNotEmpty()) {
                 val fullDate = formatFullReleaseDate(detail.firstAirDate)
                 SuggestionChip(
                     onClick = {},
-                    label = { Text(fullDate) }
+                    label = { Text(fullDate) },
                 )
             }
 
@@ -70,7 +77,7 @@ fun TvMetaSection(detail: TvDetail) {
                 if (it.isNotEmpty()) {
                     SuggestionChip(
                         onClick = {},
-                        label = { Text(it) }
+                        label = { Text(it) },
                     )
                 }
             }
@@ -78,7 +85,7 @@ fun TvMetaSection(detail: TvDetail) {
             if (!contentRating.isNullOrEmpty()) {
                 SuggestionChip(
                     onClick = {},
-                    label = { Text(contentRating) }
+                    label = { Text(contentRating) },
                 )
             }
 
@@ -86,7 +93,7 @@ fun TvMetaSection(detail: TvDetail) {
                 if (seasons > 0) {
                     SuggestionChip(
                         onClick = {},
-                        label = { Text(if (seasons == 1) "$seasons Season" else "$seasons Seasons") }
+                        label = { Text(if (seasons == 1) "$seasons Season" else "$seasons Seasons") },
                     )
                 }
             }
@@ -95,7 +102,7 @@ fun TvMetaSection(detail: TvDetail) {
                 if (episodes > 0) {
                     SuggestionChip(
                         onClick = {},
-                        label = { Text(if (episodes == 1) "$episodes Episode" else "$episodes Episodes") }
+                        label = { Text(if (episodes == 1) "$episodes Episode" else "$episodes Episodes") },
                     )
                 }
             }
@@ -107,24 +114,25 @@ fun TvMetaSection(detail: TvDetail) {
         detail.genres?.let { genreList ->
             if (genreList.isNotEmpty()) {
                 Text(
-                    text = "Genres",
+                    text = stringResource(Res.string.section_genres),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     items(genreList) { genre ->
                         AssistChip(
                             onClick = {},
                             label = { Text(genre.name, fontSize = 12.sp) },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                                labelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                              )
+                            colors =
+                                AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                ),
                         )
                     }
                 }
@@ -136,24 +144,25 @@ fun TvMetaSection(detail: TvDetail) {
             if (keywordList.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Keywords",
+                    text = stringResource(Res.string.section_keywords),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     items(keywordList.take(10)) { keyword ->
                         SuggestionChip(
                             onClick = {},
                             label = { Text(keyword.name, fontSize = 11.sp) },
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                            )
+                            border =
+                                BorderStroke(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                ),
                         )
                     }
                 }
@@ -168,13 +177,13 @@ fun TvMetaSection(detail: TvDetail) {
                     text = "Networks",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = networkList.joinToString(", ") { it.name },
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                 )
             }
         }
@@ -184,17 +193,17 @@ fun TvMetaSection(detail: TvDetail) {
         // Rating Row
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = "Rating",
-                tint = Color(0xFFFFD700)
+                tint = Color(0xFFFFD700),
             )
             Text(
                 text = "${(detail.voteAverage * 10).toInt() / 10.0} / 10",
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                fontSize = 16.sp,
             )
         }
     }

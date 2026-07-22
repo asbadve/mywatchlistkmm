@@ -30,7 +30,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -90,7 +89,11 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.placeholder_select_season
+import mywatchlist.composeapp.generated.resources.search_hint
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun App(calculateWindowSizeClass: WindowSizeClass) {
@@ -110,11 +113,12 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
     // ViewModelStoreOwner to keep their ViewModel alive across that disposal. Provide one stable
     // owner for the whole app session here instead of relying on per-platform defaults, so
     // navigating away and back doesn't recreate ViewModels and refetch already-loaded data.
-    val appViewModelStoreOwner = remember {
-        object : ViewModelStoreOwner {
-            override val viewModelStore: ViewModelStore = ViewModelStore()
+    val appViewModelStoreOwner =
+        remember {
+            object : ViewModelStoreOwner {
+                override val viewModelStore: ViewModelStore = ViewModelStore()
+            }
         }
-    }
     CompositionLocalProvider(LocalViewModelStoreOwner provides appViewModelStoreOwner) {
         AppTheme {
             val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
@@ -421,16 +425,17 @@ private fun MainAppScaffoldContent(
                         )
                     }
                     entry<AllSeasonsKey>(
-                        metadata = ListDetailSceneStrategy.listPane(
-                            detailPlaceholder = {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text("Select a season to view its episodes")
-                                }
-                            },
-                        ),
+                        metadata =
+                            ListDetailSceneStrategy.listPane(
+                                detailPlaceholder = {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(stringResource(Res.string.placeholder_select_season))
+                                    }
+                                },
+                            ),
                     ) { key ->
                         AllSeasonsScreen(
                             tvShowId = key.tvShowId,
@@ -492,7 +497,7 @@ private fun AppTopBar(windowSize: WindowSize) {
                                 NavigationConstants.SEARCH_BOX_WIDE_WIDTH_FRACTION
                             },
                         ),
-                    hint = "Search for Movies & Tv shows",
+                    hint = stringResource(Res.string.search_hint),
                     onClick = {},
                 )
             }

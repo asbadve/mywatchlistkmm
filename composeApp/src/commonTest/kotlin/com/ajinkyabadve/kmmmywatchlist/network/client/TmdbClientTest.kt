@@ -12,7 +12,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class TmdbClientTest {
-
     /**
      * Regression test: TmdbClient used to set `expectSuccess = true`, which made Ktor install its
      * own default response validation on top of this client's custom one. That default validation
@@ -21,14 +20,16 @@ class TmdbClientTest {
      * actually thrown by a real request. See the `expectSuccess = false` comment in TmdbClient.
      */
     @Test
-    fun testNonSuccessResponseThrowsHttpExceptionsWithFriendlyMessage() = runTest {
-        val mockEngine = MockEngine { respond(content = "", status = HttpStatusCode.NotFound, headers = headersOf()) }
-        val tmdbClient = TmdbClient(mockEngine)
+    fun testNonSuccessResponseThrowsHttpExceptionsWithFriendlyMessage() =
+        runTest {
+            val mockEngine = MockEngine { respond(content = "", status = HttpStatusCode.NotFound, headers = headersOf()) }
+            val tmdbClient = TmdbClient(mockEngine)
 
-        val exception = assertFailsWith<HttpExceptions> {
-            tmdbClient.client.get("https://mock.test/x")
+            val exception =
+                assertFailsWith<HttpExceptions> {
+                    tmdbClient.client.get("https://mock.test/x")
+                }
+
+            assertEquals("Status: 404 Not Found. Failure: Invalid Request", exception.message)
         }
-
-        assertEquals("Status: 404 Not Found. Failure: Invalid Request", exception.message)
-    }
 }

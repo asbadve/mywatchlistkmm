@@ -17,52 +17,66 @@ import kotlinproject.composeapp.BuildConfig
 class TvRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
 ) : TvRepository {
-    override suspend fun getTvShows(pageNo: Int, moveFetchType: String): TvPageResult {
-        val response: HttpResponse = tmdbClient.client.get {
-            mediaHttpBuilder(moveFetchType, pageNo.toString(), TV)
-        }
+    override suspend fun getTvShows(
+        pageNo: Int,
+        moveFetchType: String,
+    ): TvPageResult {
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                mediaHttpBuilder(moveFetchType, pageNo.toString(), TV)
+            }
         return response.body()
     }
 
     override suspend fun getTvDetails(tvId: Long): TvDetail {
-        val response: HttpResponse = tmdbClient.client.get {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = NetworkConstant.HOST
-                trailingQuery = true
-                encodedPath = "$TV$tvId"
-                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                parameters.append("append_to_response", APPEND_TO_RESPONSE)
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$TV$tvId"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                    parameters.append("append_to_response", APPEND_TO_RESPONSE)
+                }
             }
-        }
         return response.body()
     }
 
-    override suspend fun getSeasonDetails(tvId: Long, seasonNumber: Int): TvSeasonDetail {
-        val response: HttpResponse = tmdbClient.client.get {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = NetworkConstant.HOST
-                trailingQuery = true
-                encodedPath = "$TV$tvId/season/$seasonNumber"
-                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                parameters.append("append_to_response", APPEND_TO_RESPONSE)
+    override suspend fun getSeasonDetails(
+        tvId: Long,
+        seasonNumber: Int,
+    ): TvSeasonDetail {
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$TV$tvId/season/$seasonNumber"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                    parameters.append("append_to_response", APPEND_TO_RESPONSE)
+                }
             }
-        }
         return response.body()
     }
 
-    override suspend fun getEpisodeDetails(tvId: Long, seasonNumber: Int, episodeNumber: Int): EpisodeDetail {
-        val response: HttpResponse = tmdbClient.client.get {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = NetworkConstant.HOST
-                trailingQuery = true
-                encodedPath = "$TV$tvId/season/$seasonNumber/episode/$episodeNumber"
-                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                parameters.append("append_to_response", EPISODE_APPEND_TO_RESPONSE)
+    override suspend fun getEpisodeDetails(
+        tvId: Long,
+        seasonNumber: Int,
+        episodeNumber: Int,
+    ): EpisodeDetail {
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$TV$tvId/season/$seasonNumber/episode/$episodeNumber"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                    parameters.append("append_to_response", EPISODE_APPEND_TO_RESPONSE)
+                }
             }
-        }
         return response.body()
     }
 

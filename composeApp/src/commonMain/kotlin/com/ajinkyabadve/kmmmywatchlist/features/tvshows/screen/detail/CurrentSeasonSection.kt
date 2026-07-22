@@ -42,8 +42,10 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.SectionHead
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_view_all
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun CurrentSeasonSection(
@@ -51,64 +53,70 @@ fun CurrentSeasonSection(
     onViewAllSeasonsClick: () -> Unit = {},
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp, horizontal = 16.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 16.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Current Season",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
             TextButton(onClick = onViewAllSeasonsClick) {
-                Text("View All")
+                Text(stringResource(Res.string.action_view_all))
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onViewAllSeasonsClick)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onViewAllSeasonsClick),
         ) {
             val density = androidx.compose.ui.platform.LocalDensity.current.density
-            val posterUrl = ImageConfigResolver.resolve(
-                path = season.posterPath,
-                type = ImageConfigResolver.ImageType.POSTER,
-                targetWidthDp = 100,
-                density = density
-            )
+            val posterUrl =
+                ImageConfigResolver.resolve(
+                    path = season.posterPath,
+                    type = ImageConfigResolver.ImageType.POSTER,
+                    targetWidthDp = 100,
+                    density = density,
+                )
             Box(
-                modifier = Modifier
-                    .width(90.dp)
-                    .aspectRatio(2 / 3f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                modifier =
+                    Modifier
+                        .width(90.dp)
+                        .aspectRatio(2 / 3f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 val fallbackPainter = painterResource(Res.drawable.baseline_tv_24)
-                val painter = rememberAsyncImagePainter(
-                    model = posterUrl,
-                    filterQuality = FilterQuality.Medium,
-                    error = fallbackPainter,
-                    fallback = fallbackPainter
-                )
+                val painter =
+                    rememberAsyncImagePainter(
+                        model = posterUrl,
+                        filterQuality = FilterQuality.Medium,
+                        error = fallbackPainter,
+                        fallback = fallbackPainter,
+                    )
                 val painterState by painter.state.collectAsState()
-                val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-                    ContentScale.Crop
-                } else {
-                    ContentScale.Fit
-                }
+                val contentScale =
+                    if (painterState is AsyncImagePainter.State.Success) {
+                        ContentScale.Crop
+                    } else {
+                        ContentScale.Fit
+                    }
                 Image(
                     painter = painter,
                     contentDescription = season.name,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = contentScale
+                    contentScale = contentScale,
                 )
             }
 
@@ -119,13 +127,13 @@ fun CurrentSeasonSection(
                     text = season.name,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
                 if (!season.airDate.isNullOrEmpty()) {
                     Text(
                         text = season.airDate,
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -134,7 +142,7 @@ fun CurrentSeasonSection(
                     fontSize = 13.sp,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                 )
             }
         }
@@ -146,12 +154,12 @@ fun CurrentSeasonSection(
                 title = "Episodes",
                 listSize = season.episodes.size,
                 lazyRowState = lazyRowState,
-                scrollStep = 2
+                scrollStep = 2,
             )
             Spacer(modifier = Modifier.height(12.dp))
             LazyRow(
                 state = lazyRowState,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(season.episodes) { episode ->
                     EpisodeCard(episode = episode)
@@ -164,40 +172,45 @@ fun CurrentSeasonSection(
 @Composable
 private fun EpisodeCard(episode: Episode) {
     val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val stillUrl = ImageConfigResolver.resolve(
-        path = episode.stillPath,
-        type = ImageConfigResolver.ImageType.STILL,
-        targetWidthDp = 200,
-        density = density
-    )
+    val stillUrl =
+        ImageConfigResolver.resolve(
+            path = episode.stillPath,
+            type = ImageConfigResolver.ImageType.STILL,
+            targetWidthDp = 200,
+            density = density,
+        )
 
     Column(modifier = Modifier.width(180.dp)) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16 / 9f),
-            shape = RoundedCornerShape(8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16 / 9f),
+            shape = RoundedCornerShape(8.dp),
         ) {
             val fallbackPainter = painterResource(Res.drawable.baseline_tv_24)
-            val painter = rememberAsyncImagePainter(
-                model = stillUrl,
-                filterQuality = FilterQuality.Medium,
-                error = fallbackPainter,
-                fallback = fallbackPainter
-            )
+            val painter =
+                rememberAsyncImagePainter(
+                    model = stillUrl,
+                    filterQuality = FilterQuality.Medium,
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
+                )
             val painterState by painter.state.collectAsState()
-            val contentScale = if (painterState is AsyncImagePainter.State.Success) {
-                ContentScale.Crop
-            } else {
-                ContentScale.Fit
-            }
+            val contentScale =
+                if (painterState is AsyncImagePainter.State.Success) {
+                    ContentScale.Crop
+                } else {
+                    ContentScale.Fit
+                }
             Image(
                 painter = painter,
                 contentDescription = episode.name,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentScale = contentScale
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = contentScale,
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
@@ -206,7 +219,7 @@ private fun EpisodeCard(episode: Episode) {
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
         )
         if (!episode.airDate.isNullOrEmpty()) {
             Text(
@@ -214,7 +227,7 @@ private fun EpisodeCard(episode: Episode) {
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

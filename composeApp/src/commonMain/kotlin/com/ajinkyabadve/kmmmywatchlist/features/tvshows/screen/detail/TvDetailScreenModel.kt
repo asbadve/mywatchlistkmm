@@ -1,12 +1,14 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.lifecycle.ViewModel
+import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
+import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,22 +20,29 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.error_network
+import mywatchlist.composeapp.generated.resources.error_unexpected_tv_details
 
 sealed interface TvDetailState {
     data object Loading : TvDetailState
+
     data class Success(
         val tvDetail: TvDetail,
         val currentSeason: TvSeasonDetail?,
         val allSeasonDetails: Map<Int, TvSeasonDetail>,
     ) : TvDetailState
-    data class Error(val message: String) : TvDetailState
+
+    data class Error(
+        val message: UiText,
+    ) : TvDetailState
 }
 
 class TvDetailScreenModel(
     private val tvId: Long,
-    private val tvRepository: TvRepository = TvRepositoryImpl()
+    private val tvRepository: TvRepository = TvRepositoryImpl(),
 ) : ViewModel() {
-
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
     private val _uiState = MutableStateFlow<TvDetailState>(TvDetailState.Loading)
@@ -43,7 +52,6 @@ class TvDetailScreenModel(
         loadTvDetails()
     }
 
-    @Suppress("detekt:TooGenericExceptionCaught")
     fun loadTvDetails() {
         _uiState.value = TvDetailState.Loading
         viewModelScope.launch(Dispatchers.Main) {
@@ -51,20 +59,24 @@ class TvDetailScreenModel(
                 val detail = tvRepository.getTvDetails(tvId)
                 val seasonDetails = fetchAllSeasonDetails(detail)
                 val currentSeasonNumber = resolveCurrentSeasonNumber(detail)
-                _uiState.value = TvDetailState.Success(
-                    tvDetail = detail,
-                    currentSeason = seasonDetails[currentSeasonNumber],
-                    allSeasonDetails = seasonDetails,
-                )
+                _uiState.value =
+                    TvDetailState.Success(
+                        tvDetail = detail,
+                        currentSeason = seasonDetails[currentSeasonNumber],
+                        allSeasonDetails = seasonDetails,
+                    )
             } catch (httpExceptions: HttpExceptions) {
-                Napier.e(tag = "TvDetailScreenModel", throwable = httpExceptions) { "HTTP Error fetching details for tvId: $tvId" }
-                _uiState.value = TvDetailState.Error(httpExceptions.message)
+                Napier.e(tag = TAG, throwable = httpExceptions) { "HTTP Error fetching details for tvId: $tvId" }
+                _uiState.value = TvDetailState.Error(UiText.Plain(httpExceptions.message))
             } catch (e: IOException) {
-                Napier.e(tag = "TvDetailScreenModel", throwable = e) { "IO/Network Error fetching details for tvId: $tvId" }
-                _uiState.value = TvDetailState.Error("Network Connection Error. Please check your internet connectivity.")
-            } catch (e: Exception) {
-                Napier.e(tag = "TvDetailScreenModel", throwable = e) { "Unexpected Error fetching details for tvId: $tvId" }
-                _uiState.value = TvDetailState.Error("An unexpected error occurred while loading tv show details. Please try again.")
+                Napier.e(tag = TAG, throwable = e) { "IO/Network Error fetching details for tvId: $tvId" }
+                _uiState.value = TvDetailState.Error(UiText.Resource(Res.string.error_network))
+            } catch (e: ContentConvertException) {
+                logMalformedResponse(e)
+                _uiState.value = TvDetailState.Error(UiText.Resource(Res.string.error_unexpected_tv_details))
+            } catch (e: SerializationException) {
+                logMalformedResponse(e)
+                _uiState.value = TvDetailState.Error(UiText.Resource(Res.string.error_unexpected_tv_details))
             }
         }
     }
@@ -72,20 +84,35 @@ class TvDetailScreenModel(
     private suspend fun fetchAllSeasonDetails(detail: TvDetail): Map<Int, TvSeasonDetail> {
         val seasonNumbers = detail.seasons?.map { it.seasonNumber }?.filter { it >= 0 } ?: emptyList()
         return coroutineScope {
-            seasonNumbers.map { seasonNumber ->
-                async { fetchSeasonDetailOrNull(seasonNumber) }
-            }.awaitAll()
+            seasonNumbers
+                .map { seasonNumber ->
+                    async { fetchSeasonDetailOrNull(seasonNumber) }
+                }.awaitAll()
         }.filterNotNull().associateBy { it.seasonNumber }
     }
 
-    @Suppress("detekt:TooGenericExceptionCaught")
-    private suspend fun fetchSeasonDetailOrNull(seasonNumber: Int): TvSeasonDetail? {
-        return try {
+    private suspend fun fetchSeasonDetailOrNull(seasonNumber: Int): TvSeasonDetail? =
+        try {
             tvRepository.getSeasonDetails(tvId, seasonNumber)
-        } catch (e: Exception) {
-            Napier.e(tag = "TvDetailScreenModel", throwable = e) { "Failed to load season $seasonNumber for tvId: $tvId" }
+        } catch (e: HttpExceptions) {
+            logSeasonFailure(seasonNumber, e)
+            null
+        } catch (e: IOException) {
+            logSeasonFailure(seasonNumber, e)
+            null
+        } catch (e: ContentConvertException) {
+            logSeasonFailure(seasonNumber, e)
+            null
+        } catch (e: SerializationException) {
+            logSeasonFailure(seasonNumber, e)
             null
         }
+
+    private fun logSeasonFailure(
+        seasonNumber: Int,
+        throwable: Throwable,
+    ) {
+        Napier.e(tag = TAG, throwable = throwable) { "Failed to load season $seasonNumber for tvId: $tvId" }
     }
 
     private fun resolveCurrentSeasonNumber(detail: TvDetail): Int? {
@@ -101,5 +128,15 @@ class TvDetailScreenModel(
     override fun onCleared() {
         viewModelScope.cancel()
         super.onCleared()
+    }
+
+    private fun logMalformedResponse(throwable: Throwable) {
+        Napier.e(tag = TAG, throwable = throwable) {
+            "Malformed response while loading tv show details"
+        }
+    }
+
+    private companion object {
+        const val TAG = "TvDetailScreenModel"
     }
 }

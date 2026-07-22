@@ -21,12 +21,12 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 
 class AndroidApp : Application() {
     companion object {
-        lateinit var INSTANCE: AndroidApp
+        lateinit var instance: AndroidApp
     }
 
     override fun onCreate() {
         super.onCreate()
-        INSTANCE = this
+        instance = this
     }
 }
 
@@ -44,22 +44,29 @@ class AppActivity : ComponentActivity() {
 @Composable
 private fun Activity.rememberWindowSize(): WindowSize {
     val configuration = LocalConfiguration.current
-    val windowMetrics = remember(configuration) {
-        WindowMetricsCalculator.getOrCreate()
-            .computeCurrentWindowMetrics(this)
-    }
-    val windowDpSize = with(LocalDensity.current) {
-        windowMetrics.bounds.toComposeRect().size.toDpSize()
-    }
+    val windowMetrics =
+        remember(configuration) {
+            WindowMetricsCalculator
+                .getOrCreate()
+                .computeCurrentWindowMetrics(this)
+        }
+    val windowDpSize =
+        with(LocalDensity.current) {
+            windowMetrics.bounds
+                .toComposeRect()
+                .size
+                .toDpSize()
+        }
     return WindowSize.basedOnWidth(windowDpSize.width)
 }
 
 internal actual fun openUrl(url: String?) {
     val uri = url?.let { Uri.parse(it) } ?: return
-    val intent = Intent().apply {
-        action = Intent.ACTION_VIEW
-        data = uri
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    AndroidApp.INSTANCE.startActivity(intent)
+    val intent =
+        Intent().apply {
+            action = Intent.ACTION_VIEW
+            data = uri
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    AndroidApp.instance.startActivity(intent)
 }

@@ -7,6 +7,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.myfav_placeholder
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MyFavScreenTab(modifier: Modifier = Modifier) {
@@ -15,6 +18,6 @@ fun MyFavScreenTab(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("MyFav (Sub-Tab of Home)")
+        Text(stringResource(Res.string.myfav_placeholder))
     }
 }

@@ -42,7 +42,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,8 +50,15 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_retry
+import mywatchlist.composeapp.generated.resources.section_backdrops
+import mywatchlist.composeapp.generated.resources.section_posters
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,9 +110,9 @@ fun MovieDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
+                        Text(state.message.asString(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 16.dp))
                         Button(onClick = { viewModel.loadMovieDetails() }) {
-                            Text("Retry")
+                            Text(stringResource(Res.string.action_retry))
                         }
                     }
                 }
@@ -287,7 +293,7 @@ private fun CompactMovieDetailContent(
         item {
             MovieImagesSection(
                 images = detail.images?.backdrops ?: emptyList(),
-                title = "Backdrops",
+                title = stringResource(Res.string.section_backdrops),
                 imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
                 onShowGallery = onShowGallery,
             )
@@ -295,7 +301,7 @@ private fun CompactMovieDetailContent(
         item {
             MovieImagesSection(
                 images = detail.images?.posters ?: emptyList(),
-                title = "Posters",
+                title = stringResource(Res.string.section_posters),
                 imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
                 onShowGallery = onShowGallery,
             )
@@ -358,7 +364,7 @@ private fun ExpandedMovieDetailContent(
             item {
                 MovieImagesSection(
                     images = detail.images?.backdrops ?: emptyList(),
-                    title = "Backdrops",
+                    title = stringResource(Res.string.section_backdrops),
                     imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.BACKDROP,
                     onShowGallery = onShowGallery,
                 )
@@ -366,7 +372,7 @@ private fun ExpandedMovieDetailContent(
             item {
                 MovieImagesSection(
                     images = detail.images?.posters ?: emptyList(),
-                    title = "Posters",
+                    title = stringResource(Res.string.section_posters),
                     imageType = com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER,
                     onShowGallery = onShowGallery,
                 )

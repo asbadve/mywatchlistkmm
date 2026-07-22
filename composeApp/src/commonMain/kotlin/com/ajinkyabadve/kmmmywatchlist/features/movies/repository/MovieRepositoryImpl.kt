@@ -17,52 +17,61 @@ import kotlinproject.composeapp.BuildConfig
 class MovieRepositoryImpl(
     private val tmdbClient: TmdbClient = TmdbClient.TmdbApiClient.newInstance,
 ) : MovieRepository {
-
-    override suspend fun getMovies(pageNo: Int, moveFetchType: String): MoviePageResult {
-        val response: HttpResponse = tmdbClient.client.get {
-            mediaHttpBuilder(moveFetchType, pageNo.toString(), MOVIE)
-        }
+    override suspend fun getMovies(
+        pageNo: Int,
+        moveFetchType: String,
+    ): MoviePageResult {
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                mediaHttpBuilder(moveFetchType, pageNo.toString(), MOVIE)
+            }
         return response.body()
     }
 
     override suspend fun getMovieDetails(movieId: Long): MovieDetail {
-        val response: HttpResponse = tmdbClient.client.get {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = NetworkConstant.HOST
-                trailingQuery = true
-                encodedPath = "$MOVIE$movieId"
-                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                parameters.append("append_to_response", "videos,images,credits,keywords,alternative_titles,changes,external_ids,release_dates,translations,recommendations,similar,reviews,watch/providers")
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$MOVIE$movieId"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                    parameters.append(
+                        "append_to_response",
+                        "videos,images,credits,keywords,alternative_titles,changes,external_ids,release_dates,translations,recommendations,similar,reviews,watch/providers",
+                    )
+                }
             }
-        }
         return response.body()
     }
 
     override suspend fun getCollectionDetails(collectionId: Long): CollectionDetail {
-        val response: HttpResponse = tmdbClient.client.get {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = NetworkConstant.HOST
-                trailingQuery = true
-                encodedPath = "$COLLECTION$collectionId"
-                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                parameters.append("append_to_response", "images,translations")
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$COLLECTION$collectionId"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                    parameters.append("append_to_response", "images,translations")
+                }
             }
-        }
         return response.body()
     }
 
     override suspend fun getMovieCredits(movieId: Long): Credits {
-        val response: HttpResponse = tmdbClient.client.get {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = NetworkConstant.HOST
-                trailingQuery = true
-                encodedPath = "$MOVIE$movieId/credits"
-                parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$MOVIE$movieId/credits"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                }
             }
-        }
         return response.body()
     }
 

@@ -8,6 +8,14 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.ktlint)
+}
+
+ktlint {
+    // Generated sources (compose resource accessors, BuildConfig) are not ours to lint.
+    filter {
+        exclude { it.file.path.contains("/generated/") }
+    }
 }
 
 @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
@@ -200,6 +208,3 @@ sqldelight {
 //        }
     }
 }
-
-
-

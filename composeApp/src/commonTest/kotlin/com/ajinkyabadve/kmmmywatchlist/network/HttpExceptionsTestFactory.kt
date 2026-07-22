@@ -24,19 +24,20 @@ object HttpExceptionsTestFactory {
         // expectSuccess is deliberately left false: Ktor's own default response validation (triggered by
         // expectSuccess = true) would otherwise win over this custom validator and throw its own
         // ClientRequestException/ServerResponseException instead of HttpExceptions - see TmdbClient.
-        val client = HttpClient(mockEngine) {
-            HttpResponseValidator {
-                validateResponse {
-                    if (!it.status.isSuccess()) {
-                        throw HttpExceptions(
-                            response = it,
-                            cachedResponseText = it.bodyAsText(),
-                            failureReason = "Mock failure",
-                        )
+        val client =
+            HttpClient(mockEngine) {
+                HttpResponseValidator {
+                    validateResponse {
+                        if (!it.status.isSuccess()) {
+                            throw HttpExceptions(
+                                response = it,
+                                cachedResponseText = it.bodyAsText(),
+                                failureReason = "Mock failure",
+                            )
+                        }
                     }
                 }
             }
-        }
         return try {
             client.get("https://mock.test")
             error("Expected HttpExceptions to be thrown for status $statusCode")

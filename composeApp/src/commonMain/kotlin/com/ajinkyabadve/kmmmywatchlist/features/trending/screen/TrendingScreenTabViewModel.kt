@@ -10,13 +10,13 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.TIME_W
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.trendingChipList
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrendingRepository
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrendingRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
+import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
-import io.ktor.utils.io.errors.IOException
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 
@@ -103,7 +103,10 @@ class TrendingScreenTabViewModel(
         )
     }
 
-    private fun setErrorStateByMediaType(mediaType: String, message: String?) {
+    private fun setErrorStateByMediaType(
+        mediaType: String,
+        message: String?,
+    ) {
         when (mediaType) {
             MEDIA_TYPE_MOVIE -> _movieTrendError.value = message
             MEDIA_TYPE_TV -> _tvTrendError.value = message

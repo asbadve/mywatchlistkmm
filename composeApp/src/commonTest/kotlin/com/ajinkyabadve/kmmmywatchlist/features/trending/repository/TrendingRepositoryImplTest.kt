@@ -20,58 +20,64 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalSerializationApi::class)
 class TrendingRepositoryImplTest {
+    @Test
+    fun testGetTrendingReturnsParsedPageResult() =
+        runTest {
+            val expected =
+                MoviePageResult(
+                    page = 1,
+                    list = listOf(Movie(id = 1, title = "Trending Movie")),
+                    totalResults = 1,
+                    totalPages = 1,
+                )
+            var requestedPath: String? = null
+            val mockEngine =
+                MockEngine { request ->
+                    requestedPath = request.url.encodedPath
+                    respond(
+                        content = Json.encodeToString(MoviePageResult.serializer(), expected),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val repository = TrendingRepositoryImpl(TmdbClient(mockEngine))
+
+            val result = repository.getTrending(timeWindow = "day", mediaType = "movie")
+
+            assertEquals(expected, result)
+            assertEquals("/3/trending/movie/day", requestedPath)
+        }
 
     @Test
-    fun testGetTrendingReturnsParsedPageResult() = runTest {
-        val expected = MoviePageResult(
-            page = 1,
-            list = listOf(Movie(id = 1, title = "Trending Movie")),
-            totalResults = 1,
-            totalPages = 1
-        )
-        var requestedPath: String? = null
-        val mockEngine = MockEngine { request ->
-            requestedPath = request.url.encodedPath
-            respond(
-                content = Json.encodeToString(MoviePageResult.serializer(), expected),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+    fun testGetTrendingReturnsEmptyList() =
+        runTest {
+            val expected = MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0)
+            val mockEngine =
+                MockEngine {
+                    respond(
+                        content = Json.encodeToString(MoviePageResult.serializer(), expected),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val repository = TrendingRepositoryImpl(TmdbClient(mockEngine))
+
+            val result = repository.getTrending(timeWindow = "day", mediaType = "movie")
+
+            assertTrue(result.list.orEmpty().isEmpty())
         }
-        val repository = TrendingRepositoryImpl(TmdbClient(mockEngine))
-
-        val result = repository.getTrending(timeWindow = "day", mediaType = "movie")
-
-        assertEquals(expected, result)
-        assertEquals("/3/trending/movie/day", requestedPath)
-    }
 
     @Test
-    fun testGetTrendingReturnsEmptyList() = runTest {
-        val expected = MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0)
-        val mockEngine = MockEngine {
-            respond(
-                content = Json.encodeToString(MoviePageResult.serializer(), expected),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+    fun testGetTrendingThrowsHttpExceptionsOnErrorStatus() =
+        runTest {
+            val mockEngine =
+                MockEngine {
+                    respond(content = "", status = HttpStatusCode.NotFound, headers = headersOf())
+                }
+            val repository = TrendingRepositoryImpl(TmdbClient(mockEngine))
+
+            assertFailsWith<HttpExceptions> {
+                repository.getTrending(timeWindow = "day", mediaType = "movie")
+            }
         }
-        val repository = TrendingRepositoryImpl(TmdbClient(mockEngine))
-
-        val result = repository.getTrending(timeWindow = "day", mediaType = "movie")
-
-        assertTrue(result.list.orEmpty().isEmpty())
-    }
-
-    @Test
-    fun testGetTrendingThrowsHttpExceptionsOnErrorStatus() = runTest {
-        val mockEngine = MockEngine {
-            respond(content = "", status = HttpStatusCode.NotFound, headers = headersOf())
-        }
-        val repository = TrendingRepositoryImpl(TmdbClient(mockEngine))
-
-        assertFailsWith<HttpExceptions> {
-            repository.getTrending(timeWindow = "day", mediaType = "movie")
-        }
-    }
 }

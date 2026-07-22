@@ -9,7 +9,7 @@ import com.ajinkyabadve.kmmmywatchlist.App
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3WindowSizeClassApi::class)
 fun main() {
     ComposeViewport("ComposeTarget") {
-        //todo pass actual size by calculating it
+        // todo pass actual size by calculating it
         App(calculateWindowSizeClass())
     }
 }

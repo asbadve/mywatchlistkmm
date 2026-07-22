@@ -12,7 +12,7 @@ fun TvShowsScreenTab(
     onTheAirViewModel: TvListScreenModel,
     popularViewModel: TvListScreenModel,
     topRatedViewModel: TvListScreenModel,
-    onTvShowSelected: (tvShowId: Long) -> Unit = {}
+    onTvShowSelected: (tvShowId: Long) -> Unit = {},
 ) {
     TvShowScreenTabs(
         modifier = modifier,
@@ -20,6 +20,6 @@ fun TvShowsScreenTab(
         onTheAirViewModel = onTheAirViewModel,
         popularViewModel = popularViewModel,
         topRatedViewModel = topRatedViewModel,
-        onTvShowSelected = onTvShowSelected
+        onTvShowSelected = onTvShowSelected,
     )
 }
