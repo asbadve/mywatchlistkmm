@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository
 
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
@@ -23,4 +24,6 @@ interface TvRepository {
         seasonNumber: Int,
         episodeNumber: Int,
     ): EpisodeDetail
+
+    suspend fun getTvVideos(tvShowId: Long): VideoResponse
 }

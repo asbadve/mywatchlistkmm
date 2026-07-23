@@ -8,6 +8,7 @@
     <string name="error_unexpected_episodes">An unexpected error occurred while loading episodes. Please try again.</string>
     <string name="error_unexpected_episode">An unexpected error occurred while loading the episode. Please try again.</string>
     <string name="error_unexpected_person">An unexpected error occurred while loading the person. Please try again.</string>
+    <string name="error_unexpected_trailers">An unexpected error occurred while loading trailers. Please try again.</string>
     <string name="error_unexpected_collection">An unexpected error occurred while loading the collection. Please try again.</string>
 
     <!-- Actions -->
@@ -53,6 +54,7 @@
     <string name="section_recommendations">Recommendations</string>
     <string name="section_similar_movies">Similar Movies</string>
     <string name="section_similar_tv">Similar Tv Shows</string>
+    <string name="section_latest_trailers">Latest Trailers</string>
 
     <!-- Labels and templates -->
     <string name="label_directed_by">Directed by %1$s</string>
@@ -76,4 +78,8 @@
     <string name="filter_movies">Movies</string>
     <string name="filter_tv_shows">TV shows</string>
     <string name="filter_all_departments">All departments</string>
+    <string name="filter_in_theaters">In Theaters</string>
+    <string name="filter_upcoming">Upcoming</string>
+    <string name="filter_popular">Popular</string>
+    <string name="filter_on_tv">On TV</string>
 </resources>

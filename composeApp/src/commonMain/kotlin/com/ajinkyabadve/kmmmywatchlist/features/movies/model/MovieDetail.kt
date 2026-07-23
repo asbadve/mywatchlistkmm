@@ -89,6 +89,7 @@ data class VideoResult(
     val site: String = "",
     val type: String = "",
     val official: Boolean = false,
+    @SerialName("published_at") val publishedAt: String = "",
 )
 
 @Serializable

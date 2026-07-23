@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
@@ -21,6 +22,10 @@ class FakeTvRepository : TvRepository {
     val getTvDetailsCalls = mutableListOf<Long>()
     val getSeasonDetailsCalls = mutableListOf<Pair<Long, Int>>()
     val getEpisodeDetailsCalls = mutableListOf<Triple<Long, Int, Int>>()
+
+    // Per-show videos for the Latest Trailers rail.
+    val getTvVideosResults = mutableMapOf<Long, Result<VideoResponse>>()
+    val getTvVideosCalls = mutableListOf<Long>()
 
     override suspend fun getTvShows(
         pageNo: Int,
@@ -113,5 +118,19 @@ class FakeTvRepository : TvRepository {
             name = "Episode $episodeNumber",
             overview = "Overview of Episode $episodeNumber",
         )
+    }
+
+    override suspend fun getTvVideos(tvShowId: Long): VideoResponse {
+        getTvVideosCalls.add(tvShowId)
+
+        getTvVideosResults[tvShowId]?.let { result ->
+            if (result.isSuccess) {
+                return result.getOrThrow()
+            } else {
+                throw result.exceptionOrNull() ?: IOException("Fake repository error")
+            }
+        }
+
+        return VideoResponse()
     }
 }

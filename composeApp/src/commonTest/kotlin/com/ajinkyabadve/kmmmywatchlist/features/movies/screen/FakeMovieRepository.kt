@@ -5,6 +5,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import io.ktor.utils.io.errors.IOException
 
@@ -17,6 +18,10 @@ class FakeMovieRepository : MovieRepository {
     val getMovieCreditsResults = mutableMapOf<Long, Result<Credits>>()
     val getMovieCreditsCalls = mutableListOf<Long>()
     val getCollectionDetailsCalls = mutableListOf<Long>()
+
+    // Per-movie videos for the Latest Trailers rail.
+    val getMovieVideosResults = mutableMapOf<Long, Result<VideoResponse>>()
+    val getMovieVideosCalls = mutableListOf<Long>()
 
     val getMoviesCalls = mutableListOf<Pair<Int, String>>()
     val getMovieDetailsCalls = mutableListOf<Long>()
@@ -112,5 +117,19 @@ class FakeMovieRepository : MovieRepository {
         }
 
         return Credits()
+    }
+
+    override suspend fun getMovieVideos(movieId: Long): VideoResponse {
+        getMovieVideosCalls.add(movieId)
+
+        getMovieVideosResults[movieId]?.let { result ->
+            if (result.isSuccess) {
+                return result.getOrThrow()
+            } else {
+                throw result.exceptionOrNull() ?: IOException("Fake repository error")
+            }
+        }
+
+        return VideoResponse()
     }
 }

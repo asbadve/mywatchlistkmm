@@ -121,6 +121,7 @@ fun TrendingScreenTab(
         onMovieSelected = onMovieSelected,
         onTvShowSelected = onTvShowSelected,
         onPersonSelected = onPersonSelected,
+        trailersViewModel = viewModel,
     )
 }
 
@@ -133,6 +134,7 @@ fun TrendingScreenContent(
     modifier: Modifier = Modifier,
     onTvShowSelected: (Long) -> Unit = {},
     onPersonSelected: (Long) -> Unit = {},
+    trailersViewModel: TrendingScreenTabViewModel? = null,
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth().fillMaxHeight(),
@@ -147,6 +149,8 @@ fun TrendingScreenContent(
             if (screenLoadingState) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
+
+            trailersViewModel?.let { LatestTrailersSection(viewModel = it) }
 
             sections.forEach { section ->
                 TrendingSection(

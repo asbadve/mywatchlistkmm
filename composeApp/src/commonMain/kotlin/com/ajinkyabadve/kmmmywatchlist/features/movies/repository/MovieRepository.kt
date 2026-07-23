@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 
 interface MovieRepository {
     suspend fun getMovies(
@@ -16,4 +17,6 @@ interface MovieRepository {
     suspend fun getCollectionDetails(collectionId: Long): CollectionDetail
 
     suspend fun getMovieCredits(movieId: Long): Credits
+
+    suspend fun getMovieVideos(movieId: Long): VideoResponse
 }

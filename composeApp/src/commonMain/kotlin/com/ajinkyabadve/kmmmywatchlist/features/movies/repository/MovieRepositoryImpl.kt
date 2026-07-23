@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.network.builder.mediaHttpBuilder
 import com.ajinkyabadve.kmmmywatchlist.network.client.TmdbClient
 import com.ajinkyabadve.kmmmywatchlist.network.constant.NetworkConstant
@@ -75,8 +76,23 @@ class MovieRepositoryImpl(
         return response.body()
     }
 
+    override suspend fun getMovieVideos(movieId: Long): VideoResponse {
+        val response: HttpResponse =
+            tmdbClient.client.get {
+                url {
+                    protocol = URLProtocol.HTTPS
+                    host = NetworkConstant.HOST
+                    trailingQuery = true
+                    encodedPath = "$MOVIE$movieId$VIDEOS"
+                    parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
+                }
+            }
+        return response.body()
+    }
+
     private companion object {
         const val MOVIE = "/3/movie/"
         const val COLLECTION = "/3/collection/"
+        const val VIDEOS = "/videos"
     }
 }
