@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -37,7 +39,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -90,6 +94,9 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_close
+import mywatchlist.composeapp.generated.resources.coming_soon_search_message
+import mywatchlist.composeapp.generated.resources.coming_soon_title
 import mywatchlist.composeapp.generated.resources.placeholder_select_season
 import mywatchlist.composeapp.generated.resources.search_hint
 import org.jetbrains.compose.resources.painterResource
@@ -477,6 +484,10 @@ private fun MainAppScaffoldContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AppTopBar(windowSize: WindowSize) {
+    // Search isn't implemented yet - clicking the search box surfaces a "Coming Soon" notice
+    // instead of a dead-end no-op.
+    var showSearchComingSoon by remember { mutableStateOf(false) }
+
     TopAppBar(
         colors =
             TopAppBarDefaults.topAppBarColors(
@@ -498,11 +509,24 @@ private fun AppTopBar(windowSize: WindowSize) {
                             },
                         ),
                     hint = stringResource(Res.string.search_hint),
-                    onClick = {},
+                    onClick = { showSearchComingSoon = true },
                 )
             }
         },
     )
+
+    if (showSearchComingSoon) {
+        AlertDialog(
+            onDismissRequest = { showSearchComingSoon = false },
+            title = { Text(stringResource(Res.string.coming_soon_title)) },
+            text = { Text(stringResource(Res.string.coming_soon_search_message)) },
+            confirmButton = {
+                TextButton(onClick = { showSearchComingSoon = false }) {
+                    Text(stringResource(Res.string.action_close))
+                }
+            },
+        )
+    }
 }
 
 internal expect fun openUrl(url: String?)

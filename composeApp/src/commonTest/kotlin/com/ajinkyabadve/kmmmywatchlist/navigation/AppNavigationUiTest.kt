@@ -176,7 +176,7 @@ class AppNavigationUiTest {
 
             // 5. Navigate to My Fav Tab
             onNodeWithContentDescription("My Fav", useUnmergedTree = true).performClick()
-            onNodeWithText("MyFav (Sub-Tab of Home)").assertExists()
+            onNodeWithText("Coming Soon").assertExists()
 
             // 6. Navigate back to Trending Tab to verify navigation state is intact
             onNodeWithContentDescription("Trending", useUnmergedTree = true).performClick()

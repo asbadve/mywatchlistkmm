@@ -49,7 +49,7 @@
     <string name="section_reviews">Reviews</string>
     <string name="label_review_by">A review by %1$s</string>
     <string name="title_review_by">Review by %1$s</string>
-    <string name="myfav_placeholder">MyFav (Sub-Tab of Home)</string>
+    <string name="coming_soon_my_fav_message">Your favorites and watchlist are coming soon.</string>
     <string name="section_trailers_clips">Trailers &amp; Clips</string>
     <string name="section_recommendations">Recommendations</string>
     <string name="section_similar_movies">Similar Movies</string>
@@ -82,4 +82,6 @@
     <string name="filter_upcoming">Upcoming</string>
     <string name="filter_popular">Popular</string>
     <string name="filter_on_tv">On TV</string>
+    <string name="coming_soon_title">Coming Soon</string>
+    <string name="coming_soon_search_message">Search is on its way. Check back soon to find movies, TV shows and people.</string>
 </resources>
