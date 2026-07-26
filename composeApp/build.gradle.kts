@@ -130,6 +130,12 @@ kotlin {
 
         val desktopTest by getting {
             dependencies {
+                // Explicit rather than relying on it arriving transitively via desktopMain -
+                // this is exactly the dependency whose absence from the test source set's
+                // classpath caused JetBrains/compose-multiplatform#1352 (skiko native library
+                // not found under uiTestJUnit4/jvmTest). currentOs resolves per the machine
+                // actually running Gradle, so this picks the Linux build on CI automatically.
+                implementation(compose.desktop.currentOs)
             }
         }
 
