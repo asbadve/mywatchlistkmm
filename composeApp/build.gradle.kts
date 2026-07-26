@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ktlint)
+    jacoco
 }
 
 ktlint {
@@ -213,5 +214,59 @@ sqldelight {
 //            // https://cashapp.github.io/sqldelight
 //            packageName.set("com.ajinkyabadve.kmmmywatchlist.db")
 //        }
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+// Discovered fresh on every run instead of a maintained list, so a newly added composable file
+// is excluded automatically. Base names (no extension) of commonMain source files whose text
+// contains @Composable. Kotlin compiles a file's top-level declarations to <BaseName>Kt.class
+// (plus $-nested lambda classes) - distinct from any ScreenModel/repository class living in the
+// same package, which stays covered. UI is verified manually (see run-app skill), not via unit
+// tests, so it's excluded here the same way generated BuildConfig is.
+val composableSourceFileBaseNames: Provider<Set<String>> =
+    providers.provider {
+        fileTree("src/commonMain/kotlin") { include("**/*.kt") }
+            .filter { it.readText().contains("@Composable") }
+            .map { it.nameWithoutExtension }
+            .toSet()
+    }
+
+// desktopTest runs commonTest + desktopMain against the JVM/desktop target, so it's the one
+// target JaCoCo (a JVM bytecode coverage tool) can instrument directly - no Android/iOS/JS
+// equivalent is set up.
+tasks.register<JacocoReport>("desktopTestCoverage") {
+    dependsOn("desktopTest")
+    group = "verification"
+    description = "Generates a JaCoCo coverage report from the desktopTest task."
+
+    executionData.setFrom(layout.buildDirectory.file("jacoco/desktopTest.exec"))
+    sourceDirectories.setFrom(
+        files(
+            "src/commonMain/kotlin",
+            "src/desktopMain/kotlin",
+        ),
+    )
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("classes/kotlin/desktop/main")) {
+            // Generated, not hand-written - excluded from coverage the same way ktlint excludes it.
+            exclude("kotlinproject/composeapp/BuildConfig*")
+            // Compose-compiler-generated holder for composable lambdas - not our code.
+            exclude("**/ComposableSingletons\$*.class")
+            exclude {
+                val name = it.file.name
+                composableSourceFileBaseNames.get().any { baseName ->
+                    name == "${baseName}Kt.class" || name.startsWith("${baseName}Kt$")
+                }
+            }
+        },
+    )
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
     }
 }

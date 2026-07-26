@@ -35,8 +35,8 @@ jobs:
       - name: Compile desktop
         run: ./gradlew compileKotlinDesktop
 
-      - name: Run tests
-        run: ./gradlew desktopTest
+      - name: Run tests with coverage
+        run: ./gradlew desktopTestCoverage
 
       - name: Android compile
         run: ./gradlew assembleDebug
@@ -47,4 +47,12 @@ jobs:
         with:
           name: test-results
           path: composeApp/build/test-results/desktopTest/**
+          if-no-files-found: ignore
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: composeApp/build/reports/jacoco/desktopTestCoverage/**
           if-no-files-found: ignore
