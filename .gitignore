@@ -21,3 +21,4 @@ composeApp/build/*
 
 # Personal learning/reference notes - not part of the project source
 docs/
+/TASKS.md
