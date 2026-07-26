@@ -254,6 +254,8 @@ tasks.register<JacocoReport>("desktopTestCoverage") {
         fileTree(layout.buildDirectory.dir("classes/kotlin/desktop/main")) {
             // Generated, not hand-written - excluded from coverage the same way ktlint excludes it.
             exclude("kotlinproject/composeapp/BuildConfig*")
+            // Compose Multiplatform's generated resource accessors (Res.string, Res.drawable, etc).
+            exclude("mywatchlist/composeapp/generated/**")
             // Compose-compiler-generated holder for composable lambdas - not our code.
             exclude("**/ComposableSingletons\$*.class")
             exclude {
