@@ -7,6 +7,11 @@ Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions
   `composeApp/src/commonMain/composeResources/values/strings.xml` via `Res.string.*`.
 - No wildcard imports - import every symbol explicitly.
 
+Before implementing any new feature, follow `.claude/skills/testing-conventions/SKILL.md`:
+every new feature needs both a unit test (ScreenModel/repository logic) and a Compose UI JUnit
+test (the composable's rendering and click-driven actions) - same tier as ktlint-clean, not
+optional.
+
 ## Other project skills
 - `.claude/skills/tmdb-api/SKILL.md` - how to look up TMDB endpoint schemas (OpenAPI) and
   ground-truth against the live API before adding/extending API models.

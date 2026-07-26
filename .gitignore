@@ -18,3 +18,7 @@ composeApp/build/*
 /.kotlin/metadata/*
 /.kotlin/errors/*
 /patch/*
+
+# Personal learning/reference notes - not part of the project source
+docs/
+/TASKS.md
