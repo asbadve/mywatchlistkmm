@@ -13,7 +13,6 @@ xcuserdata/
 Pods/
 *.jks
 *yarn.lock
-/gradle/wrapper/gradle-wrapper.jar
 composeApp/build/*
 .gradle/*
 /.kotlin/metadata/*
