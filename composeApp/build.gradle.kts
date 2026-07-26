@@ -196,7 +196,14 @@ buildConfig {
     // BuildConfig configuration here.
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
     packageName = "kotlinproject.composeapp" // in lowercase! this is due to known issue
-    buildConfigField("String", "TMDB_API_KEY", provider { "${project.properties["MY_WATCH_LIST_TMDB_API_KEY"]}" })
+    // This plugin's generated field is inserted as raw Kotlin source (KotlinPoet's %L, no
+    // auto-quoting) - the provider must supply the literal quote characters itself so the
+    // generated `= <value>` is always valid Kotlin, whether or not the property is set.
+    buildConfigField(
+        "String",
+        "TMDB_API_KEY",
+        provider { "\"${(project.properties["MY_WATCH_LIST_TMDB_API_KEY"] as? String).orEmpty()}\"" },
+    )
 }
 
 sqldelight {
