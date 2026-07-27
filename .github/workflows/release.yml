@@ -85,6 +85,11 @@ jobs:
     needs: package
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    # The default GITHUB_TOKEN is read-only unless a job explicitly asks for more - without this,
+    # softprops/action-gh-release gets a 403 "Resource not accessible by integration" trying to
+    # create the release.
+    permissions:
+      contents: write
     steps:
       - name: Download all distributables
         uses: actions/download-artifact@v4
