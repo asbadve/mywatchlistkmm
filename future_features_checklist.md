@@ -4,7 +4,43 @@ This document contains a checklist of high-priority features that can be impleme
 
 ---
 
-## 1. Integrated Search Feature
+## 1. Secure the TMDB API Key via a Server-Side Proxy
+**Goal**: Stop shipping the real TMDB API key inside the client at all. GitHub Actions Secrets
+only keep it out of *CI logs* - it's still a plain string constant embedded in every shipped
+binary (Android/desktop/iOS/JS), trivially extractable regardless of ProGuard obfuscation
+(obfuscation renames code, it doesn't hide string constants). For an actual secret, the only real
+fix is to keep the key server-side and proxy the call. With Firebase specifically:
+- **Cloud Functions for Firebase** (or Cloud Run) — write a callable/HTTPS function that holds the
+  real key as an environment variable/secret (Google Secret Manager), and the app calls that
+  function instead of the third-party API directly. The function does the actual TMDB API call
+  server-side.
+- **App Check** — pair this with Cloud Functions to verify requests are genuinely coming from
+  this app (not a scraped/tampered client or a bot hitting the proxy endpoint directly), closing
+  the gap that Cloud Functions alone would leave open.
+
+### Implementation Checklist:
+- [ ] **Server-side**:
+  - Set up a Firebase project (or reuse an existing one) and enable Cloud Functions.
+  - Write a callable/HTTPS function per TMDB endpoint family (or one generic pass-through
+    function) that reads the real key from Google Secret Manager and forwards the request to
+    TMDB, returning the response as-is.
+  - Store the real TMDB key only in Secret Manager / the function's environment - never in the
+    repo, never in the client.
+- [ ] **App Check**:
+  - Enable Firebase App Check for the project and configure the appropriate attestation provider
+    per platform (Play Integrity for Android, DeviceCheck/App Attest for iOS, reCAPTCHA for web).
+  - Require a valid App Check token on every call to the proxy function; reject requests without
+    one.
+- [ ] **Client**:
+  - Replace direct TMDB network calls in the repositories with calls to the new proxy function
+    (same request/response shapes where possible, to minimize changes elsewhere).
+  - Remove `TMDB_API_KEY`/`MY_WATCH_LIST_TMDB_API_KEY` from the client build entirely once the
+    proxy is live end-to-end (build.gradle.kts `buildConfigField`, GitHub Actions secret, local
+    `~/.gradle/gradle.properties`).
+
+---
+
+## 2. Integrated Search Feature
 **Goal**: Connect the Top Bar's search bar to a functional search results screen that aggregates movies, TV shows, and people.
 
 ### Relevant OAS Endpoints:
@@ -21,7 +57,7 @@ This document contains a checklist of high-priority features that can be impleme
 
 ---
 
-## 2. Account Favorites & Watchlist (Replacing "My Fav" Placeholder)
+## 3. Account Favorites & Watchlist (Replacing "My Fav" Placeholder)
 **Goal**: Build a tabbed layout in the "My Fav" bottom tab where users can view their marked favorite movies/shows and their watchlist.
 
 ### Relevant OAS Endpoints:
@@ -45,7 +81,7 @@ This document contains a checklist of high-priority features that can be impleme
 
 ---
 
-## 3. Media Detailed Views (Movies & TV Shows)
+## 4. Media Detailed Views (Movies & TV Shows)
 **Goal**: Open a comprehensive detail page when clicking on any Movie or TV Show card.
 
 ### Relevant OAS Endpoints:
@@ -69,7 +105,7 @@ This document contains a checklist of high-priority features that can be impleme
 
 ---
 
-## 4. Genre-based Discovery Screen
+## 5. Genre-based Discovery Screen
 **Goal**: Let users filter movies and TV shows by genre, release year, language, or popularity sorting.
 
 ### Relevant OAS Endpoints:
@@ -85,7 +121,7 @@ This document contains a checklist of high-priority features that can be impleme
 
 ---
 
-## 5. TMDB User Authentication / Login
+## 6. TMDB User Authentication / Login
 **Goal**: Allow users to log in securely using their TMDB credentials to sync favorites, watchlist, and ratings.
 
 ### Relevant OAS Endpoints:
