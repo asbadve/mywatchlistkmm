@@ -15,8 +15,7 @@ Pods/
 *yarn.lock
 composeApp/build/*
 .gradle/*
-/.kotlin/metadata/*
-/.kotlin/errors/*
+/.kotlin/
 /patch/*
 
 # Personal learning/reference notes - not part of the project source
