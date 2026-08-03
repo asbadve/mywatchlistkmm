@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
 
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
+import com.ajinkyabadve.kmmmywatchlist.core.constant.FeatureFlags
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
@@ -42,6 +43,10 @@ class TrendingScreenTabViewModel(
     private val trendingRepository: TrendingRepository = TrendingRepositoryImpl(),
     private val movieRepository: MovieRepository = MovieRepositoryImpl(),
     private val tvRepository: TvRepository = TvRepositoryImpl(),
+    // Parked behind a flag: the Latest Trailers rail fans out into ~11 requests (a source list plus
+    // one videos call per title) on load, which starves the rest of the tab on slow networks. See
+    // [FeatureFlags.TRENDING_TRAILERS_ENABLED]. Off => skip the init fetch entirely.
+    private val trailersEnabled: Boolean = FeatureFlags.TRENDING_TRAILERS_ENABLED,
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -139,7 +144,9 @@ class TrendingScreenTabViewModel(
             true,
         )
 
-        loadTrailers(TrailerSource.IN_THEATERS, isFirstLoad = true)
+        if (trailersEnabled) {
+            loadTrailers(TrailerSource.IN_THEATERS, isFirstLoad = true)
+        }
     }
 
     private fun setErrorStateByMediaType(

@@ -54,7 +54,10 @@ class TrendingScreenTabViewModelTest {
         publishedAt: String,
     ) = VideoResult(id = id, key = "key-$id", site = "YouTube", type = "Trailer", official = true, publishedAt = publishedAt)
 
-    private fun createViewModel() = TrendingScreenTabViewModel(fakeRepository, fakeMovieRepository, fakeTvRepository)
+    // Trailers are flag-parked (off by default); these tests exercise the still-present trailer
+    // logic, so force it on. See TrendingTrailersFeatureFlagTest for the off-by-default behavior.
+    private fun createViewModel() =
+        TrendingScreenTabViewModel(fakeRepository, fakeMovieRepository, fakeTvRepository, trailersEnabled = true)
 
     @BeforeTest
     fun setUp() {

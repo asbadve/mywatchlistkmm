@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.core.constant.FeatureFlags
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
@@ -135,6 +136,9 @@ fun TrendingScreenContent(
     onTvShowSelected: (Long) -> Unit = {},
     onPersonSelected: (Long) -> Unit = {},
     trailersViewModel: TrendingScreenTabViewModel? = null,
+    // Parked behind a flag, in lockstep with the ViewModel's init fetch. See
+    // [FeatureFlags.TRENDING_TRAILERS_ENABLED].
+    showTrailers: Boolean = FeatureFlags.TRENDING_TRAILERS_ENABLED,
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth().fillMaxHeight(),
@@ -150,7 +154,9 @@ fun TrendingScreenContent(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            trailersViewModel?.let { LatestTrailersSection(viewModel = it) }
+            if (showTrailers) {
+                trailersViewModel?.let { LatestTrailersSection(viewModel = it) }
+            }
 
             sections.forEach { section ->
                 TrendingSection(
