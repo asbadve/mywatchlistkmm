@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Film-strip sprockets + the M glyph from the MyWatchList logo, scaled down and
+         centered so the mark survives every OEM adaptive-icon mask shape. -->
+    <group
+        android:scaleX="0.65"
+        android:scaleY="0.65"
+        android:translateX="21.5"
+        android:translateY="21.5">
+        <path
+            android:fillColor="#0d0e12"
+            android:fillAlpha="0.4"
+            android:pathData="M20,20 L26,20 L26,80 L20,80 Z" />
+        <path
+            android:fillColor="#0d0e12"
+            android:fillAlpha="0.4"
+            android:pathData="M74,20 L80,20 L80,80 L74,80 Z" />
+        <path
+            android:fillColor="#0d0e12"
+            android:pathData="M32,68 V34 l9,0 9,16 9,-16 9,0 V68 h-8 V48 l-6,12 h-8 l-6,-12 V68 Z" />
+    </group>
+</vector>

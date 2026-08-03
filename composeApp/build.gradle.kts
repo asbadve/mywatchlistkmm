@@ -193,8 +193,18 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.ajinkyabadve.kmmmywatchlist.desktopApp"
+            packageName = "MyWatchList"
             packageVersion = "1.0.0"
+
+            macOS {
+                iconFile.set(project.file("../icons/desktop/icon.icns"))
+            }
+            windows {
+                iconFile.set(project.file("../icons/desktop/icon.ico"))
+            }
+            linux {
+                iconFile.set(project.file("../icons/desktop/icon.png"))
+            }
         }
     }
 }
