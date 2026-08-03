@@ -49,29 +49,21 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
-import coil3.network.ktor2.KtorNetworkFetcherFactory
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
-import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail.PersonDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTab
-import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTabViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TvShowsScreenTab
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.AllSeasonsScreen
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.EpisodeDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.EpisodeListScreen
@@ -105,11 +97,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun App(calculateWindowSizeClass: WindowSizeClass) {
     setSingletonImageLoaderFactory { context ->
-        ImageLoader
-            .Builder(context)
-            .components {
-                add(KtorNetworkFetcherFactory())
-            }.build()
+        newImageLoader(context)
     }
     // Refresh configuration dynamically on app launch
     LaunchedEffect(Unit) {
@@ -135,19 +123,7 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
 }
 
 @Composable
-fun MainAppScreen(
-    windowSize: WindowSize,
-    nowPlayingViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.NOW_PLAYING_API_PATH) },
-    upcomingViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.UPCOMING_API_PATH) },
-    popularViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.POPULAR_API_PATH) },
-    topRatedViewModel: MovieListScreenModel = remember { MovieListScreenModel(MoviesConstant.TOP_RATED_API_PATH) },
-    trendingViewModel: TrendingScreenTabViewModel = viewModel { TrendingScreenTabViewModel() },
-    airingTodayTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.AIRING_TODAY_API_PATH) },
-    onTheAirTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.ON_THE_AIR_API_PATH) },
-    popularTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.POPULAR_API_PATH) },
-    topRatedTvViewModel: TvListScreenModel = remember { TvListScreenModel(TvShowsConstant.TOP_RATED_API_PATH) },
-    personListViewModel: PersonListScreenModel = remember { PersonListScreenModel() },
-) {
+fun MainAppScreen(windowSize: WindowSize) {
     val topLevelBackStack = remember { TopLevelBackStack(TrendingKey) }
     val currentKey = topLevelBackStack.backStack.lastOrNull()
 
@@ -230,16 +206,6 @@ fun MainAppScreen(
                 topLevelBackStack = topLevelBackStack,
                 layoutType = layoutType,
                 currentKey = currentKey,
-                nowPlayingViewModel = nowPlayingViewModel,
-                upcomingViewModel = upcomingViewModel,
-                popularViewModel = popularViewModel,
-                topRatedViewModel = topRatedViewModel,
-                trendingViewModel = trendingViewModel,
-                airingTodayTvViewModel = airingTodayTvViewModel,
-                onTheAirTvViewModel = onTheAirTvViewModel,
-                popularTvViewModel = popularTvViewModel,
-                topRatedTvViewModel = topRatedTvViewModel,
-                personListViewModel = personListViewModel,
             )
         }
     }
@@ -251,16 +217,6 @@ private fun MainAppScaffoldContent(
     topLevelBackStack: TopLevelBackStack,
     layoutType: NavigationSuiteType,
     currentKey: AppKey?,
-    nowPlayingViewModel: MovieListScreenModel,
-    upcomingViewModel: MovieListScreenModel,
-    popularViewModel: MovieListScreenModel,
-    topRatedViewModel: MovieListScreenModel,
-    trendingViewModel: TrendingScreenTabViewModel,
-    airingTodayTvViewModel: TvListScreenModel,
-    onTheAirTvViewModel: TvListScreenModel,
-    popularTvViewModel: TvListScreenModel,
-    topRatedTvViewModel: TvListScreenModel,
-    personListViewModel: PersonListScreenModel,
 ) {
     val showTopBar =
         when (currentKey) {
@@ -329,7 +285,6 @@ private fun MainAppScaffoldContent(
                 entryProvider {
                     entry<TrendingKey> {
                         TrendingScreenTab(
-                            viewModel = trendingViewModel,
                             onMovieSelected = { movieId ->
                                 topLevelBackStack.add(MovieDetailKey(movieId))
                             },
@@ -344,10 +299,6 @@ private fun MainAppScaffoldContent(
                     entry<MoviesKey> {
                         MovieScreenTabs(
                             modifier = Modifier,
-                            nowPlayingViewModel = nowPlayingViewModel,
-                            upcomingViewModel = upcomingViewModel,
-                            popularViewModel = popularViewModel,
-                            topRatedViewModel = topRatedViewModel,
                             onMovieSelected = { movieId ->
                                 topLevelBackStack.add(MovieDetailKey(movieId))
                             },
@@ -355,10 +306,6 @@ private fun MainAppScaffoldContent(
                     }
                     entry<TvShowsKey> {
                         TvShowsScreenTab(
-                            airingTodayViewModel = airingTodayTvViewModel,
-                            onTheAirViewModel = onTheAirTvViewModel,
-                            popularViewModel = popularTvViewModel,
-                            topRatedViewModel = topRatedTvViewModel,
                             onTvShowSelected = { tvShowId ->
                                 topLevelBackStack.add(TvDetailKey(tvShowId))
                             },
@@ -366,7 +313,6 @@ private fun MainAppScaffoldContent(
                     }
                     entry<PersonKey> {
                         PersonScreenTab(
-                            viewModel = personListViewModel,
                             onPersonSelected = { personId ->
                                 topLevelBackStack.add(PersonDetailKey(personId))
                             },

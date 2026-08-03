@@ -251,6 +251,14 @@ val composableSourceFileBaseNames: Provider<Set<String>> =
             .toSet()
     }
 
+// Gradle's default test worker heap (512m) isn't enough once the suite has this many
+// runComposeUiTest bodies - each stands up its own Compose/Skiko rendering surface, and running
+// them all in one worker JVM was OOM-ing (java.lang.OutOfMemoryError from the AWT threads)
+// partway through the run.
+tasks.named<Test>("desktopTest") {
+    maxHeapSize = "2g"
+}
+
 // desktopTest runs commonTest + desktopMain against the JVM/desktop target, so it's the one
 // target JaCoCo (a JVM bytecode coverage tool) can instrument directly - no Android/iOS/JS
 // equivalent is set up.

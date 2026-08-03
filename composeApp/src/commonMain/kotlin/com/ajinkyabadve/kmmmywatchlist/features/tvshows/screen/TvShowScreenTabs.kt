@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.tvShowScreenContent
 
@@ -44,11 +46,19 @@ sealed class TvTab(
 @Composable
 fun TvShowScreenTabs(
     modifier: Modifier = Modifier,
-    airingTodayViewModel: TvListScreenModel,
-    onTheAirViewModel: TvListScreenModel,
-    popularViewModel: TvListScreenModel,
-    topRatedViewModel: TvListScreenModel,
     onTvShowSelected: (tvShowId: Long) -> Unit,
+    // Test-only seam: lets UI tests inject a fake repository so each sub-tab's ScreenModel can be
+    // verified to load lazily (on first selection) and cache (no refetch on re-selection) without
+    // hitting real network. This overrides only the *repository*, not the ScreenModel itself -
+    // construction still happens inside TvListTab's `viewModel(key = ...) { }` factory, which
+    // Compose only invokes once that sub-tab's `when` branch is actually selected. Passing a
+    // pre-built ScreenModel instead would defeat the point: Kotlin evaluates constructor-call
+    // arguments eagerly, so all four would construct (and fire their init{} load) up front,
+    // regardless of which tab is selected. Production call sites never pass these.
+    airingTodayRepository: TvRepository? = null,
+    onTheAirRepository: TvRepository? = null,
+    popularRepository: TvRepository? = null,
+    topRatedRepository: TvRepository? = null,
 ) {
     val tabs =
         remember {
@@ -104,19 +114,28 @@ fun TvShowScreenTabs(
             }
         }
         when (tabs[selectedTabIndex]) {
-            TvTab.AiringToday -> TvListTab(airingTodayViewModel, airingTodayGridState, onTvShowSelected)
-            TvTab.OnTheAir -> TvListTab(onTheAirViewModel, onTheAirGridState, onTvShowSelected)
-            TvTab.Popular -> TvListTab(popularViewModel, popularGridState, onTvShowSelected)
-            TvTab.TopRated -> TvListTab(topRatedViewModel, topRatedGridState, onTvShowSelected)
+            TvTab.AiringToday ->
+                TvListTab(TvShowsConstant.AIRING_TODAY_API_PATH, airingTodayGridState, onTvShowSelected, airingTodayRepository)
+            TvTab.OnTheAir ->
+                TvListTab(TvShowsConstant.ON_THE_AIR_API_PATH, onTheAirGridState, onTvShowSelected, onTheAirRepository)
+            TvTab.Popular ->
+                TvListTab(TvShowsConstant.POPULAR_API_PATH, popularGridState, onTvShowSelected, popularRepository)
+            TvTab.TopRated ->
+                TvListTab(TvShowsConstant.TOP_RATED_API_PATH, topRatedGridState, onTvShowSelected, topRatedRepository)
         }
     }
 }
 
 @Composable
 fun TvListTab(
-    viewModel: TvListScreenModel,
+    fetchType: String,
     lazyGridState: LazyGridState,
     onTvShowSelected: (tvShowId: Long) -> Unit,
+    tvRepository: TvRepository? = null,
 ) {
+    val viewModel =
+        viewModel(key = "TvListScreenModel:$fetchType") {
+            if (tvRepository != null) TvListScreenModel(fetchType, tvRepository) else TvListScreenModel(fetchType)
+        }
     tvShowScreenContent(viewModel = viewModel, lazyColumnListState = lazyGridState, onTvShowSelected = onTvShowSelected)
 }

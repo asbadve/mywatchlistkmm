@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.screenContent
 
@@ -47,11 +49,19 @@ sealed class MovieTab(
 @Composable
 fun MovieScreenTabs(
     modifier: Modifier = Modifier,
-    nowPlayingViewModel: MovieListScreenModel,
-    upcomingViewModel: MovieListScreenModel,
-    popularViewModel: MovieListScreenModel,
-    topRatedViewModel: MovieListScreenModel,
     onMovieSelected: (movieId: Long) -> Unit,
+    // Test-only seam: lets UI tests inject a fake repository so each sub-tab's ScreenModel can be
+    // verified to load lazily (on first selection) and cache (no refetch on re-selection) without
+    // hitting real network. This overrides only the *repository*, not the ScreenModel itself -
+    // construction still happens inside MovieListTab's `viewModel(key = ...) { }` factory, which
+    // Compose only invokes once that sub-tab's `when` branch is actually selected. Passing a
+    // pre-built ScreenModel instead would defeat the point: Kotlin evaluates constructor-call
+    // arguments eagerly, so all four would construct (and fire their init{} load) up front,
+    // regardless of which tab is selected. Production call sites never pass these.
+    nowPlayingRepository: MovieRepository? = null,
+    upcomingRepository: MovieRepository? = null,
+    popularRepository: MovieRepository? = null,
+    topRatedRepository: MovieRepository? = null,
 ) {
     val tabs =
         remember {
@@ -107,19 +117,28 @@ fun MovieScreenTabs(
             }
         }
         when (tabs[selectedTabIndex]) {
-            MovieTab.NowPlaying -> MovieListTab(nowPlayingViewModel, nowPlayingGridState, onMovieSelected)
-            MovieTab.Upcoming -> MovieListTab(upcomingViewModel, upcomingGridState, onMovieSelected)
-            MovieTab.Popular -> MovieListTab(popularViewModel, popularGridState, onMovieSelected)
-            MovieTab.TopRated -> MovieListTab(topRatedViewModel, topRatedGridState, onMovieSelected)
+            MovieTab.NowPlaying ->
+                MovieListTab(MoviesConstant.NOW_PLAYING_API_PATH, nowPlayingGridState, onMovieSelected, nowPlayingRepository)
+            MovieTab.Upcoming ->
+                MovieListTab(MoviesConstant.UPCOMING_API_PATH, upcomingGridState, onMovieSelected, upcomingRepository)
+            MovieTab.Popular ->
+                MovieListTab(MoviesConstant.POPULAR_API_PATH, popularGridState, onMovieSelected, popularRepository)
+            MovieTab.TopRated ->
+                MovieListTab(MoviesConstant.TOP_RATED_API_PATH, topRatedGridState, onMovieSelected, topRatedRepository)
         }
     }
 }
 
 @Composable
 fun MovieListTab(
-    viewModel: MovieListScreenModel,
+    fetchType: String,
     lazyGridState: LazyGridState,
     onMovieSelected: (movieId: Long) -> Unit,
+    movieRepository: MovieRepository? = null,
 ) {
+    val viewModel =
+        viewModel(key = "MovieListScreenModel:$fetchType") {
+            if (movieRepository != null) MovieListScreenModel(fetchType, movieRepository) else MovieListScreenModel(fetchType)
+        }
     screenContent(viewModel = viewModel, lazyColumnListState = lazyGridState, onMovieSelected = onMovieSelected)
 }
