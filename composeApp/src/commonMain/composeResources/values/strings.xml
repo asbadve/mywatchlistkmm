@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
+    <string name="app_name">MyWatchList</string>
+
     <!-- Errors -->
     <string name="error_network">Network Connection Error. Please check your internet connectivity.</string>
     <string name="error_unexpected_movie_details">An unexpected error occurred while loading movie details. Please try again.</string>

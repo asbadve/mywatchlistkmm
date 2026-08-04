@@ -198,12 +198,30 @@ compose.desktop {
 
             macOS {
                 iconFile.set(project.file("../icons/desktop/icon.icns"))
+                // Without this it defaults to packageName ("MyWatchList"), which isn't reverse-DNS.
+                // macOS keys the app's preferences, notification permissions and TCC grants off
+                // this identifier, so it needs to be stable and namespaced from the first release.
+                bundleID = "com.ajinkyabadve.kmmmywatchlist"
             }
             windows {
                 iconFile.set(project.file("../icons/desktop/icon.ico"))
+                // jpackage builds an MSI with no shortcuts at all unless asked, which is why the
+                // installed app never showed up in the Start menu.
+                menu = true
+                menuGroup = "MyWatchList"
+                shortcut = true
+                // Must stay constant across releases - WiX uses it to recognise an install as an
+                // upgrade of this app rather than a second side-by-side copy. Changing it strands
+                // the previously installed version (and its Start menu entry) on users' machines.
+                upgradeUuid = "9C6EA41A-9CAD-4BCE-84CF-89F9BEDA4F46"
             }
             linux {
                 iconFile.set(project.file("../icons/desktop/icon.png"))
+                // Same story as Windows: jpackage's `shortcut` defaults to false, so the .deb
+                // installs the app under /opt with no .desktop entry and it never appears in the
+                // desktop environment's application menu.
+                shortcut = true
+                menuGroup = "MyWatchList"
             }
         }
     }
