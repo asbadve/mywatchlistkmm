@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +25,6 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -39,9 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,6 +56,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail.PersonDetailScreen
+import com.ajinkyabadve.kmmmywatchlist.features.search.screen.SearchScreen
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.PersonScreenTab
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.TrendingScreenTab
@@ -79,6 +76,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.MyFavKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.NavigationConstants
 import com.ajinkyabadve.kmmmywatchlist.navigation.PersonDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.PersonKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.SearchKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TopLevelBackStack
 import com.ajinkyabadve.kmmmywatchlist.navigation.TrendingKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
@@ -86,9 +84,6 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import mywatchlist.composeapp.generated.resources.Res
-import mywatchlist.composeapp.generated.resources.action_close
-import mywatchlist.composeapp.generated.resources.coming_soon_search_message
-import mywatchlist.composeapp.generated.resources.coming_soon_title
 import mywatchlist.composeapp.generated.resources.placeholder_select_season
 import mywatchlist.composeapp.generated.resources.search_hint
 import org.jetbrains.compose.resources.painterResource
@@ -226,7 +221,7 @@ private fun MainAppScaffoldContent(
 
     val topBarContent: @Composable () -> Unit =
         if (showTopBar) {
-            { AppTopBar(windowSize) }
+            { AppTopBar(windowSize, onSearchClicked = { topLevelBackStack.add(SearchKey) }) }
         } else {
             {}
         }
@@ -319,6 +314,20 @@ private fun MainAppScaffoldContent(
                         )
                     }
                     entry<MyFavKey> { MyFavScreenTab() }
+                    entry<SearchKey> {
+                        SearchScreen(
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            onMovieSelected = { movieId ->
+                                topLevelBackStack.add(MovieDetailKey(movieId))
+                            },
+                            onTvShowSelected = { tvShowId ->
+                                topLevelBackStack.add(TvDetailKey(tvShowId))
+                            },
+                            onPersonSelected = { personId ->
+                                topLevelBackStack.add(PersonDetailKey(personId))
+                            },
+                        )
+                    }
                     entry<MovieDetailKey> { key ->
                         MovieDetailScreen(
                             movieId = key.movieId,
@@ -429,11 +438,10 @@ private fun MainAppScaffoldContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppTopBar(windowSize: WindowSize) {
-    // Search isn't implemented yet - clicking the search box surfaces a "Coming Soon" notice
-    // instead of a dead-end no-op.
-    var showSearchComingSoon by remember { mutableStateOf(false) }
-
+private fun AppTopBar(
+    windowSize: WindowSize,
+    onSearchClicked: () -> Unit,
+) {
     TopAppBar(
         colors =
             TopAppBarDefaults.topAppBarColors(
@@ -455,24 +463,11 @@ private fun AppTopBar(windowSize: WindowSize) {
                             },
                         ),
                     hint = stringResource(Res.string.search_hint),
-                    onClick = { showSearchComingSoon = true },
+                    onClick = onSearchClicked,
                 )
             }
         },
     )
-
-    if (showSearchComingSoon) {
-        AlertDialog(
-            onDismissRequest = { showSearchComingSoon = false },
-            title = { Text(stringResource(Res.string.coming_soon_title)) },
-            text = { Text(stringResource(Res.string.coming_soon_search_message)) },
-            confirmButton = {
-                TextButton(onClick = { showSearchComingSoon = false }) {
-                    Text(stringResource(Res.string.action_close))
-                }
-            },
-        )
-    }
 }
 
 internal expect fun openUrl(url: String?)

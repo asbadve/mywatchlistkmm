@@ -25,6 +25,8 @@ data object PersonKey : AppKey
 
 data object MyFavKey : AppKey
 
+data object SearchKey : AppKey
+
 data class MovieDetailKey(
     val movieId: Long,
 ) : AppKey
@@ -116,6 +118,7 @@ class TopLevelBackStack(
     }
 
     fun switchTopLevel(key: AppKey) {
+        dismissTransientTop()
         if (topLevelChildStacks[key] == null) {
             topLevelChildStacks[key] = NavBackStack(key)
         } else {
@@ -124,6 +127,26 @@ class TopLevelBackStack(
         topLevelStack.addLast(key)
         topLevelKey = key
         updateBackStack()
+    }
+
+    /**
+     * Drops [SearchKey] off the tab being left, when it's what the user is currently looking at.
+     *
+     * Every other pushed screen belongs to the tab it was opened from - a trending movie's detail
+     * really is somewhere inside Trending, so restoring it when the user backs out of another tab
+     * is right. Search isn't: it's launched from the top bar that every tab shares, so nesting it
+     * under whichever tab happened to be showing is an implementation detail. Leaving it in the
+     * stack meant `Search -> Movies tab -> back` surfaced Search again, which reads as a glitch.
+     *
+     * Only the *top* of the stack is dropped. If the user drilled from search into a result
+     * (Search -> MovieDetail), the search entry stays put so that backing out of that detail still
+     * returns to the results the user came from.
+     */
+    private fun dismissTransientTop() {
+        val childStack = topLevelChildStacks[topLevelKey] ?: return
+        if (childStack.size > 1 && childStack.last() == SearchKey) {
+            childStack.removeAt(childStack.lastIndex)
+        }
     }
 
     fun add(key: AppKey) {

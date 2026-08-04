@@ -18,6 +18,25 @@ fix is to keep the key server-side and proxy the call. With Firebase specificall
   this app (not a scraped/tampered client or a bot hitting the proxy endpoint directly), closing
   the gap that Cloud Functions alone would leave open.
 
+### Gateway options (pick one — the client-side work is identical either way)
+The app only needs a base URL swap plus dropping the `api_key` parameter, so the hosting choice is
+reversible. Compared on what actually differs for this app: cold-start latency on a
+poster-grid-heavy UI, whether the platform can attest the caller, and cost at hobby volume.
+
+| Option | Secret storage | Caller attestation | Notes |
+|---|---|---|---|
+| **Firebase Cloud Functions + App Check** | Google Secret Manager | Play Integrity (Android), DeviceCheck/App Attest (iOS), reCAPTCHA (web) | Best attestation story of the lot and the only one with first-party App Check. Cold starts are the worst here; needs the Blaze plan. |
+| **Cloudflare Workers** | Worker secrets (`wrangler secret put`) | None built in — needs a self-issued token or Turnstile | Effectively no cold start and a generous free tier; also gives edge caching of TMDB responses, which this app would benefit from. No first-party mobile attestation. |
+| **Supabase Edge Functions** | Supabase secrets / Vault | Supabase Auth JWT (needs a user or anon session) | Worth it only if TMDB user login (item 6) lands and its auth is wanted anyway; otherwise it's a lot of platform for one proxy. |
+| **AWS API Gateway + Lambda** | Secrets Manager / Parameter Store | API Gateway usage plans, WAF, Cognito | The most configurable and the most YAML. Sensible only if there's already AWS in the picture. |
+| **Self-hosted reverse proxy** (Caddy/nginx/Ktor) | Env file on the host | Whatever is built by hand | Cheapest at scale, but now there's a server to patch, monitor and keep online. |
+
+Regardless of gateway, the proxy should also **rate-limit per caller and cache TMDB responses** —
+otherwise the key stops leaking but the endpoint itself becomes the abusable resource, and TMDB's
+rate limit applies to the proxy's key for every user at once. Note that no gateway makes the
+endpoint fully private: without attestation anyone who extracts the proxy URL can call it, so the
+threat model shifts from "key stolen forever" to "endpoint abusable, revocable, rate-limited".
+
 ### Implementation Checklist:
 - [ ] **Server-side**:
   - Set up a Firebase project (or reuse an existing one) and enable Cloud Functions.
@@ -40,20 +59,35 @@ fix is to keep the key server-side and proxy the call. With Firebase specificall
 
 ---
 
-## 2. Integrated Search Feature
+## 2. Integrated Search Feature — DONE (2026-08-04)
 **Goal**: Connect the Top Bar's search bar to a functional search results screen that aggregates movies, TV shows, and people.
 
 ### Relevant OAS Endpoints:
 - `GET /3/search/multi`: Search multiple content types (movies, TV, people) in a single request.
 
 ### Implementation Checklist:
-- [ ] **Data Layer**:
-  - Add search methods to repositories (or create a dedicated `SearchRepository`) to hit `/3/search/multi` passing a query string.
-- [ ] **Business Logic**:
-  - Create a `SearchScreenModel` to handle search input flow, debouncing keystrokes, and loading states.
-- [ ] **UI Presentation**:
-  - Design a `SearchScreenContent` displaying categorized search results (e.g., grouped by Movies, TV Shows, and People).
-  - Update `AppTopBar` in `App.kt` to wire text input from the search field to launch the search view.
+- [x] **Data Layer**:
+  - `SearchRepository`/`SearchRepositoryImpl` hit `/3/search/multi` with `query`, `page` and
+    `include_adult=false`. `SearchResultItem` models the heterogeneous result array (movies carry
+    `title`/`release_date`, TV carries `name`/`first_air_date`, people carry `profile_path` and no
+    date) behind shared `displayTitle`/`imagePath`/`releaseYear` accessors.
+- [x] **Business Logic**:
+  - `SearchScreenModel` debounces keystrokes by 350 ms (`SEARCH_DEBOUNCE_MILLIS`) via a
+    `MutableStateFlow` + `debounce` + `distinctUntilChanged` + `collectLatest` chain, so a stale
+    in-flight response can't overwrite a newer query. Handles paging, retry and error states.
+- [x] **UI Presentation**:
+  - `SearchScreen` is pushed as its own `SearchKey` destination with the text field auto-focused via
+    `FocusRequester`. Results render in one relevance-ordered adaptive grid; a `MediaTypeBadge`
+    marks each card and a `scrollableChips` row (All / Movies / TV shows / People) filters
+    client-side — `/3/search/multi` has no server-side type parameter, so narrowing costs no extra
+    request.
+  - `AppTopBar`'s `SearchBox` now navigates here instead of showing the old "Coming Soon" dialog.
+
+### Known follow-ups:
+- Filtering to a single type only narrows what's already loaded, so a type that ranks poorly for a
+  query can look sparse until more pages are scrolled in.
+- The `SearchScreenModel` lives in the app-wide `ViewModelStore`, so leaving and reopening search
+  restores the previous query and results rather than starting blank.
 
 ---
 

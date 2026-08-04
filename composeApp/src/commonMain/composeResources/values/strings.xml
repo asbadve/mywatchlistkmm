@@ -85,6 +85,18 @@
     <string name="filter_upcoming">Upcoming</string>
     <string name="filter_popular">Popular</string>
     <string name="filter_on_tv">On TV</string>
+    <string name="filter_people">People</string>
     <string name="coming_soon_title">Coming Soon</string>
-    <string name="coming_soon_search_message">Search is on its way. Check back soon to find movies, TV shows and people.</string>
+
+    <!-- Search -->
+    <string name="search_field_hint">Search movies, TV shows, people</string>
+    <string name="search_back_content_description">Back</string>
+    <string name="search_clear_content_description">Clear search</string>
+    <string name="search_prompt">Start typing to search movies, TV shows and people.</string>
+    <string name="search_no_results">No results for “%1$s”.</string>
+    <string name="search_no_results_for_filter">No %1$s match “%2$s”.</string>
+    <string name="search_error">Something went wrong while searching. Please try again.</string>
+    <string name="media_type_movie">Movie</string>
+    <string name="media_type_tv">TV</string>
+    <string name="media_type_person">Person</string>
 </resources>
