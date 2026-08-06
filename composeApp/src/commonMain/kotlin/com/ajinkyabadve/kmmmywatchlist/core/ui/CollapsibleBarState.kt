@@ -14,7 +14,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
 /**
@@ -108,13 +110,27 @@ fun Modifier.collapsingHeader(state: CollapsibleBarState): Modifier =
  * Mirror of [collapsingHeader] for a bar pinned to the bottom. The bar keeps its own top edge and
  * simply reports less height; because a bottom bar is laid out against the bottom of its parent,
  * shrinking it is what walks it off the bottom of the screen.
+ *
+ * [minVisibleHeight] is how much of the bar refuses to collapse, and under edge-to-edge it is not
+ * optional: Material's NavigationBar is what consumes the bottom system inset, so a bar allowed to
+ * reach zero height takes that inset with it and drops the content under the gesture bar, where it
+ * is neither fully visible nor reliably tappable. Pass the navigation-bar inset so the collapse
+ * gives back the bar's own chrome and nothing more.
  */
-fun Modifier.collapsingFooter(state: CollapsibleBarState): Modifier =
+fun Modifier.collapsingFooter(
+    state: CollapsibleBarState,
+    minVisibleHeight: Dp = 0.dp,
+): Modifier =
     clipToBounds().layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
         state.heightPx = placeable.height.toFloat()
-        val visibleHeight = (placeable.height + state.offsetPx).roundToInt().coerceIn(0, placeable.height)
+        val floor = minVisibleHeight.roundToPx().coerceAtMost(placeable.height)
+        val visibleHeight = (placeable.height + state.offsetPx).roundToInt().coerceIn(floor, placeable.height)
         layout(placeable.width, visibleHeight) {
-            placeable.place(x = 0, y = 0)
+            // Keep the bar's *bottom* edge against the bottom of the shrinking box, so what stays
+            // on screen at full collapse is its inset area - plain background behind the gesture
+            // bar. Placing at y = 0 instead would leave the top slice showing, which reads as a row
+            // of icons chopped in half.
+            placeable.place(x = 0, y = visibleHeight - placeable.height)
         }
     }

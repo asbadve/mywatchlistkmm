@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -256,7 +259,14 @@ private fun MainAppScaffoldContent(
         bottomBar = {
             if (layoutType != NavigationSuiteType.NavigationDrawer && layoutType != NavigationSuiteType.NavigationRail) {
                 NavigationBar(
-                    modifier = Modifier.collapsingFooter(bottomBarState),
+                    // Collapse only the bar's own chrome: NavigationBar is what consumes the
+                    // bottom system inset, so letting it reach zero would slide the content
+                    // under the gesture bar.
+                    modifier =
+                        Modifier.collapsingFooter(
+                            state = bottomBarState,
+                            minVisibleHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                        ),
                     containerColor = MaterialTheme.colorScheme.background,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {

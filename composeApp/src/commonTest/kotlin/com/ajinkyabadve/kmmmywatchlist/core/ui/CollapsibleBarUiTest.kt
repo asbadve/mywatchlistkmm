@@ -26,6 +26,8 @@ import kotlin.test.assertTrue
 
 private const val LIST_TAG = "list"
 private const val HEADER_TAG = "header"
+private const val FOOTER_TAG = "footer"
+private val FOOTER_FLOOR = 24.dp
 private const val ITEM_COUNT = 100
 
 /**
@@ -112,6 +114,46 @@ class CollapsibleBarUiTest {
             assertTrue(
                 listTopAfter < listTopBefore,
                 "content below should rise into the freed space ($listTopBefore -> $listTopAfter)",
+            )
+        }
+
+    @Composable
+    private fun CollapsingFooterHarness(state: CollapsibleBarState) {
+        Column(modifier = Modifier.fillMaxSize().nestedScroll(state.nestedScrollConnection)) {
+            LazyColumn(modifier = Modifier.weight(1f).testTag(LIST_TAG)) {
+                items(ITEM_COUNT) { index -> Text("item $index", modifier = Modifier.height(40.dp)) }
+            }
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag(FOOTER_TAG)
+                        .collapsingFooter(state, minVisibleHeight = FOOTER_FLOOR)
+                        .height(80.dp),
+            ) {
+                Text("Nav")
+            }
+        }
+    }
+
+    /**
+     * Under edge-to-edge the bottom bar is what consumes the navigation-bar inset, so it must stop
+     * collapsing at that inset. A bar that reached zero would take the inset with it and leave the
+     * content sitting under the gesture bar.
+     */
+    @Test
+    fun testCollapsingFooterStopsAtItsMinimumVisibleHeight() =
+        runComposeUiTest {
+            val state = CollapsibleBarState()
+            setContent { CollapsingFooterHarness(state) }
+
+            repeat(3) { onNodeWithTag(LIST_TAG).performTouchInput { swipeUp() } }
+
+            val footerHeight = onNodeWithTag(FOOTER_TAG).getBoundsInRoot().height
+            assertEquals(
+                FOOTER_FLOOR,
+                footerHeight,
+                "footer should hold at the inset floor rather than collapsing away entirely",
             )
         }
 }
