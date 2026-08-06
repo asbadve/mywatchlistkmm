@@ -91,6 +91,7 @@
     <!-- Search -->
     <string name="search_field_hint">Search movies, TV shows, people</string>
     <string name="search_back_content_description">Back</string>
+    <string name="back_content_description">Back</string>
     <string name="search_clear_content_description">Clear search</string>
     <string name="search_prompt">Start typing to search movies, TV shows and people.</string>
     <string name="search_no_results">No results for “%1$s”.</string>

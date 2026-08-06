@@ -241,7 +241,9 @@ class MovieDetailScreenUiTest {
                 )
             }
 
-            onNodeWithContentDescription("Close").performClick()
+            // "Back", not "Close": the detail screens now share one DetailTopBar, so the
+            // back affordance is the same here as on every other detail screen.
+            onNodeWithContentDescription("Back").performClick()
             assertEquals(true, backClicked)
         }
 }
