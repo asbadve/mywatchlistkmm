@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
@@ -56,7 +57,6 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
-import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingHeader
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
@@ -232,29 +232,38 @@ private fun MainAppScaffoldContent(
     // Every scrolling screen hands its chrome back to the reader: the search bar and the nav bar
     // both leave on the way down and return on the way up. Detail screens have no app-level top bar
     // of their own to collapse - they bring their own, which collapses the same way.
-    val topBarState = rememberCollapsibleBarState()
+    //
+    // The search bar lives in Scaffold's topBar slot, so Material3 can drive it and we get its
+    // fling/settling animation for free. NavigationBar has no scrollBehavior parameter of its own
+    // (and NavigationSuiteScaffoldState does not exist in Compose Multiplatform yet), so the nav
+    // bar is the one that still needs a hand-rolled connection.
+    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val bottomBarState = rememberCollapsibleBarState()
     LaunchedEffect(currentKey) {
-        topBarState.reset()
+        topBarScrollBehavior.state.heightOffset = 0f
         bottomBarState.reset()
     }
 
     val topBarContent: @Composable () -> Unit =
         if (showTopBar) {
             {
-                Box(modifier = Modifier.collapsingHeader(topBarState)) {
-                    AppTopBar(windowSize, onSearchClicked = { topLevelBackStack.add(SearchKey) })
-                }
+                AppTopBar(
+                    windowSize = windowSize,
+                    onSearchClicked = { topLevelBackStack.add(SearchKey) },
+                    scrollBehavior = topBarScrollBehavior,
+                )
             }
         } else {
             {}
         }
 
     Scaffold(
+        // Order matters: the nav bar's connection is outermost so it sees the whole delta, while
+        // enterAlwaysScrollBehavior consumes what it uses to move the search bar.
         modifier =
             Modifier
-                .nestedScroll(topBarState.nestedScrollConnection)
-                .nestedScroll(bottomBarState.nestedScrollConnection),
+                .nestedScroll(bottomBarState.nestedScrollConnection)
+                .nestedScroll(topBarScrollBehavior.nestedScrollConnection),
         topBar = topBarContent,
         bottomBar = {
             if (layoutType != NavigationSuiteType.NavigationDrawer && layoutType != NavigationSuiteType.NavigationRail) {
@@ -467,8 +476,10 @@ private fun MainAppScaffoldContent(
 private fun AppTopBar(
     windowSize: WindowSize,
     onSearchClicked: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(
+        scrollBehavior = scrollBehavior,
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
