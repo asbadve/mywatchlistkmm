@@ -4,11 +4,14 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.ui.window.ComposeUIViewController
 import com.ajinkyabadve.kmmmywatchlist.App
+import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
 import platform.UIKit.UIViewController
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Suppress("ktlint:standard:function-naming")
-fun MainViewController(): UIViewController =
-    ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) {
+fun MainViewController(): UIViewController {
+    initLogging()
+    return ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) {
         App(calculateWindowSizeClass())
     }
+}
