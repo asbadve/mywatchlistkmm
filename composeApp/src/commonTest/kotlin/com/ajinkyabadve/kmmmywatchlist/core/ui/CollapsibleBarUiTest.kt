@@ -12,17 +12,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 private const val LIST_TAG = "list"
+private const val HEADER_TAG = "header"
 private const val ITEM_COUNT = 100
 
 /**
@@ -62,5 +65,53 @@ class CollapsibleBarUiTest {
 
             onNodeWithTag(LIST_TAG).performTouchInput { swipeDown() }
             assertEquals(0f, state.collapsedFraction, "scrolling back up should have revealed the bar")
+        }
+
+    @Composable
+    private fun CollapsingHeaderHarness(state: CollapsibleBarState) {
+        Column(modifier = Modifier.fillMaxSize().nestedScroll(state.nestedScrollConnection)) {
+            // collapsingHeader has to sit outside the fixed height, or that height wins and the
+            // node keeps reporting its full size however far the bar has collapsed.
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag(HEADER_TAG)
+                        .collapsingHeader(state)
+                        .height(64.dp),
+            ) {
+                Text("Toolbar")
+            }
+            LazyColumn(modifier = Modifier.fillMaxSize().testTag(LIST_TAG)) {
+                items(ITEM_COUNT) { index -> Text("item $index", modifier = Modifier.height(40.dp)) }
+            }
+        }
+    }
+
+    /**
+     * The in-flow variant has to give its space back, not just slide: a header that kept reporting
+     * full height while hidden would leave a blank strip where it used to be.
+     */
+    @Test
+    fun testCollapsingHeaderYieldsItsSpaceToTheContentBelow() =
+        runComposeUiTest {
+            val state = CollapsibleBarState()
+            setContent { CollapsingHeaderHarness(state) }
+
+            val listTopBefore = onNodeWithTag(LIST_TAG).getBoundsInRoot().top
+            val headerHeightBefore = onNodeWithTag(HEADER_TAG).getBoundsInRoot().height
+
+            onNodeWithTag(LIST_TAG).performTouchInput { swipeUp() }
+
+            val headerHeightAfter = onNodeWithTag(HEADER_TAG).getBoundsInRoot().height
+            val listTopAfter = onNodeWithTag(LIST_TAG).getBoundsInRoot().top
+            assertTrue(
+                headerHeightAfter < headerHeightBefore,
+                "header should report less height once collapsed ($headerHeightBefore -> $headerHeightAfter)",
+            )
+            assertTrue(
+                listTopAfter < listTopBefore,
+                "content below should rise into the freed space ($listTopBefore -> $listTopAfter)",
+            )
         }
 }

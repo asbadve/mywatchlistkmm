@@ -24,8 +24,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingHeader
+import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.screenContent
@@ -79,9 +82,14 @@ fun MovieScreenTabs(
     val popularGridState = rememberLazyGridState()
     val topRatedGridState = rememberLazyGridState()
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    // The category tabs leave with the app's search bar rather than staying pinned, so the grid
+    // gets the whole screen on the way down. collapsingHeader shrinks the row's reported height,
+    // so the grid rises into the space instead of a gap opening above it.
+    val tabRowState = rememberCollapsibleBarState()
+
+    Column(modifier = modifier.fillMaxWidth().nestedScroll(tabRowState.nestedScrollConnection)) {
         BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().collapsingHeader(tabRowState),
             contentAlignment = Alignment.Center,
         ) {
             val tabsWidth = 400.dp

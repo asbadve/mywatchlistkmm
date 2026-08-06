@@ -8,9 +8,11 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
@@ -80,9 +82,39 @@ fun Modifier.collapsingTopBar(state: CollapsibleBarState): Modifier =
         .offset { IntOffset(x = 0, y = state.offsetPx.roundToInt()) }
 
 /**
- * Measures the bar into [state] and translates it off the bottom edge as it collapses. Mirror of
- * [collapsingTopBar] - the sign flips because a bottom bar hides by moving down, not up.
+ * For a bar that occupies space in a layout rather than floating over it: as the bar collapses it
+ * reports a smaller and smaller height, so whatever sits below it (Scaffold's content, a grid under
+ * a tab row) rises to fill the space instead of a gap opening up. The bar itself slides upward out
+ * of its shrinking box, which [clipToBounds] then hides.
+ *
+ * Contrast [collapsingTopBar], which only translates - correct for an overlay bar that must not
+ * disturb the layout underneath it, wrong for one that is part of the flow.
+ *
+ * Must not be applied inside a fixed height (`Modifier.height(x).collapsingHeader(state)`): the
+ * outer height wins and the bar goes on reporting its full size however far it has collapsed. Put
+ * it to the left of any sizing modifier instead.
  */
-fun Modifier.collapsingBottomBar(state: CollapsibleBarState): Modifier =
-    onSizeChanged { state.heightPx = it.height.toFloat() }
-        .offset { IntOffset(x = 0, y = -state.offsetPx.roundToInt()) }
+fun Modifier.collapsingHeader(state: CollapsibleBarState): Modifier =
+    clipToBounds().layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        state.heightPx = placeable.height.toFloat()
+        val visibleHeight = (placeable.height + state.offsetPx).roundToInt().coerceIn(0, placeable.height)
+        layout(placeable.width, visibleHeight) {
+            placeable.place(x = 0, y = state.offsetPx.roundToInt())
+        }
+    }
+
+/**
+ * Mirror of [collapsingHeader] for a bar pinned to the bottom. The bar keeps its own top edge and
+ * simply reports less height; because a bottom bar is laid out against the bottom of its parent,
+ * shrinking it is what walks it off the bottom of the screen.
+ */
+fun Modifier.collapsingFooter(state: CollapsibleBarState): Modifier =
+    clipToBounds().layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        state.heightPx = placeable.height.toFloat()
+        val visibleHeight = (placeable.height + state.offsetPx).roundToInt().coerceIn(0, placeable.height)
+        layout(placeable.width, visibleHeight) {
+            placeable.place(x = 0, y = 0)
+        }
+    }
