@@ -41,6 +41,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
@@ -51,6 +53,8 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
+import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingBottomBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
@@ -82,6 +86,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TrendingKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
+import com.ajinkyabadve.kmmmywatchlist.navigation.isDetailKey
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.placeholder_select_season
@@ -226,11 +231,24 @@ private fun MainAppScaffoldContent(
             {}
         }
 
+    // Only detail screens give the nav bar back to the reader on scroll - the browse tabs keep it
+    // pinned, since that is where it is the primary way of getting around.
+    val isDetailScreen = currentKey.isDetailKey()
+    val bottomBarState = rememberCollapsibleBarState()
+    LaunchedEffect(currentKey) { bottomBarState.reset() }
+
     Scaffold(
+        modifier =
+            if (isDetailScreen) {
+                Modifier.nestedScroll(bottomBarState.nestedScrollConnection)
+            } else {
+                Modifier
+            },
         topBar = topBarContent,
         bottomBar = {
             if (layoutType != NavigationSuiteType.NavigationDrawer && layoutType != NavigationSuiteType.NavigationRail) {
                 NavigationBar(
+                    modifier = if (isDetailScreen) Modifier.collapsingBottomBar(bottomBarState) else Modifier,
                     containerColor = MaterialTheme.colorScheme.background,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
@@ -255,26 +273,20 @@ private fun MainAppScaffoldContent(
         },
     ) { innerPadding ->
         val listDetailStrategy = rememberListDetailSceneStrategy<AppKey>()
+        // offsetPx is negative while collapsing, so adding it reduces the reserved bottom inset.
+        val collapsedBottomInsetDp = with(LocalDensity.current) { bottomBarState.offsetPx.toDp() }
         NavDisplay(
             backStack = topLevelBackStack.backStack,
             onBack = { topLevelBackStack.removeLast() },
             sceneStrategies = listOf(listDetailStrategy),
             modifier =
                 Modifier.padding(
-                    top =
-                        if (currentKey !is MovieDetailKey &&
-                            currentKey !is CollectionDetailKey &&
-                            currentKey !is TvDetailKey &&
-                            currentKey !is PersonDetailKey &&
-                            currentKey !is AllSeasonsKey &&
-                            currentKey !is EpisodeListKey &&
-                            currentKey !is EpisodeDetailKey
-                        ) {
-                            innerPadding.calculateTopPadding()
-                        } else {
-                            0.dp
-                        },
-                    bottom = innerPadding.calculateBottomPadding(),
+                    top = if (isDetailScreen) 0.dp else innerPadding.calculateTopPadding(),
+                    // Shrink with the collapsing nav bar rather than leaving a dead strip where it
+                    // used to be - the point of hiding it is to hand that space to the content.
+                    bottom =
+                        (innerPadding.calculateBottomPadding() + collapsedBottomInsetDp)
+                            .coerceAtLeast(0.dp),
                 ),
             entryProvider =
                 entryProvider {

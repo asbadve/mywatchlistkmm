@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
+import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
@@ -75,6 +78,10 @@ fun MovieDetailScreen(
     val lazyListState = rememberLazyListState()
     val leftLazyListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // This top bar is an overlay inside the content (not Scaffold's topBar), because its
+    // measured height feeds the split layout's right column - so Material3's
+    // enterAlwaysScrollBehavior cannot drive it and CollapsibleBarState does instead.
+    val topBarState = rememberCollapsibleBarState()
 
     var galleryImages by remember { mutableStateOf<List<String>?>(null) }
     var galleryInitialIndex by remember { mutableStateOf(0) }
@@ -87,6 +94,7 @@ fun MovieDetailScreen(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(topBarState.nestedScrollConnection),
         topBar = {},
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
@@ -195,6 +203,7 @@ fun MovieDetailScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
+                                        .collapsingTopBar(topBarState)
                                         .onGloballyPositioned {
                                             topBarHeightDp = with(density) { it.size.height.toDp() }
                                         },

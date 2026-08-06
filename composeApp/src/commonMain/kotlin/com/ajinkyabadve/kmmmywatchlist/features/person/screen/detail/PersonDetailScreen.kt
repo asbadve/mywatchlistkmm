@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -108,7 +109,11 @@ fun PersonDetailScreen(
     var galleryImages by remember { mutableStateOf<List<String>?>(null) }
     var galleryInitialIndex by remember { mutableStateOf(0) }
 
+    // Hide-on-scroll-down / reveal-on-scroll-up, matching the app's collapsing bottom nav.
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
@@ -122,6 +127,7 @@ fun PersonDetailScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                    scrollBehavior = scrollBehavior,
                 )
                 HorizontalDivider()
             }
