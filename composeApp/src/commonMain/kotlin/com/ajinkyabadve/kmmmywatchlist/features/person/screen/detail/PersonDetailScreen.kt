@@ -62,6 +62,7 @@ import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
@@ -94,10 +95,6 @@ import org.jetbrains.compose.resources.stringResource
 private object PersonDetailConstant {
     const val KNOWN_FOR_CAPTION_SEPARATOR = " · "
     const val MAX_CREDITS = 20
-
-    // TMDB media_type identifiers (API values, not user-facing).
-    const val MEDIA_TYPE_MOVIE = "movie"
-    const val MEDIA_TYPE_TV = "tv"
     const val BIOGRAPHY_PREVIEW_LINES = 5
 }
 
@@ -440,8 +437,8 @@ private fun FilmographySection(
         ) {
             listOf<Pair<String, String?>>(
                 stringResource(Res.string.filter_all) to null,
-                stringResource(Res.string.filter_movies) to PersonDetailConstant.MEDIA_TYPE_MOVIE,
-                stringResource(Res.string.filter_tv_shows) to PersonDetailConstant.MEDIA_TYPE_TV,
+                stringResource(Res.string.filter_movies) to MediaTypeConstant.MOVIE,
+                stringResource(Res.string.filter_tv_shows) to MediaTypeConstant.TV,
             ).forEach { (label, value) ->
                 FilmographyFilterChip(
                     selected = mediaFilter == value,

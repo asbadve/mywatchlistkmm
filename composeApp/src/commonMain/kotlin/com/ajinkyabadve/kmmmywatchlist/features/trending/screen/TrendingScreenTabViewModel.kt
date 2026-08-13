@@ -3,13 +3,11 @@ package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.core.constant.FeatureFlags
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
-import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_MOVIE
-import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_PEOPLE
-import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_TV
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.TIME_WINDOW_DAY
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.TIME_WINDOW_WEEK
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.trendingChipList
@@ -129,18 +127,18 @@ class TrendingScreenTabViewModel(
         _isScreenLoading.value = true
         loadTrendingMedia(
             getSelectedTimeWindow(DEFAULT_SELECTED_CHIP),
-            MEDIA_TYPE_MOVIE,
+            MediaTypeConstant.MOVIE,
             true,
         )
         loadTrendingMedia(
             getSelectedTimeWindow(DEFAULT_SELECTED_CHIP),
-            MEDIA_TYPE_TV,
+            MediaTypeConstant.TV,
             true,
         )
 
         loadTrendingMedia(
             getSelectedTimeWindow(DEFAULT_SELECTED_CHIP),
-            MEDIA_TYPE_PEOPLE,
+            MediaTypeConstant.PERSON,
             true,
         )
 
@@ -154,9 +152,9 @@ class TrendingScreenTabViewModel(
         message: String?,
     ) {
         when (mediaType) {
-            MEDIA_TYPE_MOVIE -> _movieTrendError.value = message
-            MEDIA_TYPE_TV -> _tvTrendError.value = message
-            MEDIA_TYPE_PEOPLE -> _peopleTrendError.value = message
+            MediaTypeConstant.MOVIE -> _movieTrendError.value = message
+            MediaTypeConstant.TV -> _tvTrendError.value = message
+            MediaTypeConstant.PERSON -> _peopleTrendError.value = message
         }
     }
 
@@ -183,15 +181,15 @@ class TrendingScreenTabViewModel(
                 movies?.let {
                     setErrorStateByMediaType(mediaType, null)
                     when (mediaType) {
-                        MEDIA_TYPE_MOVIE -> {
+                        MediaTypeConstant.MOVIE -> {
                             _trendMovieList.value = movies
                         }
 
-                        MEDIA_TYPE_TV -> {
+                        MediaTypeConstant.TV -> {
                             _trendTvList.value = movies
                         }
 
-                        MEDIA_TYPE_PEOPLE -> {
+                        MediaTypeConstant.PERSON -> {
                             _trendPeopleList.value = movies
                         }
 
@@ -226,15 +224,15 @@ class TrendingScreenTabViewModel(
         isLoading: Boolean,
     ) {
         when (mediaType) {
-            MEDIA_TYPE_MOVIE -> {
+            MediaTypeConstant.MOVIE -> {
                 _isMovieTrendScreenLoading.value = isLoading
             }
 
-            MEDIA_TYPE_TV -> {
+            MediaTypeConstant.TV -> {
                 _isTvTrendScreenLoading.value = isLoading
             }
 
-            MEDIA_TYPE_PEOPLE -> {
+            MediaTypeConstant.PERSON -> {
                 _isPeopleTrendScreenLoading.value = isLoading
             }
 
@@ -248,15 +246,15 @@ class TrendingScreenTabViewModel(
         isLoading: Boolean,
     ) {
         when (mediaType) {
-            MEDIA_TYPE_MOVIE -> {
+            MediaTypeConstant.MOVIE -> {
                 _isMovieTrendLoading.value = isLoading
             }
 
-            MEDIA_TYPE_TV -> {
+            MediaTypeConstant.TV -> {
                 _isTvTrendLoading.value = isLoading
             }
 
-            MEDIA_TYPE_PEOPLE -> {
+            MediaTypeConstant.PERSON -> {
                 _isPeopleTrendLoading.value = isLoading
             }
 
@@ -270,15 +268,15 @@ class TrendingScreenTabViewModel(
         mediaType: String,
     ) {
         when (mediaType) {
-            MEDIA_TYPE_MOVIE -> {
+            MediaTypeConstant.MOVIE -> {
                 _selectedMovieChipIndex.value = selectedIndex
             }
 
-            MEDIA_TYPE_TV -> {
+            MediaTypeConstant.TV -> {
                 _selectedTvChipIndex.value = selectedIndex
             }
 
-            MEDIA_TYPE_PEOPLE -> {
+            MediaTypeConstant.PERSON -> {
                 _selectedPeopleChipIndex.value = selectedIndex
             }
 
@@ -430,7 +428,8 @@ class TrendingScreenTabViewModel(
         candidate: TrailerCandidate,
         throwable: Throwable,
     ) {
-        Napier.d { "Failed to fetch videos for ${if (candidate.isMovie) "movie" else "tv"} ${candidate.mediaId}: ${throwable.message}" }
+        val mediaType = if (candidate.isMovie) MediaTypeConstant.MOVIE else MediaTypeConstant.TV
+        Napier.d { "Failed to fetch videos for $mediaType ${candidate.mediaId}: ${throwable.message}" }
     }
 
     private data class TrailerCandidate(

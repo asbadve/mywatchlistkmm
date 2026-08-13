@@ -39,13 +39,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.constant.FeatureFlags
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.mediaPersonRow
-import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_MOVIE
-import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_PEOPLE
-import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.MEDIA_TYPE_TV
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrendingSectionState
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
 import io.github.aakira.napier.Napier
@@ -84,7 +82,7 @@ fun TrendingScreenTab(
         listOf(
             TrendingSectionState(
                 title = "Trending Movies",
-                mediaType = MEDIA_TYPE_MOVIE,
+                mediaType = MediaTypeConstant.MOVIE,
                 chipList = movieChipList,
                 selectedChipIndex = movieChipSelected,
                 isScreenLoading = movieTrendScreenLoadingState,
@@ -94,7 +92,7 @@ fun TrendingScreenTab(
             ),
             TrendingSectionState(
                 title = "Trending Tv show",
-                mediaType = MEDIA_TYPE_TV,
+                mediaType = MediaTypeConstant.TV,
                 chipList = tvChipList,
                 selectedChipIndex = tvChipSelected,
                 isScreenLoading = tvTrendScreenLoadingState,
@@ -104,7 +102,7 @@ fun TrendingScreenTab(
             ),
             TrendingSectionState(
                 title = "Trending People",
-                mediaType = MEDIA_TYPE_PEOPLE,
+                mediaType = MediaTypeConstant.PERSON,
                 chipList = peopleChipList,
                 selectedChipIndex = peopleChipSelected,
                 isScreenLoading = peopleTrendScreenLoadingState,
@@ -258,7 +256,7 @@ private fun TrendingMediaCarousel(
         val density = androidx.compose.ui.platform.LocalDensity.current.density
         val targetWidth = 200
         val imageType =
-            if (mediaType == MEDIA_TYPE_PEOPLE) {
+            if (mediaType == MediaTypeConstant.PERSON) {
                 com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.PROFILE
             } else {
                 com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver.ImageType.POSTER
@@ -271,7 +269,7 @@ private fun TrendingMediaCarousel(
                 density = density,
             )
         when (mediaType) {
-            MEDIA_TYPE_TV ->
+            MediaTypeConstant.TV ->
                 mediaTvShowRow(
                     imageUrl = imageUrl,
                     title = item.title,
@@ -281,7 +279,7 @@ private fun TrendingMediaCarousel(
                         onTvShowSelected(item.id.toLong())
                     },
                 )
-            MEDIA_TYPE_PEOPLE ->
+            MediaTypeConstant.PERSON ->
                 mediaPersonRow(
                     imageUrl = imageUrl,
                     name = item.title,

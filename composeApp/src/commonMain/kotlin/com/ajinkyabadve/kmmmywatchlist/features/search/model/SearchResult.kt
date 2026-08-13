@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.search.model
 
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,9 +12,9 @@ import kotlinx.serialization.Serializable
 enum class SearchMediaType(
     val apiValue: String,
 ) {
-    MOVIE(API_VALUE_MOVIE),
-    TV(API_VALUE_TV),
-    PERSON(API_VALUE_PERSON),
+    MOVIE(MediaTypeConstant.MOVIE),
+    TV(MediaTypeConstant.TV),
+    PERSON(MediaTypeConstant.PERSON),
     ;
 
     companion object {
@@ -72,7 +73,4 @@ data class SearchResultItem(
         get() = "$mediaTypeRaw-$id"
 }
 
-private const val API_VALUE_MOVIE = "movie"
-private const val API_VALUE_TV = "tv"
-private const val API_VALUE_PERSON = "person"
 private const val YEAR_LENGTH = 4

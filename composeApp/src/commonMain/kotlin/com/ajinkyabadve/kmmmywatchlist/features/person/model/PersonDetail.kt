@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.person.model
 
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.BackdropImage
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.ExternalIds
 import kotlinx.datetime.LocalDate
@@ -35,14 +36,14 @@ data class PersonCredit(
 ) {
     val displayTitle: String get() = title ?: name ?: originalTitle ?: originalName ?: ""
     val displayDate: String? get() = releaseDate ?: firstAirDate
-    val isMovie: Boolean get() = mediaType == "movie"
+    val isMovie: Boolean get() = mediaType == MediaTypeConstant.MOVIE
 
     // Short user-facing hint for whether a credit is a film or a series.
     val mediaTypeLabel: String?
         get() =
             when (mediaType) {
-                "movie" -> "Movie"
-                "tv" -> "TV"
+                MediaTypeConstant.MOVIE -> "Movie"
+                MediaTypeConstant.TV -> "TV"
                 else -> null
             }
 }
@@ -56,8 +57,9 @@ data class PersonCombinedCredits(
 /**
  * TMDB-style filmography: "Acting" first (cast credits), then one section per crew department,
  * each sorted newest-first with undated (upcoming/unknown) entries on top - mirroring how
- * themoviedb.org person pages present credits. Pass [mediaType] ("movie" or "tv") to narrow the
- * filmography to one medium, like the media filter on themoviedb.org.
+ * themoviedb.org person pages present credits. Pass [mediaType] ([MediaTypeConstant.MOVIE] or
+ * [MediaTypeConstant.TV]) to narrow the filmography to one medium, like the media filter on
+ * themoviedb.org.
  */
 fun PersonCombinedCredits.filmographySections(mediaType: String? = null): List<Pair<String, List<PersonCredit>>> {
     fun List<PersonCredit>.byMediaType() = if (mediaType == null) this else filter { it.mediaType == mediaType }
