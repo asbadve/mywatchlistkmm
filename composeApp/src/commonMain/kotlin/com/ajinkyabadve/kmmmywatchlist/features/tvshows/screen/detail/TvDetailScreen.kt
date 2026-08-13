@@ -1,10 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -14,26 +11,17 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -45,14 +33,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
+import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CastSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.OverviewSection
@@ -80,6 +70,10 @@ fun TvDetailScreen(
     val lazyListState = rememberLazyListState()
     val leftLazyListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // This top bar is an overlay inside the content (not Scaffold's topBar), because its
+    // measured height feeds the split layout's right column - so Material3's
+    // enterAlwaysScrollBehavior cannot drive it and CollapsibleBarState does instead.
+    val topBarState = rememberCollapsibleBarState()
 
     var galleryImages by remember { mutableStateOf<List<String>?>(null) }
     var galleryInitialIndex by remember { mutableStateOf(0) }
@@ -92,6 +86,7 @@ fun TvDetailScreen(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(topBarState.nestedScrollConnection),
         topBar = {},
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
@@ -198,58 +193,17 @@ fun TvDetailScreen(
                                 )
                             }
 
-                            Column(
+                            DetailTopBar(
+                                title = detail.title,
+                                onBackClicked = onBackClicked,
+                                isScrolledPastHero = showSolidHeader,
                                 modifier =
                                     Modifier
-                                        .fillMaxWidth()
+                                        .collapsingTopBar(topBarState)
                                         .onGloballyPositioned {
                                             topBarHeightDp = with(density) { it.size.height.toDp() }
                                         },
-                            ) {
-                                TopAppBar(
-                                    title = {
-                                        AnimatedVisibility(
-                                            visible = showSolidHeader,
-                                            enter = fadeIn(),
-                                            exit = fadeOut(),
-                                        ) {
-                                            Text(
-                                                text = detail.title,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        }
-                                    },
-                                    navigationIcon = {
-                                        if (showSolidHeader) {
-                                            IconButton(onClick = onBackClicked) {
-                                                Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
-                                            }
-                                        } else {
-                                            IconButton(
-                                                onClick = onBackClicked,
-                                                modifier =
-                                                    Modifier
-                                                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Close,
-                                                    contentDescription = "Close",
-                                                    tint = Color.White,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    colors =
-                                        TopAppBarDefaults.topAppBarColors(
-                                            containerColor = headerBgColor,
-                                        ),
-                                )
-                                if (showSolidHeader) {
-                                    HorizontalDivider()
-                                }
-                            }
+                            )
                         }
                     }
                 }
@@ -287,7 +241,7 @@ private fun CompactTvDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            TvBackdropSection(detail = detail)
+            TvHeroSection(detail = detail)
         }
         item {
             TvMetaSection(detail = detail)
@@ -362,7 +316,7 @@ private fun ExpandedTvDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                TvBackdropSection(detail = detail)
+                TvHeroSection(detail = detail)
             }
             item {
                 TvMetaSection(detail = detail)

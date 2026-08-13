@@ -5,6 +5,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.ajinkyabadve.kmmmywatchlist.App
+import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.app_icon
 import mywatchlist.composeapp.generated.resources.app_name
@@ -15,6 +16,7 @@ import java.awt.Dimension
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 fun main() =
     application {
+        initLogging()
         val windowState = rememberWindowState(width = 800.dp, height = 600.dp)
         Window(
             title = stringResource(Res.string.app_name),

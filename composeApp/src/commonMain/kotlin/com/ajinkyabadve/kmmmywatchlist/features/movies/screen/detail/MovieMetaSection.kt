@@ -74,14 +74,6 @@ fun MovieMetaSection(
     detail: MovieDetail,
     onCollectionClicked: (Long) -> Unit = {},
 ) {
-    val certification =
-        detail.releaseDates
-            ?.results
-            ?.firstOrNull { it.iso3166 == "US" }
-            ?.releaseDates
-            ?.firstOrNull { it.certification.isNotEmpty() }
-            ?.certification
-
     val translationsCount = detail.translations?.translations?.size ?: 0
     var showLanguagesDropdown by remember { mutableStateOf(false) }
 
@@ -91,13 +83,8 @@ fun MovieMetaSection(
                 .fillMaxWidth()
                 .padding(vertical = 16.dp, horizontal = 16.dp),
     ) {
-        Text(
-            text = detail.title,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-
+        // The title lives in MovieHeroSection now, over the backdrop - repeating it here put the
+        // same words twice within one screenful.
         detail.tagline?.takeIf { it.isNotEmpty() }?.let { tagline ->
             Text(
                 text = tagline,
@@ -130,7 +117,8 @@ fun MovieMetaSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Info details row (Release date, runtime, budget, certification, translations)
+        // Info details row. Certification and runtime are deliberately absent: the hero already
+        // states both, and the full release date and language count are what it does not.
         FlowRow(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -142,23 +130,6 @@ fun MovieMetaSection(
                     onClick = {},
                     label = { Text(fullDate) },
                 )
-            }
-
-            if (!certification.isNullOrEmpty()) {
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(certification) },
-                )
-            }
-
-            detail.runtime?.let {
-                val formattedRuntime = formatRuntime(it)
-                if (formattedRuntime.isNotEmpty()) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(formattedRuntime) },
-                    )
-                }
             }
 
             if (translationsCount > 0) {

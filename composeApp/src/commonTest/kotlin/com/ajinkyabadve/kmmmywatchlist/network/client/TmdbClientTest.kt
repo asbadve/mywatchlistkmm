@@ -32,4 +32,29 @@ class TmdbClientTest {
 
             assertEquals("Status: 404 Not Found. Failure: Invalid Request", exception.message)
         }
+
+    /**
+     * Regression test: the retry plugin used to be configured with
+     * `retryOnServerErrors(HttpStatusCode.InternalServerError.value)`. That parameter is
+     * `maxRetries`, not a status code, so passing 500 asked for *500 retries* on every 5xx and
+     * silently overrode the `maxRetries = 3` set on the line above it.
+     */
+    @Test
+    fun testServerErrorsAreRetriedThreeTimesNotFiveHundred() =
+        runTest {
+            var attempts = 0
+            val mockEngine =
+                MockEngine {
+                    attempts++
+                    respond(content = "", status = HttpStatusCode.InternalServerError, headers = headersOf())
+                }
+            val tmdbClient = TmdbClient(mockEngine)
+
+            assertFailsWith<HttpExceptions> {
+                tmdbClient.client.get("https://mock.test/x")
+            }
+
+            // 1 initial attempt + 3 retries.
+            assertEquals(4, attempts)
+        }
 }

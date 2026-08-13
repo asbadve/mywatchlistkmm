@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
@@ -41,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
@@ -51,6 +56,8 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
+import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
+import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
@@ -82,6 +89,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TrendingKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
+import com.ajinkyabadve.kmmmywatchlist.navigation.isDetailKey
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.placeholder_select_season
@@ -219,18 +227,55 @@ private fun MainAppScaffoldContent(
             else -> false
         }
 
+    val isDetailScreen = currentKey.isDetailKey()
+
+    // Every scrolling screen hands its chrome back to the reader: the search bar and the nav bar
+    // both leave on the way down and return on the way up. Detail screens have no app-level top bar
+    // of their own to collapse - they bring their own, which collapses the same way.
+    //
+    // The search bar lives in Scaffold's topBar slot, so Material3 can drive it and we get its
+    // fling/settling animation for free. NavigationBar has no scrollBehavior parameter of its own
+    // (and NavigationSuiteScaffoldState does not exist in Compose Multiplatform yet), so the nav
+    // bar is the one that still needs a hand-rolled connection.
+    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val bottomBarState = rememberCollapsibleBarState()
+    LaunchedEffect(currentKey) {
+        topBarScrollBehavior.state.heightOffset = 0f
+        bottomBarState.reset()
+    }
+
     val topBarContent: @Composable () -> Unit =
         if (showTopBar) {
-            { AppTopBar(windowSize, onSearchClicked = { topLevelBackStack.add(SearchKey) }) }
+            {
+                AppTopBar(
+                    windowSize = windowSize,
+                    onSearchClicked = { topLevelBackStack.add(SearchKey) },
+                    scrollBehavior = topBarScrollBehavior,
+                )
+            }
         } else {
             {}
         }
 
     Scaffold(
+        // Order matters: the nav bar's connection is outermost so it sees the whole delta, while
+        // enterAlwaysScrollBehavior consumes what it uses to move the search bar.
+        modifier =
+            Modifier
+                .nestedScroll(bottomBarState.nestedScrollConnection)
+                .nestedScroll(topBarScrollBehavior.nestedScrollConnection),
         topBar = topBarContent,
         bottomBar = {
             if (layoutType != NavigationSuiteType.NavigationDrawer && layoutType != NavigationSuiteType.NavigationRail) {
                 NavigationBar(
+                    // Collapse only the bar's own chrome: NavigationBar is what consumes the
+                    // bottom system inset, so letting it reach zero would slide the content
+                    // under the gesture bar.
+                    modifier =
+                        Modifier.collapsingFooter(
+                            state = bottomBarState,
+                            minVisibleHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                        ),
                     containerColor = MaterialTheme.colorScheme.background,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
@@ -259,21 +304,11 @@ private fun MainAppScaffoldContent(
             backStack = topLevelBackStack.backStack,
             onBack = { topLevelBackStack.removeLast() },
             sceneStrategies = listOf(listDetailStrategy),
+            // Both bars shrink their reported height as they collapse, so innerPadding already
+            // tracks them and the content grows into the space instead of leaving a dead strip.
             modifier =
                 Modifier.padding(
-                    top =
-                        if (currentKey !is MovieDetailKey &&
-                            currentKey !is CollectionDetailKey &&
-                            currentKey !is TvDetailKey &&
-                            currentKey !is PersonDetailKey &&
-                            currentKey !is AllSeasonsKey &&
-                            currentKey !is EpisodeListKey &&
-                            currentKey !is EpisodeDetailKey
-                        ) {
-                            innerPadding.calculateTopPadding()
-                        } else {
-                            0.dp
-                        },
+                    top = if (isDetailScreen) 0.dp else innerPadding.calculateTopPadding(),
                     bottom = innerPadding.calculateBottomPadding(),
                 ),
             entryProvider =
@@ -441,8 +476,10 @@ private fun MainAppScaffoldContent(
 private fun AppTopBar(
     windowSize: WindowSize,
     onSearchClicked: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(
+        scrollBehavior = scrollBehavior,
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,

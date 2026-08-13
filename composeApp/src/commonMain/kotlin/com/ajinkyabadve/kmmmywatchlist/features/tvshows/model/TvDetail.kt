@@ -7,6 +7,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.ImagesResponse
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Keyword
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.WatchProvidersResponse
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -112,6 +113,8 @@ data class TvDetail(
     val keywords: TvKeywordResponse? = null,
     val images: ImagesResponse? = null,
     @SerialName("content_ratings") val contentRatings: ContentRatingsResponse? = null,
+    // Same shape as the movie side, so one hero can resolve "where does this stream" for both.
+    @SerialName("watch/providers") val watchProviders: WatchProvidersResponse? = null,
     @SerialName("external_ids") val externalIds: ExternalIds? = null,
 )
 

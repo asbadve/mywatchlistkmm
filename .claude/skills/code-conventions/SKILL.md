@@ -40,6 +40,82 @@ into new code.
 Strings built from data (e.g. `"Directed by $names"`) should keep the template in the
 resource file where practical (`%1$s` placeholders via `stringResource(res, arg)`).
 
+## 2b. No magic numbers either - and where each constant belongs
+
+Same rule as strings, applied to numbers that carry meaning. **Scope (agreed 2026-08-06):
+*semantic* values only** - aspect ratios, image target widths, scrim alphas, limits, separators,
+API values, thresholds. One-off layout literals (`padding(16.dp)`, `fontSize = 13.sp`) stay
+inline; extracting every dp puts padding a screen away from the composable using it and makes the
+code harder to read, not easier.
+
+**Constants always live inside a class or object - never loose at file top level.** A bare
+top-level `private const val` has no owner and reads as a stray value; grouping them names the
+thing they configure and keeps them together as that thing grows.
+
+Where a constant lives follows from how many places use it:
+
+1. **One class** - `private companion object` inside that class.
+2. **One file of top-level functions** (composables, extensions - no class to hang them on) -
+   a `private object <Area>Constant` at the top of that file. Not loose `const val`s.
+3. **Two or more files** - a shared `object <Area>Constant`, internal or public as needed. Never
+   redeclare the same meaning-and-value in a second file; that is the duplication this rule
+   exists to stop.
+
+```kotlin
+// WRONG - loose at file level
+private const val AVATAR_SIZE_DP = 96
+private const val ROLE_SEPARATOR = " · "
+
+// RIGHT - owned by an object that names what they configure
+private object PersonHeroConstant {
+    const val AVATAR_SIZE_DP = 96
+    const val ROLE_SEPARATOR = " · "
+}
+```
+
+Shared constants objects follow the existing `object <Area>Constant` pattern
+(`NetworkConstant`, `MoviesConstant`, `TvShowsConstant`, `NavigationConstants`,
+`ConfigurationConstants`, `HeroConstant`). Put them in the narrowest package that covers every
+caller - `core/constant/` when callers span features, the feature package when they do not.
+
+## 2c. Don't duplicate logic - extract it
+
+If the same logic appears in two places, it moves out into one named thing rather than being
+copy-adjusted. For behaviour (not layout), prefer a **use case**: a small single-purpose class
+with an `operator fun invoke`, named for what it does - `FindYoutubeTrailerUseCase`,
+`ResolveWatchOptionUseCase`. Shared composables go in `core/ui/`, shared formatting in
+`core/format/`.
+
+The trigger is duplicated *logic*, not duplicated shape. Two composables that happen to both draw
+a Row are fine; two copies of "pick the best streaming provider for this region" are not.
+
+## 2d. Test files follow the same constant rules (agreed 2026-08-13)
+
+Tests are not exempt. The same values keep reappearing across a feature's tests - a provider name,
+a region code, the text of a string resource being asserted on - and a typo'd copy in one file
+produces a test that passes while asserting the wrong thing.
+
+Placement in a test mirrors the production rule, keyed on the *feature package*:
+
+1. **Used in one test class only** - `private companion object` inside that class. Not loose
+   top-level `private const val`s, which is what test files drift into. Note this pulls the file's
+   fixture builders into the class too, since a `private companion object` is not visible to
+   top-level functions in the same file.
+2. **Used by two or more test files in the same feature package** - a shared
+   `object <Area>TestConstant` in that package's test source, following the production
+   `object <Area>Constant` naming. Put it in the narrowest package covering every caller: hero
+   fixtures shared by the movie and TV hero tests live in `core/ui/hero/`, not in either feature.
+
+Where production already declares the value, **import it rather than restating it** - a test
+asserting on region "US" uses `RegionConstant.US`, not a private copy. The exception is a value
+that *is* the contract under test: `FindYoutubeTrailerUseCaseTest` declares its own YouTube URL
+prefix on purpose, because a test that imports the constant it is verifying asserts nothing.
+
+**What stays inline:** one-off test data with no meaning beyond the case that uses it - a runtime
+of 148, a title of "Inception", a vote count of 30_000. Naming every literal in a fixture makes
+the test unreadable and hides what is actually being asserted. The trigger for extraction is
+repetition or contract, exactly as in production code.
+
 ## 3. No wildcard imports
 
 Never use `import foo.*` - always import each symbol explicitly (matches the style of the rest

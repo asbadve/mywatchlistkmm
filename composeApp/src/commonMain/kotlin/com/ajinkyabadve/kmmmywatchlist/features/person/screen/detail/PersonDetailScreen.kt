@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,28 +21,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -62,24 +62,23 @@ import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.filmographySections
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.knownForCredits
-import com.ajinkyabadve.kmmmywatchlist.features.person.model.yearsBetween
 import com.ajinkyabadve.kmmmywatchlist.openUrl
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_read_less
 import mywatchlist.composeapp.generated.resources.action_read_more
 import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
-import mywatchlist.composeapp.generated.resources.baseline_person_24
 import mywatchlist.composeapp.generated.resources.filter_all
 import mywatchlist.composeapp.generated.resources.filter_all_departments
 import mywatchlist.composeapp.generated.resources.filter_movies
@@ -92,6 +91,12 @@ import mywatchlist.composeapp.generated.resources.section_photos
 import mywatchlist.composeapp.generated.resources.title_person
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+private object PersonDetailConstant {
+    const val KNOWN_FOR_CAPTION_SEPARATOR = " · "
+    const val MAX_CREDITS = 20
+    const val BIOGRAPHY_PREVIEW_LINES = 5
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,30 +113,30 @@ fun PersonDetailScreen(
     var galleryImages by remember { mutableStateOf<List<String>?>(null) }
     var galleryInitialIndex by remember { mutableStateOf(0) }
 
+    // Same hero treatment as the movie and TV detail screens: the bar floats transparently over the
+    // banner and only goes solid once the list has scrolled past it. That means it cannot live in
+    // Scaffold's topBar slot - that slot always reserves layout space, which would push the banner
+    // down and stop it running under the status bar.
+    val lazyListState = rememberLazyListState()
+    val leftLazyListState = rememberLazyListState()
+    val topBarState = rememberCollapsibleBarState()
+    val showSolidHeader by remember {
+        derivedStateOf {
+            val state = if (windowSize.isCompact()) lazyListState else leftLazyListState
+            state.firstVisibleItemIndex > 0
+        }
+    }
+
     Scaffold(
-        topBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                TopAppBar(
-                    title = {
-                        val title = (uiState as? PersonDetailState.Success)?.person?.name ?: stringResource(Res.string.title_person)
-                        Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBackClicked) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                )
-                HorizontalDivider()
-            }
-        },
+        modifier = Modifier.nestedScroll(topBarState.nestedScrollConnection),
+        topBar = {},
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(if (windowSize.isCompact()) PaddingValues(0.dp) else innerPadding),
         ) {
             when (val state = uiState) {
                 is PersonDetailState.Loading -> {
@@ -165,18 +170,27 @@ fun PersonDetailScreen(
                     if (windowSize.isCompact()) {
                         CompactPersonDetailContent(
                             person = state.person,
+                            lazyListState = lazyListState,
                             onCreditClicked = onCreditClicked,
                             onShowGallery = onShowGallery,
                         )
                     } else {
                         ExpandedPersonDetailContent(
                             person = state.person,
+                            leftLazyListState = leftLazyListState,
                             onCreditClicked = onCreditClicked,
                             onShowGallery = onShowGallery,
                         )
                     }
                 }
             }
+
+            DetailTopBar(
+                title = (uiState as? PersonDetailState.Success)?.person?.name ?: stringResource(Res.string.title_person),
+                onBackClicked = onBackClicked,
+                isScrolledPastHero = showSolidHeader,
+                modifier = Modifier.collapsingTopBar(topBarState),
+            )
 
             galleryImages?.let { images ->
                 FullscreenMediaGallery(
@@ -193,14 +207,16 @@ fun PersonDetailScreen(
 @Composable
 private fun CompactPersonDetailContent(
     person: PersonDetail,
+    lazyListState: LazyListState,
     onCreditClicked: (PersonCredit) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     LazyColumn(
+        state = lazyListState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
-        item { PersonHeader(person = person) }
+        item { PersonHeroSection(person = person, onCreditClicked = onCreditClicked) }
         item { PersonLinksRow(person = person) }
         item { BiographySection(biography = person.biography) }
         item { KnownForRow(person = person, onCreditClicked = onCreditClicked) }
@@ -221,6 +237,7 @@ private fun CompactPersonDetailContent(
 @Composable
 private fun ExpandedPersonDetailContent(
     person: PersonDetail,
+    leftLazyListState: LazyListState,
     onCreditClicked: (PersonCredit) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
@@ -229,10 +246,11 @@ private fun ExpandedPersonDetailContent(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         LazyColumn(
+            state = leftLazyListState,
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
-            item { PersonHeader(person = person) }
+            item { PersonHeroSection(person = person, onCreditClicked = onCreditClicked) }
             item { PersonLinksRow(person = person) }
             item { BiographySection(biography = person.biography) }
             item {
@@ -255,122 +273,14 @@ private fun ExpandedPersonDetailContent(
     }
 }
 
-@Composable
-private fun PersonHeader(person: PersonDetail) {
-    Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        val density = LocalDensity.current.density
-        val profileUrl =
-            ImageConfigResolver.resolve(
-                path = person.profilePath,
-                type = ImageConfigResolver.ImageType.PROFILE,
-                targetWidthDp = 140,
-                density = density,
-            )
-        Box(
-            modifier =
-                Modifier
-                    .width(120.dp)
-                    .aspectRatio(2 / 3f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            val fallbackPainter = painterResource(Res.drawable.baseline_person_24)
-            val painter =
-                rememberAsyncImagePainter(
-                    model = profileUrl,
-                    filterQuality = FilterQuality.Medium,
-                    error = fallbackPainter,
-                    fallback = fallbackPainter,
-                )
-            val painterState by painter.state.collectAsState()
-            val contentScale =
-                if (painterState is AsyncImagePainter.State.Success) {
-                    ContentScale.Crop
-                } else {
-                    ContentScale.Fit
-                }
-            Image(
-                painter = painter,
-                contentDescription = person.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = contentScale,
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = person.name,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            val subtitle =
-                listOfNotNull(person.knownForDepartment, person.genderLabel)
-                    .filter { it.isNotEmpty() }
-                    .joinToString(" • ")
-            if (subtitle.isNotEmpty()) {
-                Text(
-                    text = subtitle,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-            val deathday = person.deathday?.takeIf { it.isNotEmpty() }
-            person.birthday?.takeIf { it.isNotEmpty() }?.let { birthday ->
-                val place = person.placeOfBirth?.takeIf { it.isNotEmpty() }
-                // Show current age while alive; the age at death is shown on the "Died" line.
-                val age =
-                    if (deathday == null) {
-                        yearsBetween(birthday, Clock.System.todayIn(TimeZone.currentSystemDefault()).toString())
-                    } else {
-                        null
-                    }
-                Text(
-                    text =
-                        "Born $birthday" +
-                            (age?.let { " (age $it)" } ?: "") +
-                            (place?.let { " in $it" } ?: ""),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            deathday?.let {
-                val ageAtDeath = yearsBetween(person.birthday, it)
-                Text(
-                    text = "Died $it" + (ageAtDeath?.let { age -> " (aged $age)" } ?: ""),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-            if (person.knownCreditsCount > 0) {
-                Text(
-                    text = "${person.knownCreditsCount} known credits • Popularity ${(person.popularity * 10).toInt() / 10.0}",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-            if (person.alsoKnownAs.isNotEmpty()) {
-                Text(
-                    text = "Also known as ${person.alsoKnownAs.joinToString(", ")}",
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-        }
-    }
-}
-
-// External links from the base payload (homepage, imdb_id) and the external_ids append. Only
-// non-null handles become links.
+/**
+ * The person header, over a banner borrowed from the work they are best known for.
+ *
+ * The banner is a background layer sized to the header via matchParentSize, so the portrait, name
+ * and facts keep exactly the position they had before and simply gain something to sit against.
+ * People with no credit carrying a backdrop - newcomers, most crew - fall through to the plain
+ * header rather than to an empty grey band.
+ */
 @Composable
 private fun PersonLinksRow(person: PersonDetail) {
     val ids = person.externalIds
@@ -385,20 +295,33 @@ private fun PersonLinksRow(person: PersonDetail) {
             ids?.youtubeId?.let { add("YouTube" to "https://www.youtube.com/$it") }
         }
     if (links.isEmpty()) return
-    // Material 3 assist chips: the M3 chips guidance treats actions that hand off to another
-    // app/site (opening IMDb, socials) as assist-chip territory, laid out as a wrapping group.
+    // Deliberately lighter than Material's AssistChip. There can be seven of these, and at full
+    // chip weight a row of outlined buttons reads as the screen's primary actions - which they are
+    // not. Compact outline pills keep them reachable while making clear they are secondary.
     @OptIn(ExperimentalLayoutApi::class)
     FlowRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         links.forEach { (label, url) ->
-            AssistChip(
-                onClick = { openUrl(url) },
-                label = { Text(label) },
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.62f),
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.14f),
+                            shape = RoundedCornerShape(16.dp),
+                        ).clickable { openUrl(url) }
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
             )
         }
     }
@@ -426,7 +349,7 @@ private fun BiographySection(biography: String) {
         Text(
             text = biography,
             fontSize = 14.sp,
-            maxLines = if (expanded) Int.MAX_VALUE else BIOGRAPHY_PREVIEW_LINES,
+            maxLines = if (expanded) Int.MAX_VALUE else PersonDetailConstant.BIOGRAPHY_PREVIEW_LINES,
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { layoutResult ->
                 if (!expanded) hasOverflow = layoutResult.hasVisualOverflow
@@ -455,8 +378,15 @@ private fun KnownForRow(
 ) {
     PersonCreditsRow(
         title = stringResource(Res.string.section_known_for),
-        credits = person.knownForCredits(MAX_CREDITS),
-        caption = { it.character?.takeIf { c -> c.isNotEmpty() } ?: it.job },
+        credits = person.knownForCredits(PersonDetailConstant.MAX_CREDITS),
+        // Year alongside the role: the poster alone says which film, the caption says why this
+        // credit is one they are known for.
+        caption = { credit ->
+            listOfNotNull(
+                credit.displayDate?.take(4)?.takeIf { it.isNotEmpty() },
+                credit.character?.takeIf { it.isNotEmpty() } ?: credit.job,
+            ).joinToString(PersonDetailConstant.KNOWN_FOR_CAPTION_SEPARATOR).takeIf { it.isNotEmpty() }
+        },
         onCreditClicked = onCreditClicked,
     )
 }
@@ -507,8 +437,8 @@ private fun FilmographySection(
         ) {
             listOf<Pair<String, String?>>(
                 stringResource(Res.string.filter_all) to null,
-                stringResource(Res.string.filter_movies) to MEDIA_TYPE_MOVIE,
-                stringResource(Res.string.filter_tv_shows) to MEDIA_TYPE_TV,
+                stringResource(Res.string.filter_movies) to MediaTypeConstant.MOVIE,
+                stringResource(Res.string.filter_tv_shows) to MediaTypeConstant.TV,
             ).forEach { (label, value) ->
                 FilmographyFilterChip(
                     selected = mediaFilter == value,
@@ -756,10 +686,3 @@ private fun FilmographyFilterChip(
             },
     )
 }
-
-private const val MAX_CREDITS = 20
-
-// TMDB media_type identifiers (API values, not user-facing).
-private const val MEDIA_TYPE_MOVIE = "movie"
-private const val MEDIA_TYPE_TV = "tv"
-private const val BIOGRAPHY_PREVIEW_LINES = 5

@@ -58,6 +58,25 @@ data class EpisodeDetailKey(
     val episodeNumber: Int,
 ) : AppKey
 
+/**
+ * True for the drill-down destinations that open full-screen and bring their own top bar, as
+ * opposed to the top-level browse tabs and search. These are the screens that suppress the app's
+ * own top bar and collapse the bottom nav bar on scroll, so the two behaviours cannot drift apart.
+ */
+fun AppKey?.isDetailKey(): Boolean =
+    when (this) {
+        is MovieDetailKey,
+        is CollectionDetailKey,
+        is TvDetailKey,
+        is PersonDetailKey,
+        is AllSeasonsKey,
+        is EpisodeListKey,
+        is EpisodeDetailKey,
+        -> true
+
+        else -> false
+    }
+
 data class BottomNavItem(
     val key: AppKey,
     val label: String,

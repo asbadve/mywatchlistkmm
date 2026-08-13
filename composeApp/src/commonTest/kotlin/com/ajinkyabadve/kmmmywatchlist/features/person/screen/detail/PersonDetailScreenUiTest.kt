@@ -1,12 +1,15 @@
 package com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCombinedCredits
@@ -114,6 +117,10 @@ class PersonDetailScreenUiTest {
                 )
             }
 
+            // The hero banner fills the first screenful, so the biography is below the fold and the
+            // lazy list has to be scrolled before its nodes exist. Index 0 is that vertical list -
+            // the horizontal credits row also reports a scroll action.
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Read more"))
             onNodeWithText("Read more").assertExists()
             onNodeWithText("Read more").performClick()
             onNodeWithText("Read less").assertExists()
@@ -142,6 +149,7 @@ class PersonDetailScreenUiTest {
                 )
             }
 
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Known Movie", substring = true))
             onAllNodesWithText("Known Movie")[0].performClick()
             assertEquals(401L, clickedMovieId)
         }

@@ -63,10 +63,29 @@
     <string name="label_directed_by">Directed by %1$s</string>
     <string name="label_written_by">Written by %1$s</string>
     <string name="label_part_of_collection">Part of the %1$s</string>
+    <string name="person_hero_known_for">From %1$s</string>
+    <string name="person_stat_known_credits">Known Credits</string>
+    <string name="person_stat_popularity">Popularity</string>
+    <string name="person_stat_first_film">First Film</string>
+    <string name="person_born">Born %1$s</string>
+    <string name="person_born_with_age">Born %1$s (age %2$d)</string>
+    <string name="person_in_place">in %1$s</string>
+    <string name="person_died">Died %1$s</string>
+    <string name="person_died_with_age">Died %1$s (aged %2$d)</string>
+    <string name="person_also_known_as">Also known as %1$s</string>
     <string name="label_production_code">Production code %1$s</string>
     <string name="languages_dialog_title">Languages (%1$d)</string>
     <string name="languages_chip">%1$d Langs</string>
     <string name="justwatch_attribution">Streaming availability by JustWatch</string>
+    <string name="hero_watch_on">Watch on %1$s</string>
+    <string name="hero_play_trailer">Play trailer</string>
+    <string name="hero_runtime_hours_minutes">%1$dh %2$dm</string>
+    <string name="hero_runtime_minutes">%1$dm</string>
+    <string name="hero_rating">\u2605 %1$s</string>
+    <string name="tv_hero_seasons">%1$d Seasons</string>
+    <string name="tv_hero_season">1 Season</string>
+    <string name="tv_hero_episodes">%1$d Episodes</string>
+    <string name="tv_hero_next_episode">S%1$d E%2$d · %3$s</string>
     <string name="search_hint">Search for Movies &amp; Tv shows</string>
 
     <!-- Placeholders / empty states -->
@@ -91,6 +110,7 @@
     <!-- Search -->
     <string name="search_field_hint">Search movies, TV shows, people</string>
     <string name="search_back_content_description">Back</string>
+    <string name="back_content_description">Back</string>
     <string name="search_clear_content_description">Clear search</string>
     <string name="search_prompt">Start typing to search movies, TV shows and people.</string>
     <string name="search_no_results">No results for “%1$s”.</string>

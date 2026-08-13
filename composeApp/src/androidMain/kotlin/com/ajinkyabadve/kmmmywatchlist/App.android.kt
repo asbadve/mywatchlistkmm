@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -18,6 +19,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.window.layout.WindowMetricsCalculator
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
 
 class AndroidApp : Application() {
     companion object {
@@ -27,6 +29,12 @@ class AndroidApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // Debuggable builds only - release APKs should not spend cycles formatting HTTP traffic
+        // into logcat. Read off the manifest flag the build type already sets, so there is no
+        // separate switch to remember to flip.
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            initLogging()
+        }
     }
 }
 
