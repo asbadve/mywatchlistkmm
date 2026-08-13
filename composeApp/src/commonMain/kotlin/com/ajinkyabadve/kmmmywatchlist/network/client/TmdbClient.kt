@@ -18,30 +18,30 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
-private const val TIME_OUT = 30000L
+private object TmdbClientConstant {
+    const val TIME_OUT = 30000L
 
-// Deliberately much shorter than TIME_OUT. Connecting is the step that fails when a host is
-// unreachable (or DNS-hijacked to a blackhole address - see NetworkConstant.HOST), and it is
-// retried, so a 30s connect budget meant a dead host spun for ~3 minutes before the UI could
-// show its error card. Reading a slow-but-alive response still gets the full TIME_OUT.
-private const val CONNECT_TIME_OUT = 10000L
+    // Deliberately much shorter than TIME_OUT. Connecting is the step that fails when a host is
+    // unreachable (or DNS-hijacked to a blackhole address - see NetworkConstant.HOST), and it is
+    // retried, so a 30s connect budget meant a dead host spun for ~3 minutes before the UI could
+    // show its error card. Reading a slow-but-alive response still gets the full TIME_OUT.
+    const val CONNECT_TIME_OUT = 10000L
+    const val MAX_RETRIES = 3
 
-private const val MAX_RETRIES = 3
-
-// The Logging plugin prints full request URLs, and TMDB auth travels as an `api_key` query
-// parameter, so an unscrubbed line would put the key in logcat/stdout on every request.
-private val apiKeyRegex = Regex("(api_key=)[^&\\s]*")
-private const val REDACTED_API_KEY = "$1<redacted>"
-
-private const val LOG_TAG = "HTTP Client"
+    // The Logging plugin prints full request URLs, and TMDB auth travels as an `api_key` query
+    // parameter, so an unscrubbed line would put the key in logcat/stdout on every request.
+    val apiKeyRegex = Regex("(api_key=)[^&\\s]*")
+    const val REDACTED_API_KEY = "$1<redacted>"
+    const val LOG_TAG = "HTTP Client"
+}
 
 private val tmdbClientConfig: HttpClientConfig<*>.() -> Unit = {
     install(HttpRequestRetry) {
-        maxRetries = MAX_RETRIES
+        maxRetries = TmdbClientConstant.MAX_RETRIES
         // Takes maxRetries, NOT a status code - passing HttpStatusCode.InternalServerError.value
         // here (as this used to) silently asked for 500 retries on every 5xx.
-        retryOnServerErrors(maxRetries = MAX_RETRIES)
-        retryOnException(maxRetries = MAX_RETRIES, retryOnTimeout = true)
+        retryOnServerErrors(maxRetries = TmdbClientConstant.MAX_RETRIES)
+        retryOnException(maxRetries = TmdbClientConstant.MAX_RETRIES, retryOnTimeout = true)
     }
     // Left false deliberately: Ktor installs its own default response validation whenever
     // expectSuccess = true, and that default always runs before the custom HttpResponseValidator
@@ -50,9 +50,9 @@ private val tmdbClientConfig: HttpClientConfig<*>.() -> Unit = {
     // would never actually be thrown. See TmdbClientTest.
     expectSuccess = false
     install(HttpTimeout) {
-        connectTimeoutMillis = CONNECT_TIME_OUT
-        requestTimeoutMillis = TIME_OUT
-        socketTimeoutMillis = TIME_OUT
+        connectTimeoutMillis = TmdbClientConstant.CONNECT_TIME_OUT
+        requestTimeoutMillis = TmdbClientConstant.TIME_OUT
+        socketTimeoutMillis = TmdbClientConstant.TIME_OUT
     }
     install(ContentNegotiation) {
         json(
@@ -68,8 +68,8 @@ private val tmdbClientConfig: HttpClientConfig<*>.() -> Unit = {
         logger =
             object : Logger {
                 override fun log(message: String) {
-                    val scrubbed = message.replace(apiKeyRegex, REDACTED_API_KEY)
-                    Napier.d(tag = LOG_TAG) { scrubbed }
+                    val scrubbed = message.replace(TmdbClientConstant.apiKeyRegex, TmdbClientConstant.REDACTED_API_KEY)
+                    Napier.d(tag = TmdbClientConstant.LOG_TAG) { scrubbed }
                 }
             }
         level = LogLevel.ALL

@@ -30,8 +30,10 @@ import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.back_content_description
 import org.jetbrains.compose.resources.stringResource
 
-private const val HERO_FADE_MILLIS = 300
-private const val HERO_SCRIM_ALPHA = 0.4f
+private object DetailTopBarConstant {
+    const val HERO_FADE_MILLIS = 300
+    const val HERO_SCRIM_ALPHA = 0.4f
+}
 
 /**
  * The one top bar every detail screen uses, so that back affordance, colours and divider cannot
@@ -61,7 +63,7 @@ fun DetailTopBar(
 
     val containerColor by animateColorAsState(
         targetValue = if (isSolid) MaterialTheme.colorScheme.background else Color.Transparent,
-        animationSpec = tween(durationMillis = HERO_FADE_MILLIS),
+        animationSpec = tween(durationMillis = DetailTopBarConstant.HERO_FADE_MILLIS),
     )
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -81,7 +83,7 @@ fun DetailTopBar(
                         // to stay legible against whatever the backdrop happens to be.
                         modifier =
                             if (isOverHero) {
-                                Modifier.background(Color.Black.copy(alpha = HERO_SCRIM_ALPHA), CircleShape)
+                                Modifier.background(Color.Black.copy(alpha = DetailTopBarConstant.HERO_SCRIM_ALPHA), CircleShape)
                             } else {
                                 Modifier
                             },
