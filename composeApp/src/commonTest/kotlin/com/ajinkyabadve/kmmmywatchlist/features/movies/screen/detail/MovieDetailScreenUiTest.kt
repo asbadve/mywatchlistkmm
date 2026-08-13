@@ -1,11 +1,14 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
@@ -115,8 +118,12 @@ class MovieDetailScreenUiTest {
                 )
             }
 
+            // The title is in the hero, which fills most of the first screenful; the tagline and
+            // collection banner sit below it, so the lazy list has to be scrolled before they exist.
             onNodeWithText("Fake Movie Detail").assertExists()
+            onNode(hasScrollAction()).performScrollToNode(hasText("Every story has an end."))
             onNodeWithText("Every story has an end.").assertExists()
+            onNode(hasScrollAction()).performScrollToNode(hasText("View collection", substring = true))
             onNodeWithText("View collection", substring = true).assertExists()
         }
 
@@ -141,6 +148,7 @@ class MovieDetailScreenUiTest {
                 )
             }
 
+            onNode(hasScrollAction()).performScrollToNode(hasText("View collection", substring = true))
             onNodeWithText("View collection", substring = true).performClick()
             assertEquals(501L, collectionId)
         }

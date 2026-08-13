@@ -98,7 +98,8 @@ class TvRepositoryImpl(
     private companion object {
         const val TV = "/3/tv/"
         const val VIDEOS = "/videos"
-        const val APPEND_TO_RESPONSE = "content_ratings,credits,external_ids,images,keywords,recommendations,videos,similar"
+        const val APPEND_TO_RESPONSE =
+            "content_ratings,credits,external_ids,images,keywords,recommendations,videos,similar,watch/providers"
         const val EPISODE_APPEND_TO_RESPONSE = "credits,external_ids,images,translations,videos"
     }
 }

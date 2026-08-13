@@ -38,28 +38,16 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TvMetaSection(detail: TvDetail) {
-    val contentRating =
-        detail.contentRatings
-            ?.results
-            ?.firstOrNull { it.iso3166 == "US" && it.rating.isNotEmpty() }
-            ?.rating
-
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp, horizontal = 16.dp),
     ) {
-        Text(
-            text = detail.title,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
+        // The title lives in TvHeroSection now, over the backdrop - same as the movie screen.
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Info details row (First air date, status, content rating, seasons/episodes)
+        // Info details row. Content rating and season/episode counts are deliberately absent:
+        // the hero already states all three.
         FlowRow(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -73,38 +61,14 @@ fun TvMetaSection(detail: TvDetail) {
                 )
             }
 
-            detail.status?.let {
-                if (it.isNotEmpty()) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(it) },
-                    )
-                }
-            }
-
-            if (!contentRating.isNullOrEmpty()) {
+            // Only when the hero is not already saying it: the ongoing badge covers returning shows,
+            // so repeating it here would leave "Returning Series" on screen twice. Ended and
+            // cancelled shows get no badge, and this is the only place that fact appears.
+            detail.status?.takeIf { it.isNotEmpty() && !detail.isOngoing }?.let {
                 SuggestionChip(
                     onClick = {},
-                    label = { Text(contentRating) },
+                    label = { Text(it) },
                 )
-            }
-
-            detail.numberOfSeasons?.let { seasons ->
-                if (seasons > 0) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(if (seasons == 1) "$seasons Season" else "$seasons Seasons") },
-                    )
-                }
-            }
-
-            detail.numberOfEpisodes?.let { episodes ->
-                if (episodes > 0) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(if (episodes == 1) "$episodes Episode" else "$episodes Episodes") },
-                    )
-                }
             }
         }
 

@@ -241,7 +241,7 @@ private fun CompactTvDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            TvBackdropSection(detail = detail)
+            TvHeroSection(detail = detail)
         }
         item {
             TvMetaSection(detail = detail)
@@ -316,7 +316,7 @@ private fun ExpandedTvDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                TvBackdropSection(detail = detail)
+                TvHeroSection(detail = detail)
             }
             item {
                 TvMetaSection(detail = detail)

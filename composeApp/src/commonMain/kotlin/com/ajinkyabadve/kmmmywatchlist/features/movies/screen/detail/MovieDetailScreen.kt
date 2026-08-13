@@ -233,7 +233,7 @@ private fun CompactMovieDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            BackdropSection(detail = detail)
+            MovieHeroSection(detail = detail)
         }
         item {
             MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)
@@ -304,7 +304,7 @@ private fun ExpandedMovieDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                BackdropSection(detail = detail)
+                MovieHeroSection(detail = detail)
             }
             item {
                 MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)

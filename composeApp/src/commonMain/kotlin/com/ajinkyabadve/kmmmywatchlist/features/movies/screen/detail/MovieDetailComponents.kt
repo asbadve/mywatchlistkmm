@@ -84,17 +84,6 @@ fun formatFullReleaseDate(rawDate: String): String {
     return "$month $day, $year"
 }
 
-fun formatRuntime(minutes: Int?): String {
-    if (minutes == null || minutes <= 0) return ""
-    val hours = minutes / 60
-    val remainingMinutes = minutes % 60
-    return if (hours > 0) {
-        "${hours}h ${remainingMinutes}m"
-    } else {
-        "${minutes}m"
-    }
-}
-
 fun formatBudget(budget: Long?): String {
     if (budget == null || budget <= 0) return ""
     return if (budget >= 1_000_000) {

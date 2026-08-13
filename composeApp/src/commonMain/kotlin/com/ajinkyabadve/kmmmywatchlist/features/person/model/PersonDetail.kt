@@ -95,6 +95,42 @@ fun PersonDetail.knownForCredits(max: Int = 20): List<PersonCredit> {
         .take(max)
 }
 
+/**
+ * The credit whose backdrop stands in as this person's hero image.
+ *
+ * TMDB people have no backdrop of their own - only portrait profiles - so the banner borrows one
+ * from the work they are best known for: Forrest Gump for Tom Hanks, Interstellar for Christopher
+ * Nolan. [knownForCredits] already ranks by vote count precisely so all-time hits outrank talk-show
+ * appearances, which is exactly the ordering wanted here; ranking by `popularity` instead surfaces
+ * whichever chat show they appeared on last week.
+ *
+ * Free of extra network calls - `combined_credits` is already appended to the person request.
+ * Returns null for people with no credits carrying a backdrop, so callers must have a plain layout
+ * to fall back to.
+ */
+fun PersonDetail.heroBackdropCredit(): PersonCredit? = knownForCredits().firstOrNull { !it.backdropPath.isNullOrEmpty() }
+
+/**
+ * Year of this person's earliest film credit - how long they have been working, as one number.
+ *
+ * Films only, and that restriction is the whole point. A TV credit carries the *series*
+ * `first_air_date`, not the date of the episode this person was in, so a single guest slot on a
+ * long-running show back-dates them by decades: Tom Holland came out as first working in 1988,
+ * eight years before he was born. A film's `release_date` is the credit's own date, so it can be
+ * trusted.
+ *
+ * Deliberately not a "breakout year" either: TMDB has no such field, and deriving one would mean
+ * guessing which credit counted as the break.
+ */
+fun PersonDetail.firstFilmYear(): Int? {
+    val credits = combinedCredits ?: return null
+    return (credits.cast + credits.crew)
+        .filter { it.isMovie }
+        .mapNotNull { it.releaseDate?.take(4)?.toIntOrNull() }
+        .filter { it > 0 }
+        .minOrNull()
+}
+
 private fun List<PersonCredit>.sortedForFilmography(): List<PersonCredit> =
     sortedWith(compareByDescending { it.displayDate?.takeIf { date -> date.isNotEmpty() } ?: "9999" })
 
