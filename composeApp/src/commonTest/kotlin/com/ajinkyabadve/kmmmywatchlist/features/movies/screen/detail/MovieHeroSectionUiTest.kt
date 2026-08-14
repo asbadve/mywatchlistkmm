@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -19,6 +20,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.WatchProvider
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.WatchProvidersResponse
+import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -222,6 +224,40 @@ class MovieHeroSectionUiTest {
 
             onAllNodesWithText(HeroTestConstant.WATCH_ON_PREFIX, substring = true).assertCountEquals(0)
             assertNull(opened)
+        }
+
+    /**
+     * The light theme the hero used to lose its lower half in, driven explicitly rather than left to
+     * whatever the test machine's system setting happens to be.
+     *
+     * This proves the light branch composes and that `LocalIsDarkTheme` reaches the hero. It cannot
+     * prove the content is *visible* - a Compose UI test asserts nodes, and white-on-white nodes
+     * exist. `HeroColorsTest` is what holds the contrast.
+     */
+    @Test
+    fun testRendersTheWholeHeroInLightTheme() =
+        runComposeUiTest {
+            setContent {
+                AppTheme(useDarkTheme = false) {
+                    HeroTestSurface {
+                        MovieHeroSection(
+                            detail =
+                                movie(
+                                    title = "Inception",
+                                    watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX),
+                                    videos = trailer(),
+                                ),
+                        )
+                    }
+                }
+            }
+
+            onNodeWithText("Inception").assertIsDisplayed()
+            onNodeWithText("2010", substring = true).assertIsDisplayed()
+            onNodeWithText("PG-13").assertIsDisplayed()
+            onNodeWithText(HeroTestConstant.PROVIDER_NETFLIX).assertIsDisplayed()
+            onNodeWithText(HeroTestConstant.WATCH_ON_NETFLIX).assertIsDisplayed()
+            onNodeWithContentDescription(HeroTestConstant.PLAY_TRAILER).assertIsDisplayed()
         }
 
     private companion object {

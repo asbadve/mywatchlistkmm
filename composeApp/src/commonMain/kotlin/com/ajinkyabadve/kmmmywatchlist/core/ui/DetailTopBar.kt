@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.back_content_description
 import org.jetbrains.compose.resources.stringResource
@@ -60,6 +61,10 @@ fun DetailTopBar(
 ) {
     val isOverHero = isScrolledPastHero == false
     val isSolid = !isOverHero
+    // Over the hero this bar draws on the hero's own scrim, so it takes the hero's colours rather
+    // than a hardcoded black-and-white pair - otherwise a white icon over a light-theme hero is the
+    // next thing to disappear.
+    val heroColors = heroColors()
 
     val containerColor by animateColorAsState(
         targetValue = if (isSolid) MaterialTheme.colorScheme.background else Color.Transparent,
@@ -83,7 +88,10 @@ fun DetailTopBar(
                         // to stay legible against whatever the backdrop happens to be.
                         modifier =
                             if (isOverHero) {
-                                Modifier.background(Color.Black.copy(alpha = DetailTopBarConstant.HERO_SCRIM_ALPHA), CircleShape)
+                                Modifier.background(
+                                    heroColors.scrim.copy(alpha = DetailTopBarConstant.HERO_SCRIM_ALPHA),
+                                    CircleShape,
+                                )
                             } else {
                                 Modifier
                             },
@@ -91,7 +99,7 @@ fun DetailTopBar(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(Res.string.back_content_description),
-                            tint = if (isOverHero) Color.White else MaterialTheme.colorScheme.onSurface,
+                            tint = if (isOverHero) heroColors.onHero else MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }

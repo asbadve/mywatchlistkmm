@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -37,8 +36,10 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.format.toOneDecimalString
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroConstant
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroProviderChip
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroScrimBrush
 import com.ajinkyabadve.kmmmywatchlist.core.usecase.FindYoutubeTrailerUseCase
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.HeroWatchOption
@@ -56,7 +57,14 @@ import mywatchlist.composeapp.generated.resources.tv_hero_seasons
 import org.jetbrains.compose.resources.stringResource
 
 private object TvHeroConstant {
-    const val ONGOING_GREEN = 0xFF6FE0A0
+    const val RELEASE_YEAR_LENGTH = 4
+    const val ONGOING_SURFACE_ALPHA = 0.12f
+    const val ONGOING_BORDER_ALPHA = 0.35f
+    const val NEXT_EPISODE_TEXT_ALPHA = 0.62f
+    const val CONTENT_RATING_TEXT_ALPHA = 0.85f
+    const val CONTENT_RATING_BORDER_ALPHA = 0.35f
+    const val OVERLAY_TEXT_ALPHA = 0.75f
+    const val NETWORK_TEXT_ALPHA = 0.8f
 }
 
 /**
@@ -74,6 +82,7 @@ fun TvHeroSection(
     onOpenUrl: (String) -> Unit = { openUrl(it) },
 ) {
     val density = LocalDensity.current.density
+    val colors = heroColors()
     val backdropUrl =
         ImageConfigResolver.resolve(
             path = detail.backdropPath,
@@ -106,24 +115,24 @@ fun TvHeroSection(
                     .padding(horizontal = 20.dp, vertical = 18.dp),
         ) {
             if (detail.isOngoing) {
-                OngoingBadge(status = detail.status.orEmpty())
+                OngoingBadge(status = detail.status.orEmpty(), colors = colors)
             }
             Text(
                 text = detail.title,
                 fontSize = 34.sp,
                 lineHeight = 36.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = colors.onHero,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = if (detail.isOngoing) 8.dp else 0.dp),
             )
-            TvMetaRow(detail = detail, modifier = Modifier.padding(top = 8.dp))
+            TvMetaRow(detail = detail, colors = colors, modifier = Modifier.padding(top = 8.dp))
             detail.heroEpisode()?.let { episode ->
                 Text(
                     text = stringResource(Res.string.tv_hero_next_episode, episode.seasonNumber, episode.episodeNumber, episode.name),
                     fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.62f),
+                    color = colors.onHero.copy(alpha = TvHeroConstant.NEXT_EPISODE_TEXT_ALPHA),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp),
@@ -140,6 +149,7 @@ fun TvHeroSection(
             TvActionRow(
                 detail = detail,
                 watchOption = watchOption,
+                colors = colors,
                 onOpenUrl = onOpenUrl,
                 modifier = Modifier.padding(top = 14.dp),
             )
@@ -152,14 +162,17 @@ fun TvHeroSection(
  * scans for rather than reads, and a coloured dot survives being glanced at.
  */
 @Composable
-private fun OngoingBadge(status: String) {
-    val green = Color(TvHeroConstant.ONGOING_GREEN)
+private fun OngoingBadge(
+    status: String,
+    colors: HeroColors,
+) {
+    val green = colors.ongoing
     Row(
         modifier =
             Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(green.copy(alpha = 0.12f))
-                .border(1.dp, green.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                .background(green.copy(alpha = TvHeroConstant.ONGOING_SURFACE_ALPHA))
+                .border(1.dp, green.copy(alpha = TvHeroConstant.ONGOING_BORDER_ALPHA), RoundedCornerShape(20.dp))
                 .padding(horizontal = 9.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -179,12 +192,13 @@ private fun OngoingBadge(status: String) {
 @Composable
 private fun TvMetaRow(
     detail: TvDetail,
+    colors: HeroColors,
     modifier: Modifier = Modifier,
 ) {
     val facts =
         buildList {
             detail.firstAirDate
-                .take(4)
+                .take(TvHeroConstant.RELEASE_YEAR_LENGTH)
                 .takeIf { it.isNotEmpty() }
                 ?.let { add(it) }
             detail.numberOfSeasons?.takeIf { it > 0 }?.let {
@@ -204,18 +218,21 @@ private fun TvMetaRow(
                     text = it,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = colors.onHero.copy(alpha = TvHeroConstant.CONTENT_RATING_TEXT_ALPHA),
                     modifier =
                         Modifier
-                            .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                            .border(
+                                1.dp,
+                                colors.onHero.copy(alpha = TvHeroConstant.CONTENT_RATING_BORDER_ALPHA),
+                                RoundedCornerShape(4.dp),
+                            ).padding(horizontal = 5.dp, vertical = 1.dp),
                 )
             }
             if (facts.isNotEmpty()) {
                 Text(
                     text = facts.joinToString(HeroConstant.META_SEPARATOR),
                     fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = colors.onHero.copy(alpha = TvHeroConstant.OVERLAY_TEXT_ALPHA),
                     modifier = Modifier.padding(start = if (rating == null) 0.dp else 10.dp),
                 )
             }
@@ -225,7 +242,7 @@ private fun TvMetaRow(
                 text = it,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.8f),
+                color = colors.onHero.copy(alpha = TvHeroConstant.NETWORK_TEXT_ALPHA),
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
@@ -236,6 +253,7 @@ private fun TvMetaRow(
 private fun TvActionRow(
     detail: TvDetail,
     watchOption: HeroWatchOption?,
+    colors: HeroColors,
     onOpenUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -276,8 +294,8 @@ private fun TvActionRow(
                     modifier =
                         Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.14f))
-                            .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
+                            .background(colors.buttonSurface)
+                            .border(1.dp, colors.buttonOutline, RoundedCornerShape(8.dp))
                             .clickable { onOpenUrl(url) }
                             .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -286,14 +304,14 @@ private fun TvActionRow(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = colors.onHero,
                         modifier = Modifier.size(18.dp),
                     )
                     Text(
                         text = stringResource(Res.string.hero_play_trailer),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = colors.onHero,
                     )
                 }
             } else {
@@ -302,15 +320,15 @@ private fun TvActionRow(
                         Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.10f))
-                            .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
+                            .background(colors.buttonSurface)
+                            .border(1.dp, colors.buttonOutline, RoundedCornerShape(8.dp))
                             .clickable { onOpenUrl(url) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = stringResource(Res.string.hero_play_trailer),
-                        tint = Color.White,
+                        tint = colors.onHero,
                     )
                 }
             }
