@@ -8,6 +8,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -99,6 +101,19 @@ private val AppTypography =
             ),
     )
 
+/**
+ * Whether the app is currently rendering its dark scheme.
+ *
+ * Deliberately published rather than left to callers of `isSystemInDarkTheme()`: that reads the
+ * *system* setting, which is not the same question once [AppTheme] is given an explicit
+ * [AppTheme.useDarkTheme] - a future in-app theme toggle, or a test forcing one branch. Anything
+ * that has to pick a colour the `ColorScheme` does not name (the hero's scrim and the foregrounds
+ * drawn on artwork) reads this instead, so it cannot disagree with the scheme around it.
+ *
+ * Defaults to light, matching what a bare `MaterialTheme` renders for composables outside [AppTheme].
+ */
+internal val LocalIsDarkTheme = staticCompositionLocalOf { false }
+
 @Composable
 internal fun AppTheme(
     useDarkTheme: Boolean = isSystemInDarkTheme(),
@@ -111,10 +126,12 @@ internal fun AppTheme(
             DarkColorScheme
         }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        shapes = AppShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalIsDarkTheme provides useDarkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = AppTypography,
+            shapes = AppShapes,
+            content = content,
+        )
+    }
 }

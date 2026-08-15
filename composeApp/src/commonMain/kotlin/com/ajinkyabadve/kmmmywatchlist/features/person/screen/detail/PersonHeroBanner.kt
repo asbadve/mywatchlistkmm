@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.person_hero_known_for
@@ -37,6 +39,10 @@ import org.jetbrains.compose.resources.stringResource
 private object PersonHeroBannerConstant {
     const val BANNER_TARGET_WIDTH_DP = 780
     const val SCRIM_WASH_ALPHA = 0.45f
+    const val FADE_TOP_ALPHA = 0.45f
+    const val FADE_MID_ALPHA = 0.85f
+    const val ATTRIBUTION_SURFACE_ALPHA = 0.55f
+    const val ATTRIBUTION_BORDER_ALPHA = 0.16f
 }
 
 /**
@@ -57,6 +63,7 @@ fun PersonHeroBanner(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current.density
+    val colors = heroColors()
     val backdropUrl =
         ImageConfigResolver.resolve(
             path = credit.backdropPath,
@@ -86,17 +93,21 @@ fun PersonHeroBanner(
         // background - so the banner has to be pushed well back or the name washes out over a
         // bright frame. A flat wash plus a fade into the page background does that, and leaves the
         // banner reading as texture behind the content rather than a photo competing with it.
+        //
+        // The wash takes the theme's scrim rather than a hardcoded black: pushing an image back
+        // means moving it toward the surface behind it, and in light theme that is the page, not
+        // darkness. Black here turned the backdrop muddy grey while the gradient above it lightened.
         Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = PersonHeroBannerConstant.SCRIM_WASH_ALPHA))
+                    .background(colors.scrim.copy(alpha = PersonHeroBannerConstant.SCRIM_WASH_ALPHA))
                     .background(
                         Brush.verticalGradient(
                             colors =
                                 listOf(
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = PersonHeroBannerConstant.FADE_TOP_ALPHA),
+                                    MaterialTheme.colorScheme.background.copy(alpha = PersonHeroBannerConstant.FADE_MID_ALPHA),
                                     MaterialTheme.colorScheme.background,
                                 ),
                         ),
@@ -105,6 +116,7 @@ fun PersonHeroBanner(
 
         CreditAttribution(
             credit = credit,
+            colors = colors,
             onClick = { onCreditClicked(credit) },
             modifier = Modifier.align(Alignment.BottomEnd).padding(horizontal = 12.dp, vertical = 8.dp),
         )
@@ -115,6 +127,7 @@ fun PersonHeroBanner(
 @Composable
 private fun CreditAttribution(
     credit: PersonCredit,
+    colors: HeroColors,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -122,20 +135,27 @@ private fun CreditAttribution(
         modifier =
             modifier
                 .clip(RoundedCornerShape(50))
-                .background(Color.Black.copy(alpha = 0.55f))
-                .clickable(onClick = onClick)
+                .background(colors.scrim.copy(alpha = PersonHeroBannerConstant.ATTRIBUTION_SURFACE_ALPHA))
+                // The pill sits where the gradient has already reached the page background, so in
+                // light theme its fill is near-invisible against it. The outline is what keeps it
+                // reading as a tappable pill rather than as loose text.
+                .border(
+                    1.dp,
+                    colors.onHero.copy(alpha = PersonHeroBannerConstant.ATTRIBUTION_BORDER_ALPHA),
+                    RoundedCornerShape(50),
+                ).clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = Icons.Default.PlayArrow,
             contentDescription = null,
-            tint = Color.White,
+            tint = colors.onHero,
             modifier = Modifier.size(14.dp),
         )
         Text(
             text = stringResource(Res.string.person_hero_known_for, credit.displayTitle),
-            color = Color.White,
+            color = colors.onHero,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,

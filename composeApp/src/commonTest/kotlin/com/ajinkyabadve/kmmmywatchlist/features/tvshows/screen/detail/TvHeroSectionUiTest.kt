@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +21,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.ContentRatingsResp
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Network
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
+import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -216,5 +218,39 @@ class TvHeroSectionUiTest {
 
             onAllNodesWithText(HeroTestConstant.PLAY_TRAILER).assertCountEquals(0)
             onAllNodesWithText(HeroTestConstant.WATCH_ON_PREFIX, substring = true).assertCountEquals(0)
+        }
+
+    /**
+     * The TV hero lost the most in light theme - the network line, the next-episode line and both
+     * provider chips all sat in the band that turned white under white text. Driven at an explicit
+     * light theme so it does not depend on the test machine's system setting.
+     *
+     * Node existence is all this can assert; `HeroColorsTest` is what holds the contrast.
+     */
+    @Test
+    fun testRendersTheWholeHeroInLightTheme() =
+        runComposeUiTest {
+            setContent {
+                AppTheme(useDarkTheme = false) {
+                    HeroTestSurface {
+                        TvHeroSection(
+                            detail =
+                                show(
+                                    title = "Game of Thrones",
+                                    watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX),
+                                    nextEpisodeToAir = Episode(id = 2, name = "What Comes Next", seasonNumber = 3, episodeNumber = 4),
+                                ),
+                        )
+                    }
+                }
+            }
+
+            onNodeWithText("Game of Thrones").assertIsDisplayed()
+            onNodeWithText(TvStatusTestConstant.RETURNING).assertIsDisplayed()
+            onNodeWithText("TV-MA").assertIsDisplayed()
+            onNodeWithText("HBO").assertIsDisplayed()
+            onNodeWithText("What Comes Next", substring = true).assertIsDisplayed()
+            onNodeWithText(HeroTestConstant.PROVIDER_NETFLIX).assertIsDisplayed()
+            onNodeWithText(HeroTestConstant.WATCH_ON_NETFLIX).assertIsDisplayed()
         }
 }

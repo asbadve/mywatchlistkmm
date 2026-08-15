@@ -3,11 +3,13 @@ package com.ajinkyabadve.kmmmywatchlist.core.ui
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -62,6 +64,26 @@ class DetailTopBarUiTest {
             }
 
             onNodeWithText(TITLE).assertExists()
+        }
+
+    /**
+     * Over the hero the icon has no bar behind it, only the hero's own scrim - so it takes the
+     * hero's colours rather than a hardcoded white, which would vanish once that scrim went light.
+     */
+    @Test
+    fun testBackButtonStaysUsableOverTheHeroInLightTheme() =
+        runComposeUiTest {
+            var backCount = 0
+            setContent {
+                AppTheme(useDarkTheme = false) {
+                    DetailTopBar(title = TITLE, onBackClicked = { backCount++ }, isScrolledPastHero = false)
+                }
+            }
+
+            onNodeWithContentDescription(BACK).assertIsDisplayed()
+            onNodeWithContentDescription(BACK).performClick()
+
+            assertEquals(1, backCount)
         }
 
     /** EpisodeList drops the back button when it is shown as the detail pane of a split layout. */

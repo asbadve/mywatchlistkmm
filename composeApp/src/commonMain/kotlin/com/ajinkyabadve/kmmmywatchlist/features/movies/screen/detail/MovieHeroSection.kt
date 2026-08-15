@@ -36,8 +36,10 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.format.toOneDecimalString
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroConstant
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroProviderChip
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroScrimBrush
 import com.ajinkyabadve.kmmmywatchlist.core.usecase.FindYoutubeTrailerUseCase
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
@@ -55,9 +57,6 @@ private object MovieHeroConstant {
     const val OVERLAY_TEXT_ALPHA = 0.75f
     const val CERTIFICATION_TEXT_ALPHA = 0.85f
     const val CERTIFICATION_BORDER_ALPHA = 0.35f
-    const val SECONDARY_SURFACE_ALPHA = 0.10f
-    const val SECONDARY_SURFACE_ALPHA_LEAD = 0.14f
-    const val SECONDARY_BORDER_ALPHA = 0.28f
 }
 
 /**
@@ -76,6 +75,7 @@ fun MovieHeroSection(
     onOpenUrl: (String) -> Unit = { openUrl(it) },
 ) {
     val density = LocalDensity.current.density
+    val colors = heroColors()
     val backdropUrl =
         ImageConfigResolver.resolve(
             path = detail.backdropPath,
@@ -112,11 +112,11 @@ fun MovieHeroSection(
                 fontSize = 34.sp,
                 lineHeight = 36.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = colors.onHero,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            HeroMetaRow(detail = detail, modifier = Modifier.padding(top = 8.dp))
+            HeroMetaRow(detail = detail, colors = colors, modifier = Modifier.padding(top = 8.dp))
             watchOption?.let { option ->
                 Row(
                     modifier = Modifier.padding(top = 12.dp),
@@ -128,6 +128,7 @@ fun MovieHeroSection(
             HeroActionRow(
                 detail = detail,
                 watchOption = watchOption,
+                colors = colors,
                 onOpenUrl = onOpenUrl,
                 modifier = Modifier.padding(top = 14.dp),
             )
@@ -139,6 +140,7 @@ fun MovieHeroSection(
 @Composable
 private fun HeroMetaRow(
     detail: MovieDetail,
+    colors: HeroColors,
     modifier: Modifier = Modifier,
 ) {
     val facts =
@@ -169,18 +171,21 @@ private fun HeroMetaRow(
                 text = it,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = MovieHeroConstant.CERTIFICATION_TEXT_ALPHA),
+                color = colors.onHero.copy(alpha = MovieHeroConstant.CERTIFICATION_TEXT_ALPHA),
                 modifier =
                     Modifier
-                        .border(1.dp, Color.White.copy(alpha = MovieHeroConstant.CERTIFICATION_BORDER_ALPHA), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                        .border(
+                            1.dp,
+                            colors.onHero.copy(alpha = MovieHeroConstant.CERTIFICATION_BORDER_ALPHA),
+                            RoundedCornerShape(4.dp),
+                        ).padding(horizontal = 5.dp, vertical = 1.dp),
             )
         }
         if (facts.isNotEmpty()) {
             Text(
                 text = facts.joinToString(HeroConstant.META_SEPARATOR),
                 fontSize = 13.sp,
-                color = Color.White.copy(alpha = MovieHeroConstant.OVERLAY_TEXT_ALPHA),
+                color = colors.onHero.copy(alpha = MovieHeroConstant.OVERLAY_TEXT_ALPHA),
                 modifier = Modifier.padding(start = if (certification.isNullOrEmpty()) 0.dp else 10.dp),
             )
         }
@@ -200,6 +205,7 @@ private fun HeroMetaRow(
 private fun HeroActionRow(
     detail: MovieDetail,
     watchOption: HeroWatchOption?,
+    colors: HeroColors,
     onOpenUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -219,8 +225,8 @@ private fun HeroActionRow(
             if (watchOption == null) {
                 HeroPrimaryButton(
                     label = stringResource(Res.string.hero_play_trailer),
-                    containerColor = Color.White.copy(alpha = MovieHeroConstant.SECONDARY_SURFACE_ALPHA_LEAD),
-                    contentColor = Color.White,
+                    containerColor = colors.buttonSurface,
+                    contentColor = colors.onHero,
                     onClick = { onOpenUrl(url) },
                 )
             } else {
@@ -229,15 +235,15 @@ private fun HeroActionRow(
                         Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = MovieHeroConstant.SECONDARY_SURFACE_ALPHA))
-                            .border(1.dp, Color.White.copy(alpha = MovieHeroConstant.SECONDARY_BORDER_ALPHA), RoundedCornerShape(8.dp))
+                            .background(colors.buttonSurface)
+                            .border(1.dp, colors.buttonOutline, RoundedCornerShape(8.dp))
                             .clickable { onOpenUrl(url) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = stringResource(Res.string.hero_play_trailer),
-                        tint = Color.White,
+                        tint = colors.onHero,
                     )
                 }
             }
