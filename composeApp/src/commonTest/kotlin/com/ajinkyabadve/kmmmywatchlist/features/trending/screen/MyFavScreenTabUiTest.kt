@@ -3,7 +3,6 @@ package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
@@ -81,31 +80,6 @@ class MyFavScreenTabUiTest {
             }
 
             onNodeWithText("Welcome, Jane Doe!").assertIsDisplayed()
-            onNodeWithText("@jane_doe").assertIsDisplayed()
-            onNodeWithText("Log out").assertIsDisplayed()
-        }
-
-    @Test
-    fun testClickingLogoutSwitchesToLoggedOutState() =
-        runComposeUiTest {
-            val session =
-                UserSession(
-                    sessionId = "session_999",
-                    accountId = 99L,
-                    username = "jane_doe",
-                    name = "Jane Doe",
-                )
-            fakeAuthRepository.saveSession(session)
-            val screenModel = MyFavScreenModel(authRepository = fakeAuthRepository)
-
-            setContent {
-                MyFavScreenTab(
-                    webAuthLauncher = fakeWebAuthLauncher,
-                    screenModel = screenModel,
-                )
-            }
-
-            onNodeWithText("Log out").performClick()
-            onNodeWithText("Sign in to TMDB").assertIsDisplayed()
+            onNodeWithText("Your favorites and watchlist are coming soon.").assertIsDisplayed()
         }
 }

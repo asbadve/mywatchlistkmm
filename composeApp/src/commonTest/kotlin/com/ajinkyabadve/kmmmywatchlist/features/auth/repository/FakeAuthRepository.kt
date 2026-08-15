@@ -37,7 +37,7 @@ class FakeAuthRepository : AuthRepository {
                 accountId = 100L,
                 username = "fakeuser",
                 name = "Fake User",
-                avatarPath = "/fake_avatar.jpg",
+                avatarUrl = "https://image.tmdb.org/t/p/w185/fake_avatar.jpg",
             )
         saveSession(session)
         return session

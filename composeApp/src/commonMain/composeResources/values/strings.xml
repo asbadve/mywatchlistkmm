@@ -132,6 +132,7 @@
     <string name="auth_error_cancelled">Authentication was cancelled or failed. Please try again.</string>
     <string name="auth_error_expired">Authentication request expired. Please try signing in again.</string>
     <string name="auth_account_welcome">Welcome, %1$s!</string>
+    <string name="account_screen_title">Account</string>
     <string name="tab_favorites">Favorites</string>
     <string name="tab_watchlist">Watchlist</string>
 </resources>

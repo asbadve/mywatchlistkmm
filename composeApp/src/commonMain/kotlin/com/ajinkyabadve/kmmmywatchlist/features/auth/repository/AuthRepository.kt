@@ -5,6 +5,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.model.AccountDetails
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.CreateSessionRequest
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.RequestTokenResponse
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.SessionResponse
+import com.ajinkyabadve.kmmmywatchlist.features.auth.model.TmdbAvatar
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.network.client.TmdbClient
 import com.ajinkyabadve.kmmmywatchlist.network.constant.NetworkConstant
@@ -37,11 +38,34 @@ object AuthConstant {
     const val KEY_ACCOUNT_ID = "auth_account_id"
     const val KEY_USERNAME = "auth_username"
     const val KEY_NAME = "auth_name"
-    const val KEY_AVATAR_PATH = "auth_avatar_path"
+    const val KEY_AVATAR_URL = "auth_avatar_url"
     const val AUTH_CALLBACK_SCHEME = "mywatchlist"
     const val AUTH_CALLBACK_HOST = "auth-callback"
     const val AUTH_CALLBACK_URL = "$AUTH_CALLBACK_SCHEME://$AUTH_CALLBACK_HOST"
     const val TMDB_AUTH_BASE_URL = "https://www.themoviedb.org/authenticate/"
+    const val TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w185"
+
+    // Most TMDB accounts never upload a native TMDB avatar, so tmdb.avatar_path is usually null -
+    // gravatar.hash (derived from the account's email) is the fallback that actually has an image
+    // most of the time. `d=identicon` gives a deterministic generated pattern instead of Gravatar's
+    // default grey silhouette when the hash has no image registered, so this URL never 404s.
+    const val GRAVATAR_BASE_URL = "https://www.gravatar.com/avatar/"
+    const val GRAVATAR_QUERY = "?s=200&d=identicon"
+}
+
+/**
+ * Prefers a TMDB-hosted avatar (the CDN path resolved against [AuthConstant.TMDB_IMAGE_BASE_URL]);
+ * falls back to Gravatar (resolved from the account's email hash) when the user has never uploaded
+ * one to TMDB; returns null only when neither source has anything to show.
+ */
+internal fun resolveAvatarUrl(avatar: TmdbAvatar): String? {
+    val tmdbAvatarPath = avatar.tmdb.avatarPath
+    val gravatarHash = avatar.gravatar.hash
+    return when {
+        !tmdbAvatarPath.isNullOrEmpty() -> "${AuthConstant.TMDB_IMAGE_BASE_URL}$tmdbAvatarPath"
+        gravatarHash.isNotEmpty() -> "${AuthConstant.GRAVATAR_BASE_URL}$gravatarHash${AuthConstant.GRAVATAR_QUERY}"
+        else -> null
+    }
 }
 
 interface AuthRepository {
@@ -79,13 +103,13 @@ class AuthRepositoryImpl(
         val accountId = settings.getLong(AuthConstant.KEY_ACCOUNT_ID, 0L)
         val username = settings.getString(AuthConstant.KEY_USERNAME, "")
         val name = settings.getString(AuthConstant.KEY_NAME, "")
-        val avatarPath = settings.getString(AuthConstant.KEY_AVATAR_PATH, "").ifEmpty { null }
+        val avatarUrl = settings.getString(AuthConstant.KEY_AVATAR_URL, "").ifEmpty { null }
         return UserSession(
             sessionId = sessionId,
             accountId = accountId,
             username = username,
             name = name,
-            avatarPath = avatarPath,
+            avatarUrl = avatarUrl,
         )
     }
 
@@ -148,7 +172,7 @@ class AuthRepositoryImpl(
                     accountId = accountDetails.id,
                     username = accountDetails.username,
                     name = accountDetails.name,
-                    avatarPath = accountDetails.avatar.tmdb.avatarPath,
+                    avatarUrl = resolveAvatarUrl(accountDetails.avatar),
                 )
             saveSession(userSession)
             userSession
@@ -205,7 +229,7 @@ class AuthRepositoryImpl(
         settings.putLong(AuthConstant.KEY_ACCOUNT_ID, session.accountId)
         settings.putString(AuthConstant.KEY_USERNAME, session.username)
         settings.putString(AuthConstant.KEY_NAME, session.name)
-        settings.putString(AuthConstant.KEY_AVATAR_PATH, session.avatarPath.orEmpty())
+        settings.putString(AuthConstant.KEY_AVATAR_URL, session.avatarUrl.orEmpty())
         _sessionState.value = session
     }
 
@@ -216,7 +240,7 @@ class AuthRepositoryImpl(
         settings.remove(AuthConstant.KEY_ACCOUNT_ID)
         settings.remove(AuthConstant.KEY_USERNAME)
         settings.remove(AuthConstant.KEY_NAME)
-        settings.remove(AuthConstant.KEY_AVATAR_PATH)
+        settings.remove(AuthConstant.KEY_AVATAR_URL)
         _sessionState.value = null
     }
 

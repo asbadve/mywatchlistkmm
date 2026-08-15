@@ -5,6 +5,9 @@
 
 package com.ajinkyabadve.kmmmywatchlist
 
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +43,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,18 +57,22 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import coil3.compose.setSingletonImageLoaderFactory
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
+import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AccountAvatarButton
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
+import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
@@ -78,6 +86,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.AllSeasons
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.EpisodeDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.EpisodeListScreen
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.TvDetailScreen
+import com.ajinkyabadve.kmmmywatchlist.navigation.AccountKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.AllSeasonsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.AppKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.CollectionDetailKey
@@ -234,6 +243,7 @@ private fun MainAppScaffoldContent(
     currentKey: AppKey?,
 ) {
     val authRepository: AuthRepository = remember { AuthRepositoryImpl() }
+    val session by authRepository.sessionState.collectAsState()
     val showSessionExpiredDialog = remember { androidx.compose.runtime.mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
@@ -295,7 +305,9 @@ private fun MainAppScaffoldContent(
             {
                 AppTopBar(
                     windowSize = windowSize,
+                    session = session,
                     onSearchClicked = { topLevelBackStack.add(SearchKey) },
+                    onAccountClicked = { topLevelBackStack.add(AccountKey) },
                     scrollBehavior = topBarScrollBehavior,
                 )
             }
@@ -346,10 +358,13 @@ private fun MainAppScaffoldContent(
         },
     ) { innerPadding ->
         val listDetailStrategy = rememberListDetailSceneStrategy<AppKey>()
+        // Overlay strategies (Dialog) must come before non-overlay ones so they get first refusal
+        // on rendering an entry - see DialogSceneStrategy's kdoc.
+        val dialogStrategy = remember { DialogSceneStrategy<AppKey>() }
         NavDisplay(
             backStack = topLevelBackStack.backStack,
             onBack = { topLevelBackStack.removeLast() },
-            sceneStrategies = listOf(listDetailStrategy),
+            sceneStrategies = listOf(dialogStrategy, listDetailStrategy),
             // Both bars shrink their reported height as they collapse, so innerPadding already
             // tracks them and the content grows into the space instead of leaving a dead strip.
             modifier =
@@ -394,7 +409,7 @@ private fun MainAppScaffoldContent(
                             },
                         )
                     }
-                    entry<MyFavKey> { MyFavScreenTab() }
+                    entry<MyFavKey> { MyFavScreenTab(authRepository = authRepository) }
                     entry<SearchKey> {
                         SearchScreen(
                             onBackClicked = { topLevelBackStack.removeLast() },
@@ -408,6 +423,37 @@ private fun MainAppScaffoldContent(
                                 topLevelBackStack.add(PersonDetailKey(personId))
                             },
                         )
+                    }
+                    entry<AccountKey>(
+                        // Compact: a full-screen settings-style page that slides in from the left,
+                        // matching the "there will be more options here" brief. Expanded: centered
+                        // dialog instead - DialogScene renders a real Dialog and never reads
+                        // TransitionKey/PopTransitionKey, so this metadata is inert on that path.
+                        metadata =
+                            if (windowSize.isCompact()) {
+                                NavDisplay.transitionSpec {
+                                    slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                                        slideOutHorizontally(targetOffsetX = { it })
+                                } +
+                                    NavDisplay.popTransitionSpec {
+                                        slideInHorizontally(initialOffsetX = { it }) togetherWith
+                                            slideOutHorizontally(targetOffsetX = { -it })
+                                    }
+                            } else {
+                                DialogSceneStrategy.dialog()
+                            },
+                    ) {
+                        session?.let { activeSession ->
+                            AccountScreen(
+                                session = activeSession,
+                                isDialogPresentation = !windowSize.isCompact(),
+                                onBackClicked = { topLevelBackStack.removeLast() },
+                                onLogoutClicked = {
+                                    authRepository.clearSession()
+                                    topLevelBackStack.removeLast()
+                                },
+                            )
+                        }
                     }
                     entry<MovieDetailKey> { key ->
                         MovieDetailScreen(
@@ -531,7 +577,9 @@ private fun MainAppScaffoldContent(
 @Composable
 private fun AppTopBar(
     windowSize: WindowSize,
+    session: UserSession?,
     onSearchClicked: () -> Unit,
+    onAccountClicked: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(
@@ -558,6 +606,11 @@ private fun AppTopBar(
                     hint = stringResource(Res.string.search_hint),
                     onClick = onSearchClicked,
                 )
+            }
+        },
+        actions = {
+            if (session != null) {
+                AccountAvatarButton(session = session, onClick = onAccountClicked)
             }
         },
     )

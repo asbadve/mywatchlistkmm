@@ -171,4 +171,115 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
   - `MyFavScreenTab` and `MyFavScreenModel` handle authenticated vs unauthenticated UI states seamlessly (showing user account details, avatar, and logout option when signed in, or login prompt when signed out).
   - Platform-specific `WebAuthLauncher` handles opening browser auth URLs (`https://www.themoviedb.org/authenticate/{request_token}?redirect_to=mywatchlist://auth-callback`) and catching callbacks for Android, iOS, Desktop, and JS targets.
 
+---
+
+## 7. Local Notifications (Returning Series, Favorite Actors, Favorite Collections)
+**Goal**: Proactively surface changes the user would otherwise have to check for manually, via
+on-device local notifications (no push infra/server needed - just periodic polling against TMDB
+plus a platform notification API). All three sub-features share the same plumbing: a background
+poll job, a per-item "last seen" cursor persisted locally, and a platform `expect`/`actual`
+notifier - so build the shared scheduling/notification layer once, then add the three pollers on
+top of it. **Depends on [#3](#3-account-favorites--watchlist-replacing-my-fav-placeholder)**: needs
+real favorites/watchlist persisted first (and, for the actor case, a "favorite person" concept the
+app doesn't have yet - TMDB's own account favorites only cover movies/TV, not people, so that list
+would have to be app-local).
+
+### Shared infrastructure checklist:
+- [ ] Platform-specific background scheduler (`expect`/`actual`, mirroring the `WebAuthLauncher`
+  pattern): WorkManager periodic work (Android), `BGTaskScheduler` (iOS), a JVM scheduled executor
+  (Desktop), skip or best-effort `setInterval` while the tab is open (JS - no background execution
+  there).
+- [ ] Platform-specific local notification poster (`expect`/`actual`): `NotificationManager`
+  (Android, needs a channel + `POST_NOTIFICATIONS` runtime permission on API 33+),
+  `UNUserNotificationCenter` (iOS, needs authorization request), the `Notification` Web API (JS,
+  needs permission prompt), a tray notification or no-op (Desktop).
+- [ ] A "notifications" settings section (ties into item 8 for the permission/settings UI shape)
+  with a master toggle plus one toggle per sub-feature below.
+- [ ] Persist a "last notified" cursor per tracked item (`multiplatform-settings`, same store the
+  auth session already uses) so a poll never re-notifies for something already surfaced.
+
+### 7a. Returning series - new/upcoming episode
+**Relevant OAS endpoints**: `GET /3/tv/{series_id}` (`status`, `next_episode_to_air.air_date`) for
+watchlisted/favorited shows; `GET /3/tv/{series_id}/changes` as a cheaper diff signal.
+- [ ] Poll each favorited/watchlisted TV show's `next_episode_to_air`; notify once when a new
+  episode's air date is newly announced, and again on the air date itself.
+- [ ] Skip shows with `status == "Ended"` / `"Canceled"` entirely once known, so they age out of
+  the poll set.
+
+### 7b. Favorite actor/person - new credit announced
+**Relevant OAS endpoints**: `GET /3/person/{person_id}/combined_credits` (diff against the last
+poll's credit ID set); `GET /3/person/{person_id}/changes`.
+- [ ] Needs "favorite person" to exist as a concept first (see the dependency note above).
+- [ ] Poll each favorited person's combined credits; notify on any new movie/TV credit id not seen
+  on the previous poll, deep-linking the notification to that title's detail screen.
+
+### 7c. New movie added to a favorited collection
+**Relevant OAS endpoints**: `GET /3/collection/{collection_id}` (`parts[]`, diffed by id).
+- [ ] Track collections the user has favorited a member of (e.g. favoriting a Marvel movie offers
+  "follow this collection").
+- [ ] Poll each followed collection's `parts`; notify when a part id appears that wasn't present on
+  the previous poll (a newly-added/announced entry in the franchise).
+
+---
+
+## 8. Restricted Mode Setting (Adult Content Toggle)
+**Goal**: A user-facing setting - on the `AccountScreen` settings list (alongside "Log out") - to
+opt in to adult content, off by default. Every TMDB list/search/discover call already takes an
+`include_adult` parameter; today it's hardcoded `false` everywhere it's passed. This wires that
+parameter to a real per-device setting instead.
+
+### Relevant OAS endpoints:
+No new endpoint - every existing `GET /3/search/*`, `/3/discover/*`, `/3/trending/*` call already
+accepts `include_adult` (`true`/`false`).
+
+### Implementation Checklist:
+- [ ] **Data Layer**:
+  - Add `restrictedModeEnabled: Boolean` (default `true`, i.e. adult content **off**) to the same
+    `multiplatform-settings` store the auth session uses, behind a small `SettingsRepository` (this
+    app has no general app-settings repository yet - auth is the only thing persisted today).
+- [ ] **Business Logic**:
+  - Thread `includeAdult = !restrictedModeEnabled` through every repository call site that
+    currently hardcodes `include_adult=false` (search, discover, trending) instead of the literal.
+- [ ] **UI Presentation**:
+  - Add a "Restricted Mode" toggle row (`Switch`, not a navigating chevron row) to `AccountScreen`'s
+    settings list - likely gated so it only shows once TMDB's own account-level adult-content
+    setting is considered, or clearly scoped as "this device" if it stays local-only.
+  - Consider whether toggling it off mid-session should also filter results already cached in
+    memory, or only apply going forward.
+
+---
+
+## 9. Region Selector Driving OTT Availability
+**Goal**: Let the user pick their region instead of the app silently falling back to
+[`RegionConstant.US`](../composeApp/src/commonMain/kotlin/com/ajinkyabadve/kmmmywatchlist/core/constant/RegionConstant.kt)
+whenever the device locale has no TMDB entry for release dates/content ratings/watch providers.
+Watch-provider display ("Watch on Amazon Prime Video" etc., see `MovieHeroFacts`/`TvHeroSection`)
+already exists but is not user-adjustable today.
+
+### Relevant OAS endpoints:
+- `GET /3/configuration/countries`: The list of valid region codes + English names to populate a
+  picker.
+- `GET /3/movie/{movie_id}/watch/providers` & `GET /3/tv/{series_id}/watch/providers`: Already
+  called - keyed by region in the response (`results.{region_code}`); currently only the
+  `RegionConstant.US`/device-locale bucket is read out of it.
+- `GET /3/watch/providers/regions`: Just the regions that actually have watch-provider data (a
+  tighter list than all countries - worth using instead of the full country list so the picker
+  doesn't offer regions with nothing to show).
+
+### Implementation Checklist:
+- [ ] **Data Layer**:
+  - Add a repository call for `/3/watch/providers/regions` (or `/3/configuration/countries`) to
+    populate the picker.
+  - Persist the chosen region code (`multiplatform-settings`), defaulting to whatever region the
+    device locale resolves to today, falling back to `RegionConstant.US`.
+- [ ] **Business Logic**:
+  - Replace every hardcoded/device-locale region lookup (release dates, content ratings, watch
+    providers) with a read from the persisted setting, so changing it retroactively affects
+    already-open detail screens.
+- [ ] **UI Presentation**:
+  - Add a "Region" row to `AccountScreen`'s settings list that opens a searchable region picker
+    (name + code), consistent with the settings-list shape item 8 introduces.
+  - Re-key the existing watch-provider rendering off the selected region instead of the current
+    single fallback bucket.
+
 

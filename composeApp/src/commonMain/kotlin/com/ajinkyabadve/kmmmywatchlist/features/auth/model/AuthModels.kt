@@ -51,5 +51,8 @@ data class UserSession(
     val accountId: Long,
     val username: String,
     val name: String,
-    val avatarPath: String? = null,
+    // A fully resolved, absolute image URL (TMDB CDN or Gravatar) - see
+    // AuthRepositoryImpl.resolveAvatarUrl - not a TMDB-relative path, despite most other
+    // TMDB *_path fields in this codebase being relative.
+    val avatarUrl: String? = null,
 )

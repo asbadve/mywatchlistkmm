@@ -38,7 +38,7 @@ class AuthRepositoryTest {
                 accountId = 456L,
                 username = "testuser",
                 name = "Test User",
-                avatarPath = "/avatar.jpg",
+                avatarUrl = "https://image.tmdb.org/t/p/w185/avatar.jpg",
             )
 
         repository.saveSession(session)
@@ -103,6 +103,68 @@ class AuthRepositoryTest {
             assertEquals(789L, userSession.accountId)
             assertEquals("johndoe", userSession.username)
             assertEquals("John Doe", userSession.name)
-            assertEquals("/john.png", userSession.avatarPath)
+            assertEquals("https://image.tmdb.org/t/p/w185/john.png", userSession.avatarUrl)
+        }
+
+    @Test
+    fun testCreateSessionFallsBackToGravatarWhenNoTmdbAvatar() =
+        kotlinx.coroutines.test.runTest {
+            val mockEngine =
+                MockEngine { request ->
+                    when (request.url.encodedPath) {
+                        "/3/authentication/session/new" ->
+                            respond(
+                                content = """{"success":true,"session_id":"session_xyz"}""",
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                            )
+                        "/3/account" ->
+                            respond(
+                                content =
+                                    """
+                                    {"id":789,"name":"John Doe","username":"johndoe","avatar":{"gravatar":{"hash":"abc123"},"tmdb":{"avatar_path":null}}}
+                                    """.trimIndent(),
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                            )
+                        else -> respond("", HttpStatusCode.NotFound)
+                    }
+                }
+            val client = TmdbClient(engine = mockEngine)
+            val repository = AuthRepositoryImpl(tmdbClient = client, settings = settings)
+
+            val userSession = repository.createSession("token_abc")
+            assertEquals("https://www.gravatar.com/avatar/abc123?s=200&d=identicon", userSession.avatarUrl)
+        }
+
+    @Test
+    fun testCreateSessionHasNullAvatarWhenNeitherSourceAvailable() =
+        kotlinx.coroutines.test.runTest {
+            val mockEngine =
+                MockEngine { request ->
+                    when (request.url.encodedPath) {
+                        "/3/authentication/session/new" ->
+                            respond(
+                                content = """{"success":true,"session_id":"session_xyz"}""",
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                            )
+                        "/3/account" ->
+                            respond(
+                                content =
+                                    """
+                                    {"id":789,"name":"John Doe","username":"johndoe","avatar":{"gravatar":{"hash":""},"tmdb":{"avatar_path":null}}}
+                                    """.trimIndent(),
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                            )
+                        else -> respond("", HttpStatusCode.NotFound)
+                    }
+                }
+            val client = TmdbClient(engine = mockEngine)
+            val repository = AuthRepositoryImpl(tmdbClient = client, settings = settings)
+
+            val userSession = repository.createSession("token_abc")
+            assertNull(userSession.avatarUrl)
         }
 }
