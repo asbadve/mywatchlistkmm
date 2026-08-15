@@ -5,17 +5,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import com.ajinkyabadve.kmmmywatchlist.isAndroid
 import com.ajinkyabadve.kmmmywatchlist.theme.LocalIsDarkTheme
 
 private object HeroColorConstant {
     const val DARK_TOP_SCRIM_ALPHA = 0.55f
-    const val DARK_MID_SCRIM_ALPHA = 0.45f
-    const val DARK_BASE_FADE_ALPHA = 0.92f
+    const val DARK_CONTENT_WASH_ALPHA = 0.45f
 
-    // Higher than their dark counterparts on purpose - see the KDoc on `forTheme`.
-    const val LIGHT_TOP_SCRIM_ALPHA = 0.60f
-    const val LIGHT_MID_SCRIM_ALPHA = 0.80f
-    const val LIGHT_BASE_FADE_ALPHA = 0.95f
+    // The content wash alpha is higher than their dark counterparts on purpose - see the KDoc on
+    // `forTheme`. The top one is the exception, and lower than dark's: it carries no app content,
+    // only the system status bar icons, so it needs enough to keep those legible and nothing
+    // beyond that. Anything more is artwork thrown away at the top of the frame, where the
+    // composition usually sits - at 0.60 it visibly hazed faces and colour.
+    //
+    // 0.40 is measured rather than guessed. Checked on device 2026-08-15: over a dark backdrop the
+    // clock and battery are unreadable at 0.0 and read fine at 0.40.
+    const val LIGHT_TOP_SCRIM_ALPHA = 0.40f
+    const val LIGHT_CONTENT_WASH_ALPHA = 0.80f
 
     /** Reads as "live" against a black scrim; far too pale to survive a white one. */
     const val DARK_ONGOING = 0xFF6FE0A0
@@ -55,8 +61,7 @@ internal data class HeroColors(
     val buttonSurface: Color,
     val buttonOutline: Color,
     val topScrimAlpha: Float,
-    val midScrimAlpha: Float,
-    val baseFadeAlpha: Float,
+    val contentWashAlpha: Float,
 ) {
     companion object {
         /**
@@ -75,11 +80,19 @@ internal data class HeroColors(
          * on a white veil, which is why the light outline alphas here are two to three times their
          * dark counterparts rather than a mirror of them.
          *
-         * Pure and non-composable so the contrast it promises can be asserted in a unit test.
+         * [hasSystemStatusBar] gates the top wash alone. That wash protects the *system* status
+         * bar icons, which only Android leaves to the app - iOS adapts its own to what is behind
+         * them, and desktop and web have no status bar over the window at all. On those three the
+         * wash would be dimming the top of the artwork for nothing, so it goes to zero and the rest
+         * of the gradient is unaffected.
+         *
+         * Pure and non-composable so the contrast it promises can be asserted in a unit test -
+         * which is why the platform arrives as a parameter rather than being read in here.
          */
         fun forTheme(
             isDark: Boolean,
             colorScheme: ColorScheme,
+            hasSystemStatusBar: Boolean,
         ): HeroColors =
             if (isDark) {
                 HeroColors(
@@ -90,9 +103,8 @@ internal data class HeroColors(
                     chipOutline = Color.White.copy(alpha = HeroColorConstant.DARK_CHIP_OUTLINE_ALPHA),
                     buttonSurface = Color.White.copy(alpha = HeroColorConstant.DARK_BUTTON_SURFACE_ALPHA),
                     buttonOutline = Color.White.copy(alpha = HeroColorConstant.DARK_BUTTON_OUTLINE_ALPHA),
-                    topScrimAlpha = HeroColorConstant.DARK_TOP_SCRIM_ALPHA,
-                    midScrimAlpha = HeroColorConstant.DARK_MID_SCRIM_ALPHA,
-                    baseFadeAlpha = HeroColorConstant.DARK_BASE_FADE_ALPHA,
+                    topScrimAlpha = if (hasSystemStatusBar) HeroColorConstant.DARK_TOP_SCRIM_ALPHA else 0f,
+                    contentWashAlpha = HeroColorConstant.DARK_CONTENT_WASH_ALPHA,
                 )
             } else {
                 HeroColors(
@@ -104,9 +116,8 @@ internal data class HeroColors(
                     chipOutline = colorScheme.onSurface.copy(alpha = HeroColorConstant.LIGHT_CHIP_OUTLINE_ALPHA),
                     buttonSurface = colorScheme.onSurface.copy(alpha = HeroColorConstant.LIGHT_BUTTON_SURFACE_ALPHA),
                     buttonOutline = colorScheme.onSurface.copy(alpha = HeroColorConstant.LIGHT_BUTTON_OUTLINE_ALPHA),
-                    topScrimAlpha = HeroColorConstant.LIGHT_TOP_SCRIM_ALPHA,
-                    midScrimAlpha = HeroColorConstant.LIGHT_MID_SCRIM_ALPHA,
-                    baseFadeAlpha = HeroColorConstant.LIGHT_BASE_FADE_ALPHA,
+                    topScrimAlpha = if (hasSystemStatusBar) HeroColorConstant.LIGHT_TOP_SCRIM_ALPHA else 0f,
+                    contentWashAlpha = HeroColorConstant.LIGHT_CONTENT_WASH_ALPHA,
                 )
             }
     }
@@ -114,4 +125,9 @@ internal data class HeroColors(
 
 /** [HeroColors] for the theme in effect at this point in the tree. */
 @Composable
-internal fun heroColors(): HeroColors = HeroColors.forTheme(LocalIsDarkTheme.current, MaterialTheme.colorScheme)
+internal fun heroColors(): HeroColors =
+    HeroColors.forTheme(
+        isDark = LocalIsDarkTheme.current,
+        colorScheme = MaterialTheme.colorScheme,
+        hasSystemStatusBar = isAndroid,
+    )

@@ -31,8 +31,8 @@ class HeroColorsTest {
      */
     @Test
     fun testForegroundContrastsWithTheBackgroundTheScrimFadesInto() {
-        val light = HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME)
-        val dark = HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME)
+        val light = HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME, hasSystemStatusBar = true)
+        val dark = HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME, hasSystemStatusBar = true)
 
         assertTrue(
             contrastRatio(light.onHero, md_theme_light_background) >= HeroContrastConstant.AA_NORMAL_TEXT,
@@ -53,11 +53,11 @@ class HeroColorsTest {
     @Test
     fun testForegroundContrastsWithTheContentBandOverAnyBackdrop() {
         listOf(
-            HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME),
-            HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME),
+            HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME, hasSystemStatusBar = true),
+            HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME, hasSystemStatusBar = true),
         ).forEach { colors ->
             listOf(Color.Black, Color.White).forEach { backdrop ->
-                val band = scrimOver(colors.scrim, colors.midScrimAlpha, backdrop)
+                val band = scrimOver(colors.scrim, colors.contentWashAlpha, backdrop)
                 assertTrue(
                     contrastRatio(colors.onHero, band) >= HeroContrastConstant.AA_LARGE_TEXT,
                     "Hero foreground unreadable on the content band over a $backdrop backdrop",
@@ -74,10 +74,10 @@ class HeroColorsTest {
     @Test
     fun testOngoingBadgeReadsOnTheContentBandInBothThemes() {
         listOf(
-            HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME),
-            HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME),
+            HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME, hasSystemStatusBar = true),
+            HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME, hasSystemStatusBar = true),
         ).forEach { colors ->
-            val band = scrimOver(colors.scrim, colors.midScrimAlpha, Color.Black)
+            val band = scrimOver(colors.scrim, colors.contentWashAlpha, Color.Black)
             assertTrue(
                 contrastRatio(colors.ongoing, band) >= HeroContrastConstant.AA_LARGE_TEXT,
                 "Ongoing badge unreadable on the content band",
@@ -93,8 +93,8 @@ class HeroColorsTest {
      */
     @Test
     fun testLightThemeOutlinesAreStrongerThanTheirDarkCounterparts() {
-        val light = HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME)
-        val dark = HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME)
+        val light = HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME, hasSystemStatusBar = true)
+        val dark = HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME, hasSystemStatusBar = true)
 
         assertTrue(light.chipOutline.alpha > dark.chipOutline.alpha, "Light chip outline must not mirror the dark one")
         assertTrue(light.buttonOutline.alpha > dark.buttonOutline.alpha, "Light button outline must not mirror the dark one")
@@ -106,26 +106,47 @@ class HeroColorsTest {
      */
     @Test
     fun testDarkThemeKeepsItsOriginalScrimAndForeground() {
-        val dark = HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME)
+        val dark = HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME, hasSystemStatusBar = true)
 
         assertEquals(Color.Black, dark.scrim)
         assertEquals(Color.White, dark.onHero)
         assertEquals(Color(ORIGINAL_ONGOING_GREEN), dark.ongoing)
         assertEquals(ORIGINAL_TOP_SCRIM_ALPHA, dark.topScrimAlpha)
-        assertEquals(ORIGINAL_MID_SCRIM_ALPHA, dark.midScrimAlpha)
-        assertEquals(ORIGINAL_BASE_FADE_ALPHA, dark.baseFadeAlpha)
+        assertEquals(ORIGINAL_MID_SCRIM_ALPHA, dark.contentWashAlpha)
     }
 
     /** Light theme must not silently fall back to the dark tokens. */
     @Test
     fun testLightThemeTakesItsColoursFromTheScheme() {
-        val light = HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME)
+        val light = HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME, hasSystemStatusBar = true)
 
         assertEquals(md_theme_light_surface, light.scrim)
         assertEquals(md_theme_light_onSurface, light.onHero)
         assertEquals(md_theme_light_primary, light.ongoing)
         assertEquals(md_theme_light_onSurface.value, light.chipOutline.copy(alpha = 1f).value)
-        assertTrue(light.midScrimAlpha > ORIGINAL_MID_SCRIM_ALPHA, "A light veil needs more opacity than a dark scrim")
+        assertTrue(light.contentWashAlpha > ORIGINAL_MID_SCRIM_ALPHA, "A light veil needs more opacity than a dark scrim")
+    }
+
+    /**
+     * The top wash exists only to keep the *system* status bar icons legible, which is Android's
+     * problem alone - iOS adapts its own icons to what is behind them, and desktop and web have no
+     * status bar over the window. Everywhere else it would just be dimming the top of the artwork
+     * for nothing, so it goes to zero without disturbing the rest of the gradient.
+     */
+    @Test
+    fun testTheTopWashIsDroppedWhereThereIsNoSystemStatusBar() {
+        listOf(true, false).forEach { isDark ->
+            val scheme = if (isDark) DARK_SCHEME else LIGHT_SCHEME
+            val withBar = HeroColors.forTheme(isDark = isDark, colorScheme = scheme, hasSystemStatusBar = true)
+            val withoutBar = HeroColors.forTheme(isDark = isDark, colorScheme = scheme, hasSystemStatusBar = false)
+
+            assertTrue(withBar.topScrimAlpha > 0f, "the top wash should exist where the app owns the status bar")
+            assertEquals(0f, withoutBar.topScrimAlpha, "the top wash should be dropped where it protects nothing")
+
+            // Only the top stop is platform-dependent; the bands that carry app content are not.
+            assertEquals(withBar.contentWashAlpha, withoutBar.contentWashAlpha)
+            assertEquals(withBar.onHero, withoutBar.onHero)
+        }
     }
 
     private companion object {
@@ -150,6 +171,5 @@ class HeroColorsTest {
         const val ORIGINAL_ONGOING_GREEN = 0xFF6FE0A0
         const val ORIGINAL_TOP_SCRIM_ALPHA = 0.55f
         const val ORIGINAL_MID_SCRIM_ALPHA = 0.45f
-        const val ORIGINAL_BASE_FADE_ALPHA = 0.92f
     }
 }

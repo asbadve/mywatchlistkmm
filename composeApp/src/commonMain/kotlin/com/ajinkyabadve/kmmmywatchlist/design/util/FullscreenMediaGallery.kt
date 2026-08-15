@@ -148,7 +148,7 @@ fun FullscreenMediaGallery(
                                     modifier
                                 }
                             }.let { modifier ->
-                                if (isCurrent && com.ajinkyabadve.kmmmywatchlist.getPlatformName() == "Desktop") {
+                                if (isCurrent && com.ajinkyabadve.kmmmywatchlist.isDesktop) {
                                     modifier.pointerInput(Unit) {
                                         awaitPointerEventScope {
                                             while (true) {
