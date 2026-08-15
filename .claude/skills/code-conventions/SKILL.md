@@ -116,6 +116,51 @@ of 148, a title of "Inception", a vote count of 30_000. Naming every literal in 
 the test unreadable and hides what is actually being asserted. The trigger for extraction is
 repetition or contract, exactly as in production code.
 
+## 2e. Check the platform before writing a custom solution (agreed 2026-08-15)
+
+Before building any mechanism, find out whether Compose, Material3, Kotlin or the platform already
+provides it - and if a custom one already exists here, check whether the platform has since grown
+the same capability. Read the API's parameters, not just its name: the thing you need is often an
+argument on a function already being called.
+
+Custom code is not banned. It is a decision that has to be *earned*, and the KDoc has to say what
+the platform equivalent was and why it did not fit - `CollapsibleBarState` does this, naming
+`enterAlwaysScrollBehavior` and explaining it cannot drive a bar living outside `Scaffold(topBar =)`.
+Without that note, the next person cannot tell a deliberate choice from an unresearched one.
+
+### Check the current docs, not just what you remember
+
+Recalled API knowledge goes stale, and an assistant's training cutoff is usually older than the
+versions here. **Look the API up online against the version this project actually uses** before
+concluding the platform cannot do something:
+
+- Read the version first - `gradle/libs.versions.toml` (as of 2026-08-15: Kotlin 2.3.21,
+  Compose Multiplatform 1.11.1, plus the `material3Adaptive*` entries, which move independently).
+- Fetch the current reference for the exact symbol, and check the **release notes** between the
+  version you remember and the one declared here. A capability that did not exist when you last
+  looked is the common case, not the rare one - this is how `canScroll` was missed.
+- Prefer the API reference and release notes over blog posts and Stack Overflow, which are usually
+  pinned to an older version and will happily confirm a limitation that has since been lifted.
+- The dependency sources are also on disk and are the final authority when docs are ambiguous; the
+  ProGuard investigation in `TASKS.md` was settled by reading a plugin's own source.
+
+A "the framework can't do this" conclusion reached from memory alone is not a finding, and should
+not be written into a KDoc as the justification for custom code.
+
+Two failures from one bug on 2026-08-15, both worth recognising:
+
+1. **A parameter that was already there.** Every `TopAppBarDefaults.enterAlwaysScrollBehavior()`
+   call site left `canScroll` at its default `{ true }`, so top bars collapsed on screens with
+   nothing to scroll. Material3 had shipped the fix for that exact problem; nobody had read the
+   signature.
+2. **Reimplementing a contract subtly wrong.** `CollapsibleBarState` is a legitimate custom
+   mechanism, but it observed `available` in `onPreScroll` - what the gesture *offered* - where the
+   platform's own bars observe what the list *consumed*. Rewriting a framework behaviour means
+   inheriting its edge cases, and those are exactly what gets missed.
+
+The tell for both: a bug that reproduces on our custom mechanism *and* on the framework's is
+usually one misunderstanding, not two.
+
 ## 3. No wildcard imports
 
 Never use `import foo.*` - always import each symbol explicitly (matches the style of the rest

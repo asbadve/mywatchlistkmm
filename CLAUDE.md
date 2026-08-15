@@ -6,6 +6,12 @@ Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions
 - No magic strings: internal strings become `private const val`s; user-facing text goes in
   `composeApp/src/commonMain/composeResources/values/strings.xml` via `Res.string.*`.
 - No wildcard imports - import every symbol explicitly.
+- Check the platform first: before building a mechanism, find out whether Compose/Material3/Kotlin
+  already provides it, and read the parameters of APIs already being called - the thing you need is
+  often an argument that was there all along. Look the API up online against the versions in
+  `gradle/libs.versions.toml` rather than trusting recalled knowledge, which is usually older than
+  the versions here. Custom code is allowed but must say in its KDoc what the platform equivalent
+  was and why it did not fit.
 
 Before implementing any new feature, follow `.claude/skills/testing-conventions/SKILL.md`:
 every new feature needs both a unit test (ScreenModel/repository logic) and a Compose UI JUnit
