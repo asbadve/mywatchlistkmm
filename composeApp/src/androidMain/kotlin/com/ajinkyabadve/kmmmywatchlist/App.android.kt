@@ -43,9 +43,17 @@ class AppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        com.ajinkyabadve.kmmmywatchlist.core.auth.AndroidAuthCallbackHandler
+            .handleIntent(intent)
         setContent {
             App(calculateWindowSizeClass(this))
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        com.ajinkyabadve.kmmmywatchlist.core.auth.AndroidAuthCallbackHandler
+            .handleIntent(intent)
     }
 }
 

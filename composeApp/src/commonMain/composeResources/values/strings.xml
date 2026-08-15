@@ -119,4 +119,19 @@
     <string name="media_type_movie">Movie</string>
     <string name="media_type_tv">TV</string>
     <string name="media_type_person">Person</string>
+
+    <!-- Auth & Account -->
+    <string name="auth_login_title">Sign in to TMDB</string>
+    <string name="auth_login_message">Log in with your TMDB account to view and sync your favorites and watchlist across devices.</string>
+    <string name="auth_login_button">Log in with TMDB</string>
+    <string name="auth_authorizing">Opening TMDB authorization page...</string>
+    <string name="auth_completing">Completing login...</string>
+    <string name="auth_logout">Log out</string>
+    <string name="auth_session_expired_title">Session Expired</string>
+    <string name="auth_session_expired_message">Your TMDB session has expired. Please sign in again to access your account.</string>
+    <string name="auth_error_cancelled">Authentication was cancelled or failed. Please try again.</string>
+    <string name="auth_error_expired">Authentication request expired. Please try signing in again.</string>
+    <string name="auth_account_welcome">Welcome, %1$s!</string>
+    <string name="tab_favorites">Favorites</string>
+    <string name="tab_watchlist">Watchlist</string>
 </resources>

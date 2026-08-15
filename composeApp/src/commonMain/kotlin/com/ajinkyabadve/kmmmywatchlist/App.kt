@@ -42,6 +42,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,10 +57,14 @@ import androidx.navigation3.ui.NavDisplay
 import coil3.compose.setSingletonImageLoaderFactory
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
+import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
@@ -90,7 +96,13 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.navigation.isDetailKey
+import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
+import io.github.aakira.napier.Napier
+import io.ktor.serialization.ContentConvertException
+import io.ktor.utils.io.errors.IOException
+import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.placeholder_select_season
 import mywatchlist.composeapp.generated.resources.search_hint
@@ -221,6 +233,40 @@ private fun MainAppScaffoldContent(
     layoutType: NavigationSuiteType,
     currentKey: AppKey?,
 ) {
+    val authRepository: AuthRepository = remember { AuthRepositoryImpl() }
+    val showSessionExpiredDialog = remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+    val webAuthLauncher = rememberWebAuthLauncher()
+    LaunchedEffect(webAuthLauncher) {
+        webAuthLauncher.checkPendingAuth { token, approved ->
+            if (approved && token.isNotEmpty()) {
+                coroutineScope.launch {
+                    try {
+                        authRepository.createSession(token)
+                    } catch (e: HttpExceptions) {
+                        Napier.e(tag = "MainAppScaffoldContent", throwable = e) { "Http error creating session from web callback" }
+                    } catch (e: IOException) {
+                        Napier.e(tag = "MainAppScaffoldContent", throwable = e) { "Network error creating session from web callback" }
+                    } catch (e: ContentConvertException) {
+                        Napier.e(
+                            tag = "MainAppScaffoldContent",
+                            throwable = e,
+                        ) { "Content conversion error creating session from web callback" }
+                    } catch (e: SerializationException) {
+                        Napier.e(tag = "MainAppScaffoldContent", throwable = e) { "Serialization error creating session from web callback" }
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(authRepository) {
+        authRepository.sessionExpiredEvent.collect {
+            showSessionExpiredDialog.value = true
+        }
+    }
+
     val showTopBar =
         when (currentKey) {
             TrendingKey, MoviesKey, TvShowsKey, PersonKey, MyFavKey -> true
@@ -467,6 +513,16 @@ private fun MainAppScaffoldContent(
                         )
                     }
                 },
+        )
+        SessionExpiredDialog(
+            isVisible = showSessionExpiredDialog.value,
+            onSignInClick = {
+                showSessionExpiredDialog.value = false
+                topLevelBackStack.switchTopLevel(MyFavKey)
+            },
+            onDismiss = {
+                showSessionExpiredDialog.value = false
+            },
         )
     }
 }
