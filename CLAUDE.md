@@ -17,6 +17,9 @@ optional.
   ground-truth against the live API before adding/extending API models.
 - `.claude/skills/run-app/SKILL.md` - how to run/screenshot each platform. Note: after code
   changes run tests + compile checks only; the user launches and verifies apps themselves.
+- `.claude/skills/pr-screenshots/SKILL.md` - before/after screenshots for a visual PR, and how to
+  host them without adding permanent weight to git. Read it *before* capturing: the order of
+  operations is not recoverable if you rewrite history first.
 
 ## Verify
 `./gradlew :composeApp:desktopTest` (tests), `:composeApp:compileKotlinDesktop` +
