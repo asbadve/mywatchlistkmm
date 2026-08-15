@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
+package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
 
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
@@ -14,16 +14,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class MyFavScreenModelTest {
+class AuthScreenModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeAuthRepository: FakeAuthRepository
-    private lateinit var screenModel: MyFavScreenModel
+    private lateinit var screenModel: AuthScreenModel
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeAuthRepository = FakeAuthRepository()
-        screenModel = MyFavScreenModel(authRepository = fakeAuthRepository)
+        screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
     }
 
     @AfterTest
@@ -33,7 +33,7 @@ class MyFavScreenModelTest {
 
     @Test
     fun testInitialStateIsLoggedOut() {
-        assertTrue(screenModel.uiState.value is MyFavUiState.LoggedOut)
+        assertTrue(screenModel.uiState.value is AuthUiState.LoggedOut)
     }
 
     @Test
@@ -47,9 +47,9 @@ class MyFavScreenModelTest {
             )
         fakeAuthRepository.saveSession(existingSession)
 
-        val modelWithSession = MyFavScreenModel(authRepository = fakeAuthRepository)
+        val modelWithSession = AuthScreenModel(authRepository = fakeAuthRepository)
         val state = modelWithSession.uiState.value
-        assertTrue(state is MyFavUiState.LoggedIn)
+        assertTrue(state is AuthUiState.LoggedIn)
         assertEquals("existinguser", state.session.username)
     }
 
@@ -57,16 +57,16 @@ class MyFavScreenModelTest {
     fun testCompleteSessionCreationSuccess() {
         screenModel.completeSessionCreation("valid_token")
         val state = screenModel.uiState.value
-        assertTrue(state is MyFavUiState.LoggedIn)
+        assertTrue(state is AuthUiState.LoggedIn)
         assertEquals("fakeuser", state.session.username)
     }
 
     @Test
     fun testLogoutClickedResetsToLoggedOut() {
         screenModel.completeSessionCreation("valid_token")
-        assertTrue(screenModel.uiState.value is MyFavUiState.LoggedIn)
+        assertTrue(screenModel.uiState.value is AuthUiState.LoggedIn)
 
         screenModel.onLogoutClicked()
-        assertTrue(screenModel.uiState.value is MyFavUiState.LoggedOut)
+        assertTrue(screenModel.uiState.value is AuthUiState.LoggedOut)
     }
 }

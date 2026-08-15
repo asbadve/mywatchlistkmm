@@ -4,9 +4,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
+import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -15,16 +17,6 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-
-private class FakeWebAuthLauncher : WebAuthLauncher {
-    override fun launchAuth(
-        authUrl: String,
-        redirectScheme: String,
-        onResult: (requestToken: String?, approved: Boolean) -> Unit,
-    ) {
-        onResult("fake_token", true)
-    }
-}
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class MyFavScreenTabUiTest {
@@ -47,7 +39,7 @@ class MyFavScreenTabUiTest {
     @Test
     fun testLoggedOutStateRendersLoginCard() =
         runComposeUiTest {
-            val screenModel = MyFavScreenModel(authRepository = fakeAuthRepository)
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
             setContent {
                 MyFavScreenTab(
                     webAuthLauncher = fakeWebAuthLauncher,
@@ -70,7 +62,7 @@ class MyFavScreenTabUiTest {
                     name = "Jane Doe",
                 )
             fakeAuthRepository.saveSession(session)
-            val screenModel = MyFavScreenModel(authRepository = fakeAuthRepository)
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
 
             setContent {
                 MyFavScreenTab(

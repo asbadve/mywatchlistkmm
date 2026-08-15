@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
+package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
 
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
@@ -25,37 +25,51 @@ import mywatchlist.composeapp.generated.resources.auth_error_cancelled
 import mywatchlist.composeapp.generated.resources.auth_error_expired
 import mywatchlist.composeapp.generated.resources.error_network
 
-sealed interface MyFavUiState {
-    data object LoggedOut : MyFavUiState
+sealed interface AuthUiState {
+    data object LoggedOut : AuthUiState
 
     data class Authorizing(
         val statusText: UiText,
-    ) : MyFavUiState
+    ) : AuthUiState
 
     data class LoggedIn(
         val session: UserSession,
-    ) : MyFavUiState
+    ) : AuthUiState
 
     data class Error(
         val message: UiText,
-    ) : MyFavUiState
+    ) : AuthUiState
 }
 
-class MyFavScreenModel(
+/** The `viewModel(key = ...)` string every call site must pass to intentionally share one instance. */
+object AuthScreenModelDefaults {
+    const val SHARED_KEY = "auth_screen_model_shared"
+}
+
+/**
+ * Drives the TMDB login/logout flow. Shared by every screen that can start or show that flow (the
+ * "My Fav" tab, the top bar's Account screen): both call `viewModel(key = AuthScreenModelDefaults.
+ * SHARED_KEY) { AuthScreenModel(authRepository) }` against the same app-wide ViewModelStore (see
+ * App.kt's `appViewModelStoreOwner`), so they resolve to the same live instance and logging in/out
+ * from either screen is instantly reflected in the other with no extra wiring. The explicit shared
+ * key is deliberate rather than relying on `viewModel()`'s default per-class key, so the sharing
+ * survives a rename/refactor instead of silently splitting into two instances.
+ */
+class AuthScreenModel(
     private val authRepository: AuthRepository = AuthRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
-    private val _uiState = MutableStateFlow<MyFavUiState>(MyFavUiState.LoggedOut)
-    val uiState: StateFlow<MyFavUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.LoggedOut)
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             authRepository.sessionState.collect { session ->
                 if (session != null) {
-                    _uiState.value = MyFavUiState.LoggedIn(session)
+                    _uiState.value = AuthUiState.LoggedIn(session)
                 } else {
-                    _uiState.value = MyFavUiState.LoggedOut
+                    _uiState.value = AuthUiState.LoggedOut
                 }
             }
         }
@@ -63,7 +77,7 @@ class MyFavScreenModel(
 
     fun onLoginClicked(webAuthLauncher: WebAuthLauncher) {
         viewModelScope.launch(Dispatchers.Main) {
-            _uiState.value = MyFavUiState.Authorizing(UiText.Resource(Res.string.auth_authorizing))
+            _uiState.value = AuthUiState.Authorizing(UiText.Resource(Res.string.auth_authorizing))
             try {
                 val requestToken = authRepository.createRequestToken()
                 val authUrl = "${AuthConstant.TMDB_AUTH_BASE_URL}$requestToken?redirect_to=${AuthConstant.AUTH_CALLBACK_URL}"
@@ -75,21 +89,21 @@ class MyFavScreenModel(
                     if (approved && returnedToken.isNotEmpty()) {
                         completeSessionCreation(returnedToken)
                     } else {
-                        _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.auth_error_cancelled))
+                        _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.auth_error_cancelled))
                     }
                 }
             } catch (e: HttpExceptions) {
                 Napier.e(tag = TAG, throwable = e) { "Http error initiating login" }
-                _uiState.value = MyFavUiState.Error(UiText.Plain(e.message))
+                _uiState.value = AuthUiState.Error(UiText.Plain(e.message))
             } catch (e: IOException) {
                 Napier.e(tag = TAG, throwable = e) { "Network error initiating login" }
-                _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.error_network))
+                _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.error_network))
             } catch (e: SerializationException) {
                 Napier.e(tag = TAG, throwable = e) { "Serialization error initiating login" }
-                _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.auth_error_expired))
+                _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.auth_error_expired))
             } catch (e: ContentConvertException) {
                 Napier.e(tag = TAG, throwable = e) { "Content convert error initiating login" }
-                _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.auth_error_expired))
+                _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.auth_error_expired))
             }
         }
     }
@@ -99,17 +113,17 @@ class MyFavScreenModel(
             if (approved && token.isNotEmpty()) {
                 completeSessionCreation(token)
             } else {
-                _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.auth_error_cancelled))
+                _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.auth_error_cancelled))
             }
         }
     }
 
     fun completeSessionCreation(requestToken: String) {
         viewModelScope.launch(Dispatchers.Main) {
-            _uiState.value = MyFavUiState.Authorizing(UiText.Resource(Res.string.auth_completing))
+            _uiState.value = AuthUiState.Authorizing(UiText.Resource(Res.string.auth_completing))
             try {
                 val session = authRepository.createSession(requestToken)
-                _uiState.value = MyFavUiState.LoggedIn(session)
+                _uiState.value = AuthUiState.LoggedIn(session)
             } catch (e: HttpExceptions) {
                 Napier.e(tag = TAG, throwable = e) { "Http error completing session" }
                 val errorText =
@@ -118,23 +132,23 @@ class MyFavScreenModel(
                     } else {
                         UiText.Plain(e.message)
                     }
-                _uiState.value = MyFavUiState.Error(errorText)
+                _uiState.value = AuthUiState.Error(errorText)
             } catch (e: IOException) {
                 Napier.e(tag = TAG, throwable = e) { "Network error completing session" }
-                _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.error_network))
+                _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.error_network))
             } catch (e: SerializationException) {
                 Napier.e(tag = TAG, throwable = e) { "Serialization error completing session" }
-                _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.auth_error_expired))
+                _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.auth_error_expired))
             } catch (e: ContentConvertException) {
                 Napier.e(tag = TAG, throwable = e) { "Content convert error completing session" }
-                _uiState.value = MyFavUiState.Error(UiText.Resource(Res.string.auth_error_expired))
+                _uiState.value = AuthUiState.Error(UiText.Resource(Res.string.auth_error_expired))
             }
         }
     }
 
     fun onLogoutClicked() {
         authRepository.clearSession()
-        _uiState.value = MyFavUiState.LoggedOut
+        _uiState.value = AuthUiState.LoggedOut
     }
 
     fun onRetryClicked(webAuthLauncher: WebAuthLauncher) {
@@ -142,6 +156,6 @@ class MyFavScreenModel(
     }
 
     private companion object {
-        const val TAG = "MyFavScreenModel"
+        const val TAG = "AuthScreenModel"
     }
 }

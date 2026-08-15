@@ -27,6 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,8 +37,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.core.asString
+import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthErrorContent
+import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthorizingContent
+import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.LoggedOutContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.UserAvatar
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_screen_title
 import mywatchlist.composeapp.generated.resources.action_close
@@ -52,25 +64,74 @@ private object AccountScreenConstant {
 }
 
 /**
- * The account destination: full-screen (with a back arrow) on compact width, or a centered card
- * (with a close button) inside [androidx.navigation3.scene.DialogSceneStrategy]'s Dialog on
- * expanded width - see the `entry<AccountKey>` wiring in App.kt for which chrome this renders
- * under. Settings rows beyond "Log out" belong in [SettingsList] as the account grows.
+ * The account destination reached from the top bar's avatar - full-screen (with a back arrow) on
+ * compact width, or a centered card (with a close button) inside
+ * [androidx.navigation3.scene.DialogSceneStrategy]'s Dialog on expanded width - see the
+ * `entry<AccountKey>` wiring in App.kt for which chrome this renders under.
+ *
+ * Renders every [AuthUiState], not just [AuthUiState.LoggedIn]: the avatar button that opens this
+ * screen is shown whether or not the user is signed in, so tapping it while logged out lands on
+ * the same sign-in card [com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab]
+ * uses, and logging in here follows the identical TMDB OAuth flow. [AuthScreenModel] is the shared
+ * state machine behind both entry points - see its kdoc for how the two stay in sync. Settings
+ * rows beyond "Log out" belong in [SettingsList] as the account grows.
  */
 @Composable
 fun AccountScreen(
-    session: UserSession,
     isDialogPresentation: Boolean,
     onBackClicked: () -> Unit,
-    onLogoutClicked: () -> Unit,
     modifier: Modifier = Modifier,
+    webAuthLauncher: WebAuthLauncher = rememberWebAuthLauncher(),
+    authRepository: AuthRepository = AuthRepositoryImpl(),
+    screenModel: AuthScreenModel =
+        viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
 ) {
+    val uiState by screenModel.uiState.collectAsState()
+
+    LaunchedEffect(webAuthLauncher) {
+        screenModel.checkForPendingWebAuth(webAuthLauncher)
+    }
+
     val content: @Composable () -> Unit = {
         Column(modifier = Modifier.fillMaxWidth()) {
             AccountScreenHeader(isDialogPresentation = isDialogPresentation, onCloseClicked = onBackClicked)
-            ProfileSection(session)
-            HorizontalDivider()
-            SettingsList(onLogoutClicked = onLogoutClicked)
+
+            when (val state = uiState) {
+                is AuthUiState.LoggedOut -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                        LoggedOutContent(onLoginClick = { screenModel.onLoginClicked(webAuthLauncher) })
+                    }
+                }
+
+                is AuthUiState.Authorizing -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(48.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AuthorizingContent(statusText = state.statusText.asString())
+                    }
+                }
+
+                is AuthUiState.LoggedIn -> {
+                    ProfileSection(state.session)
+                    HorizontalDivider()
+                    SettingsList(
+                        onLogoutClicked = {
+                            screenModel.onLogoutClicked()
+                            onBackClicked()
+                        },
+                    )
+                }
+
+                is AuthUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                        AuthErrorContent(
+                            errorMessage = state.message.asString(),
+                            onRetryClick = { screenModel.onRetryClicked(webAuthLauncher) },
+                        )
+                    }
+                }
+            }
         }
     }
 

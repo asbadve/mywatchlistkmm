@@ -277,9 +277,13 @@ private fun MainAppScaffoldContent(
         }
     }
 
+    // Account behaves differently by presentation: as a compact full-screen page it brings its own
+    // header (same as Search/detail screens) and the shared top bar hides. As an expanded dialog it
+    // floats over the tab content, so the shared top bar underneath stays visible and reachable.
     val showTopBar =
         when (currentKey) {
             TrendingKey, MoviesKey, TvShowsKey, PersonKey, MyFavKey -> true
+            AccountKey -> !windowSize.isCompact()
             else -> false
         }
 
@@ -307,7 +311,15 @@ private fun MainAppScaffoldContent(
                     windowSize = windowSize,
                     session = session,
                     onSearchClicked = { topLevelBackStack.add(SearchKey) },
-                    onAccountClicked = { topLevelBackStack.add(AccountKey) },
+                    onAccountClicked = {
+                        // Tapping the avatar again while Account is already open closes it,
+                        // instead of pushing a second copy onto the back stack.
+                        if (currentKey == AccountKey) {
+                            topLevelBackStack.removeLast()
+                        } else {
+                            topLevelBackStack.add(AccountKey)
+                        }
+                    },
                     scrollBehavior = topBarScrollBehavior,
                 )
             }
@@ -443,17 +455,12 @@ private fun MainAppScaffoldContent(
                                 DialogSceneStrategy.dialog()
                             },
                     ) {
-                        session?.let { activeSession ->
-                            AccountScreen(
-                                session = activeSession,
-                                isDialogPresentation = !windowSize.isCompact(),
-                                onBackClicked = { topLevelBackStack.removeLast() },
-                                onLogoutClicked = {
-                                    authRepository.clearSession()
-                                    topLevelBackStack.removeLast()
-                                },
-                            )
-                        }
+                        AccountScreen(
+                            isDialogPresentation = !windowSize.isCompact(),
+                            onBackClicked = { topLevelBackStack.removeLast() },
+                            webAuthLauncher = webAuthLauncher,
+                            authRepository = authRepository,
+                        )
                     }
                     entry<MovieDetailKey> { key ->
                         MovieDetailScreen(
@@ -590,8 +597,11 @@ private fun AppTopBar(
                 scrolledContainerColor = Color.Transparent,
             ),
         title = {
+            // SearchBox already reserves its own end padding (for the pill's rounded edge), and
+            // the avatar action next to it adds more breathing room on its own - an extra end
+            // padding here on top of both left a visibly oversized gap before the avatar.
             Box(
-                modifier = Modifier.fillMaxWidth().padding(end = NavigationConstants.TOP_BAR_END_PADDING),
+                modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
                 SearchBox(
@@ -609,9 +619,7 @@ private fun AppTopBar(
             }
         },
         actions = {
-            if (session != null) {
-                AccountAvatarButton(session = session, onClick = onAccountClicked)
-            }
+            AccountAvatarButton(session = session, onClick = onAccountClicked)
         },
     )
 }
