@@ -155,7 +155,7 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 
 ---
 
-## 6. TMDB User Authentication / Login
+## 6. TMDB User Authentication / Login — DONE (2026-08-15)
 **Goal**: Allow users to log in securely using their TMDB credentials to sync favorites, watchlist, and ratings.
 
 ### Relevant OAS Endpoints:
@@ -164,11 +164,11 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 - `DELETE /3/authentication/session`: Delete a session (Log out).
 
 ### Implementation Checklist:
-- [ ] **Data Layer**:
-  - Add authentication and session generation requests to the networking module.
-  - Implement secure storage for session keys locally (e.g., using settings/keychain library).
-- [ ] **UI Presentation & Flow**:
-  - Create a "Settings" or "Profile" screen layout.
-  - Integrate a login mechanism (WebView overlay or redirect to TMDB auth URL `https://www.themoviedb.org/authenticate/{request_token}`) for authorizing request tokens.
-  - Implement dynamic UI states based on whether the user is logged in or logged out.
+- [x] **Data Layer**:
+  - `AuthRepository`/`AuthRepositoryImpl` creates request tokens (`/3/authentication/token/new`), exchanges authorized tokens for session IDs (`/3/authentication/session/new`), fetches account details (`/3/account`), and manages session expiration events.
+  - Local session state (`UserSession`) is persisted securely using `multiplatform-settings` across platforms.
+- [x] **UI Presentation & Flow**:
+  - `MyFavScreenTab` and `MyFavScreenModel` handle authenticated vs unauthenticated UI states seamlessly (showing user account details, avatar, and logout option when signed in, or login prompt when signed out).
+  - Platform-specific `WebAuthLauncher` handles opening browser auth URLs (`https://www.themoviedb.org/authenticate/{request_token}?redirect_to=mywatchlist://auth-callback`) and catching callbacks for Android, iOS, Desktop, and JS targets.
+
 
