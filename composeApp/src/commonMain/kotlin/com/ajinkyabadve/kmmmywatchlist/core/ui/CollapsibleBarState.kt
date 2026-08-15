@@ -139,10 +139,17 @@ fun Modifier.collapsingFooter(
         val floor = minVisibleHeight.roundToPx().coerceAtMost(placeable.height)
         val visibleHeight = (placeable.height + state.offsetPx).roundToInt().coerceIn(floor, placeable.height)
         layout(placeable.width, visibleHeight) {
-            // Keep the bar's *bottom* edge against the bottom of the shrinking box, so what stays
-            // on screen at full collapse is its inset area - plain background behind the gesture
-            // bar. Placing at y = 0 instead would leave the top slice showing, which reads as a row
-            // of icons chopped in half.
-            placeable.place(x = 0, y = visibleHeight - placeable.height)
+            // Slide the bar down out of the shrinking box rather than letting the box close over
+            // it. Pinning the bar's bottom edge (y = visibleHeight - height) keeps it at a fixed
+            // screen position and simply clips more of it away each frame - the icons never move,
+            // they are guillotined where they stand, which reads as the bar blinking out rather
+            // than leaving.
+            //
+            // Travel is scaled by [minVisibleHeight] so the bar clears the bottom edge exactly as
+            // the box reaches its floor. Plain `y = 0` slides correctly but stops a few pixels
+            // short, leaving the tops of the icons showing under the gesture bar.
+            val collapsibleHeight = (placeable.height - floor).toFloat()
+            val progress = if (collapsibleHeight <= 0f) 0f else (placeable.height - visibleHeight) / collapsibleHeight
+            placeable.place(x = 0, y = (floor * progress).roundToInt())
         }
     }

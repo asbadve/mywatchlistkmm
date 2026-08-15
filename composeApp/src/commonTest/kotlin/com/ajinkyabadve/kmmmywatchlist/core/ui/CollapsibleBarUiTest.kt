@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -128,7 +130,7 @@ class CollapsibleBarUiTest {
                         .collapsingFooter(state, minVisibleHeight = FOOTER_FLOOR)
                         .height(80.dp),
             ) {
-                Text("Nav")
+                Text("Nav", modifier = Modifier.testTag(FOOTER_CONTENT_TAG))
             }
         }
     }
@@ -178,10 +180,44 @@ class CollapsibleBarUiTest {
             )
         }
 
+    /**
+     * The footer has to *leave*, not be clipped where it stands.
+     *
+     * Pinning the bar's bottom edge to the shrinking box holds it at a fixed screen position and
+     * simply cuts more off the top each frame - the height assertions above all still pass, but on
+     * a device it reads as the bar blinking out rather than sliding away. Watching the content
+     * inside the bar is what tells the two apart: if it slid, the label moved down.
+     */
+    @Test
+    fun testCollapsingFooterSlidesItsContentDownRatherThanClippingItInPlace() =
+        runComposeUiTest {
+            val state = CollapsibleBarState()
+            setContent { CollapsingFooterHarness(state) }
+
+            val labelTopBefore = onNodeWithTag(FOOTER_CONTENT_TAG).getBoundsInRoot().top
+
+            // Driven directly and only part of the way, for two reasons: a full collapse clips the
+            // label out entirely and `getBoundsInRoot` then reports zero rather than an off-screen
+            // position, and a swipe's exact distance is not worth depending on here.
+            state.nestedScrollConnection.onPostScroll(
+                consumed = Offset(0f, -state.heightPx / 3f),
+                available = Offset.Zero,
+                source = NestedScrollSource.UserInput,
+            )
+            waitForIdle()
+
+            val labelTopAfter = onNodeWithTag(FOOTER_CONTENT_TAG).getBoundsInRoot().top
+            assertTrue(
+                labelTopAfter > labelTopBefore,
+                "footer content should travel downward as the bar collapses ($labelTopBefore -> $labelTopAfter)",
+            )
+        }
+
     private companion object {
         const val LIST_TAG = "list"
         const val HEADER_TAG = "header"
         const val FOOTER_TAG = "footer"
+        const val FOOTER_CONTENT_TAG = "footerContent"
         val FOOTER_FLOOR = 24.dp
 
         /** Enough items to overflow the test root many times over, so the list definitely scrolls. */
