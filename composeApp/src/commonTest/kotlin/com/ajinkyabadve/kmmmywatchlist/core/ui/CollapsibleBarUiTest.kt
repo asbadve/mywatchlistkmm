@@ -24,12 +24,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-private const val LIST_TAG = "list"
-private const val HEADER_TAG = "header"
-private const val FOOTER_TAG = "footer"
-private val FOOTER_FLOOR = 24.dp
-private const val ITEM_COUNT = 100
-
 /**
  * Exercises the collapse through a real scrolling list rather than the connection alone, so a
  * regression in how the modifiers are wired (measuring the bar, dispatching nested scroll) fails
@@ -38,10 +32,13 @@ private const val ITEM_COUNT = 100
 @OptIn(ExperimentalTestApi::class)
 class CollapsibleBarUiTest {
     @Composable
-    private fun CollapsibleBarHarness(state: CollapsibleBarState) {
+    private fun CollapsibleBarHarness(
+        state: CollapsibleBarState,
+        itemCount: Int = ITEM_COUNT,
+    ) {
         Box(modifier = Modifier.fillMaxSize().nestedScroll(state.nestedScrollConnection)) {
             LazyColumn(modifier = Modifier.fillMaxSize().testTag(LIST_TAG)) {
-                items(ITEM_COUNT) { index -> Text("item $index", modifier = Modifier.height(40.dp)) }
+                items(itemCount) { index -> Text("item $index", modifier = Modifier.height(40.dp)) }
             }
             Column(modifier = Modifier.fillMaxWidth().height(64.dp).collapsingTopBar(state)) {
                 Text("Toolbar")
@@ -156,4 +153,41 @@ class CollapsibleBarUiTest {
                 "footer should hold at the inset floor rather than collapsing away entirely",
             )
         }
+
+    /**
+     * A screen whose content fits without scrolling must keep its bars, however hard it is dragged.
+     * Collapsing there strands the user with no navigation on a screen that never moved - which is
+     * what EpisodeDetail did until the connection switched from the offered delta to the consumed
+     * one. The unit test pins the arithmetic; this pins the wiring, with a list that genuinely
+     * cannot scroll.
+     */
+    @Test
+    fun testAListThatCannotScrollLeavesTheBarAlone() =
+        runComposeUiTest {
+            val state = CollapsibleBarState()
+            setContent { CollapsibleBarHarness(state, itemCount = SHORT_ITEM_COUNT) }
+
+            assertTrue(state.heightPx > 0f, "bar was never measured")
+
+            repeat(3) { onNodeWithTag(LIST_TAG).performTouchInput { swipeUp() } }
+
+            assertEquals(
+                0f,
+                state.collapsedFraction,
+                "a list with nothing to scroll must not collapse the bar",
+            )
+        }
+
+    private companion object {
+        const val LIST_TAG = "list"
+        const val HEADER_TAG = "header"
+        const val FOOTER_TAG = "footer"
+        val FOOTER_FLOOR = 24.dp
+
+        /** Enough items to overflow the test root many times over, so the list definitely scrolls. */
+        const val ITEM_COUNT = 100
+
+        /** Few enough that the list fits the root with room to spare, so it cannot scroll at all. */
+        const val SHORT_ITEM_COUNT = 2
+    }
 }

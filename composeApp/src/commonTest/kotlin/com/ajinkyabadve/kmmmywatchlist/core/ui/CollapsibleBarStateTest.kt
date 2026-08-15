@@ -81,17 +81,56 @@ class CollapsibleBarStateTest {
         val state = stateWithBar()
 
         val consumed =
-            state.nestedScrollConnection.onPreScroll(
-                available = Offset(0f, -30f),
+            state.nestedScrollConnection.onPostScroll(
+                consumed = Offset(0f, -30f),
+                available = Offset.Zero,
                 source = NestedScrollSource.UserInput,
             )
 
         assertEquals(Offset.Zero, consumed)
     }
 
+    /**
+     * The screen-with-nothing-to-scroll case. A list shorter than the viewport consumes none of the
+     * drag, and a bar that collapsed anyway would leave the user with no navigation on a screen that
+     * never moved. Found on EpisodeDetail during the 2026-08-15 device pass.
+     */
+    @Test
+    fun testADragThatScrollsNothingLeavesTheBarAlone() {
+        val state = stateWithBar()
+
+        // What a non-scrollable list reports: the gesture offered plenty, the list took none of it.
+        state.nestedScrollConnection.onPostScroll(
+            consumed = Offset.Zero,
+            available = Offset(0f, -400f),
+            source = NestedScrollSource.UserInput,
+        )
+
+        assertEquals(0f, state.offsetPx)
+        assertEquals(0f, state.collapsedFraction)
+    }
+
+    /**
+     * A list with only a little room left collapses the bar only that far, rather than by the whole
+     * gesture - the bar tracks the list, not the finger.
+     */
+    @Test
+    fun testTheBarFollowsWhatTheListActuallyScrolled() {
+        val state = stateWithBar()
+
+        state.nestedScrollConnection.onPostScroll(
+            consumed = Offset(0f, -25f),
+            available = Offset(0f, -375f),
+            source = NestedScrollSource.UserInput,
+        )
+
+        assertEquals(-25f, state.offsetPx)
+    }
+
     private fun CollapsibleBarState.scrollBy(deltaY: Float) {
-        nestedScrollConnection.onPreScroll(
-            available = Offset(0f, deltaY),
+        nestedScrollConnection.onPostScroll(
+            consumed = Offset(0f, deltaY),
+            available = Offset.Zero,
             source = NestedScrollSource.UserInput,
         )
     }

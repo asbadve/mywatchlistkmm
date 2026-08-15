@@ -58,16 +58,28 @@ class CollapsibleBarState {
     }
 
     /**
-     * Consumes nothing - it only observes the delta on the way down so the bar can follow the
-     * gesture while the list still scrolls normally.
+     * Consumes nothing - it only observes, so the list still scrolls normally.
+     *
+     * Deliberately `onPostScroll` reading [consumed][NestedScrollConnection.onPostScroll], not
+     * `onPreScroll` reading `available`. `available` is what the *gesture* offered, which is
+     * non-zero even when the list cannot move: on a screen whose content is shorter than the
+     * viewport, a drag would hide both bars while nothing scrolled, leaving a screen with no
+     * navigation and no way to have caused it. `consumed` is what the list actually scrolled, so a
+     * list that cannot move leaves the bars alone.
+     *
+     * The trade-off is that the bar now tracks list movement rather than finger movement. Where a
+     * list can only scroll a little, the bar collapses only that far and sits partly hidden at the
+     * end of the scroll - which is honest about how much room there was, and undoes itself on the
+     * way back up.
      */
     val nestedScrollConnection: NestedScrollConnection =
         object : NestedScrollConnection {
-            override fun onPreScroll(
+            override fun onPostScroll(
+                consumed: Offset,
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                offsetPx = (offsetPx + available.y).coerceIn(-heightPx, 0f)
+                offsetPx = (offsetPx + consumed.y).coerceIn(-heightPx, 0f)
                 return Offset.Zero
             }
         }
