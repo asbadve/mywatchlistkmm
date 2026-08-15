@@ -57,7 +57,7 @@ class HeroColorsTest {
             HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME, hasSystemStatusBar = true),
         ).forEach { colors ->
             listOf(Color.Black, Color.White).forEach { backdrop ->
-                val band = scrimOver(colors.scrim, colors.midScrimAlpha, backdrop)
+                val band = scrimOver(colors.scrim, colors.contentWashAlpha, backdrop)
                 assertTrue(
                     contrastRatio(colors.onHero, band) >= HeroContrastConstant.AA_LARGE_TEXT,
                     "Hero foreground unreadable on the content band over a $backdrop backdrop",
@@ -77,7 +77,7 @@ class HeroColorsTest {
             HeroColors.forTheme(isDark = false, colorScheme = LIGHT_SCHEME, hasSystemStatusBar = true),
             HeroColors.forTheme(isDark = true, colorScheme = DARK_SCHEME, hasSystemStatusBar = true),
         ).forEach { colors ->
-            val band = scrimOver(colors.scrim, colors.midScrimAlpha, Color.Black)
+            val band = scrimOver(colors.scrim, colors.contentWashAlpha, Color.Black)
             assertTrue(
                 contrastRatio(colors.ongoing, band) >= HeroContrastConstant.AA_LARGE_TEXT,
                 "Ongoing badge unreadable on the content band",
@@ -112,8 +112,7 @@ class HeroColorsTest {
         assertEquals(Color.White, dark.onHero)
         assertEquals(Color(ORIGINAL_ONGOING_GREEN), dark.ongoing)
         assertEquals(ORIGINAL_TOP_SCRIM_ALPHA, dark.topScrimAlpha)
-        assertEquals(ORIGINAL_MID_SCRIM_ALPHA, dark.midScrimAlpha)
-        assertEquals(ORIGINAL_BASE_FADE_ALPHA, dark.baseFadeAlpha)
+        assertEquals(ORIGINAL_MID_SCRIM_ALPHA, dark.contentWashAlpha)
     }
 
     /** Light theme must not silently fall back to the dark tokens. */
@@ -125,7 +124,7 @@ class HeroColorsTest {
         assertEquals(md_theme_light_onSurface, light.onHero)
         assertEquals(md_theme_light_primary, light.ongoing)
         assertEquals(md_theme_light_onSurface.value, light.chipOutline.copy(alpha = 1f).value)
-        assertTrue(light.midScrimAlpha > ORIGINAL_MID_SCRIM_ALPHA, "A light veil needs more opacity than a dark scrim")
+        assertTrue(light.contentWashAlpha > ORIGINAL_MID_SCRIM_ALPHA, "A light veil needs more opacity than a dark scrim")
     }
 
     /**
@@ -145,8 +144,7 @@ class HeroColorsTest {
             assertEquals(0f, withoutBar.topScrimAlpha, "the top wash should be dropped where it protects nothing")
 
             // Only the top stop is platform-dependent; the bands that carry app content are not.
-            assertEquals(withBar.midScrimAlpha, withoutBar.midScrimAlpha)
-            assertEquals(withBar.baseFadeAlpha, withoutBar.baseFadeAlpha)
+            assertEquals(withBar.contentWashAlpha, withoutBar.contentWashAlpha)
             assertEquals(withBar.onHero, withoutBar.onHero)
         }
     }
@@ -173,6 +171,5 @@ class HeroColorsTest {
         const val ORIGINAL_ONGOING_GREEN = 0xFF6FE0A0
         const val ORIGINAL_TOP_SCRIM_ALPHA = 0.55f
         const val ORIGINAL_MID_SCRIM_ALPHA = 0.45f
-        const val ORIGINAL_BASE_FADE_ALPHA = 0.92f
     }
 }

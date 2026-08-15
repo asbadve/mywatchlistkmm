@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
@@ -41,6 +42,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroConstant
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroProviderChip
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroScrimBrush
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.rememberHeroContentMeasurement
 import com.ajinkyabadve.kmmmywatchlist.core.usecase.FindYoutubeTrailerUseCase
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.openUrl
@@ -76,6 +78,7 @@ fun MovieHeroSection(
 ) {
     val density = LocalDensity.current.density
     val colors = heroColors()
+    val measurement = rememberHeroContentMeasurement()
     val backdropUrl =
         ImageConfigResolver.resolve(
             path = detail.backdropPath,
@@ -90,7 +93,8 @@ fun MovieHeroSection(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(HeroConstant.HERO_ASPECT_RATIO)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .onSizeChanged { measurement.onHeroSized(it.height) },
     ) {
         Image(
             painter = rememberAsyncImagePainter(model = backdropUrl, filterQuality = FilterQuality.Medium),
@@ -98,13 +102,14 @@ fun MovieHeroSection(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )
-        Box(modifier = Modifier.fillMaxSize().background(heroScrimBrush()))
+        Box(modifier = Modifier.fillMaxSize().background(heroScrimBrush(measurement.stops)))
 
         Column(
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
+                    .onSizeChanged { measurement.onContentSized(it.height) }
                     .padding(horizontal = 20.dp, vertical = 18.dp),
         ) {
             Text(

@@ -10,10 +10,9 @@ import com.ajinkyabadve.kmmmywatchlist.theme.LocalIsDarkTheme
 
 private object HeroColorConstant {
     const val DARK_TOP_SCRIM_ALPHA = 0.55f
-    const val DARK_MID_SCRIM_ALPHA = 0.45f
-    const val DARK_BASE_FADE_ALPHA = 0.92f
+    const val DARK_CONTENT_WASH_ALPHA = 0.45f
 
-    // The mid and base alphas are higher than their dark counterparts on purpose - see the KDoc on
+    // The content wash alpha is higher than their dark counterparts on purpose - see the KDoc on
     // `forTheme`. The top one is the exception, and lower than dark's: it carries no app content,
     // only the system status bar icons, so it needs enough to keep those legible and nothing
     // beyond that. Anything more is artwork thrown away at the top of the frame, where the
@@ -22,8 +21,7 @@ private object HeroColorConstant {
     // 0.40 is measured rather than guessed. Checked on device 2026-08-15: over a dark backdrop the
     // clock and battery are unreadable at 0.0 and read fine at 0.40.
     const val LIGHT_TOP_SCRIM_ALPHA = 0.40f
-    const val LIGHT_MID_SCRIM_ALPHA = 0.80f
-    const val LIGHT_BASE_FADE_ALPHA = 0.95f
+    const val LIGHT_CONTENT_WASH_ALPHA = 0.80f
 
     /** Reads as "live" against a black scrim; far too pale to survive a white one. */
     const val DARK_ONGOING = 0xFF6FE0A0
@@ -63,8 +61,7 @@ internal data class HeroColors(
     val buttonSurface: Color,
     val buttonOutline: Color,
     val topScrimAlpha: Float,
-    val midScrimAlpha: Float,
-    val baseFadeAlpha: Float,
+    val contentWashAlpha: Float,
 ) {
     companion object {
         /**
@@ -107,8 +104,7 @@ internal data class HeroColors(
                     buttonSurface = Color.White.copy(alpha = HeroColorConstant.DARK_BUTTON_SURFACE_ALPHA),
                     buttonOutline = Color.White.copy(alpha = HeroColorConstant.DARK_BUTTON_OUTLINE_ALPHA),
                     topScrimAlpha = if (hasSystemStatusBar) HeroColorConstant.DARK_TOP_SCRIM_ALPHA else 0f,
-                    midScrimAlpha = HeroColorConstant.DARK_MID_SCRIM_ALPHA,
-                    baseFadeAlpha = HeroColorConstant.DARK_BASE_FADE_ALPHA,
+                    contentWashAlpha = HeroColorConstant.DARK_CONTENT_WASH_ALPHA,
                 )
             } else {
                 HeroColors(
@@ -121,8 +117,7 @@ internal data class HeroColors(
                     buttonSurface = colorScheme.onSurface.copy(alpha = HeroColorConstant.LIGHT_BUTTON_SURFACE_ALPHA),
                     buttonOutline = colorScheme.onSurface.copy(alpha = HeroColorConstant.LIGHT_BUTTON_OUTLINE_ALPHA),
                     topScrimAlpha = if (hasSystemStatusBar) HeroColorConstant.LIGHT_TOP_SCRIM_ALPHA else 0f,
-                    midScrimAlpha = HeroColorConstant.LIGHT_MID_SCRIM_ALPHA,
-                    baseFadeAlpha = HeroColorConstant.LIGHT_BASE_FADE_ALPHA,
+                    contentWashAlpha = HeroColorConstant.LIGHT_CONTENT_WASH_ALPHA,
                 )
             }
     }
