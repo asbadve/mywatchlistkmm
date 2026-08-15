@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -84,8 +86,18 @@ fun CollectionDetailScreen(
     var galleryImages by remember { mutableStateOf<List<String>?>(null) }
     var galleryInitialIndex by remember { mutableStateOf(0) }
 
+    val listState = rememberLazyListState()
+
     // Hide-on-scroll-down / reveal-on-scroll-up, matching the app's collapsing bottom nav.
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    //
+    // `canScroll` is not optional: left at its default of `{ true }`, Material3 moves the bar for
+    // any drag, so a short collection whose content fits would lose its bar - and its only back
+    // affordance - without ever having scrolled. See CollapsibleBarState for the same fix on the
+    // bars this app drives itself.
+    val scrollBehavior =
+        TopAppBarDefaults.enterAlwaysScrollBehavior(
+            canScroll = { listState.canScrollForward || listState.canScrollBackward },
+        )
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -133,6 +145,7 @@ fun CollectionDetailScreen(
                     }
                     if (windowSize.isCompact()) {
                         CompactCollectionDetailContent(
+                            listState = listState,
                             state = state,
                             onMovieClicked = onMovieClicked,
                             onPersonClicked = onPersonClicked,
@@ -164,12 +177,15 @@ fun CollectionDetailScreen(
 @Composable
 private fun CompactCollectionDetailContent(
     state: CollectionDetailState.Success,
+    listState: LazyListState,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
 ) {
     val collection = state.collection
     LazyColumn(
+        // Hoisted so the top bar's `canScroll` can ask whether this list has anywhere to go.
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {

@@ -58,16 +58,28 @@ class CollapsibleBarState {
     }
 
     /**
-     * Consumes nothing - it only observes the delta on the way down so the bar can follow the
-     * gesture while the list still scrolls normally.
+     * Consumes nothing - it only observes, so the list still scrolls normally.
+     *
+     * Deliberately `onPostScroll` reading [consumed][NestedScrollConnection.onPostScroll], not
+     * `onPreScroll` reading `available`. `available` is what the *gesture* offered, which is
+     * non-zero even when the list cannot move: on a screen whose content is shorter than the
+     * viewport, a drag would hide both bars while nothing scrolled, leaving a screen with no
+     * navigation and no way to have caused it. `consumed` is what the list actually scrolled, so a
+     * list that cannot move leaves the bars alone.
+     *
+     * The trade-off is that the bar now tracks list movement rather than finger movement. Where a
+     * list can only scroll a little, the bar collapses only that far and sits partly hidden at the
+     * end of the scroll - which is honest about how much room there was, and undoes itself on the
+     * way back up.
      */
     val nestedScrollConnection: NestedScrollConnection =
         object : NestedScrollConnection {
-            override fun onPreScroll(
+            override fun onPostScroll(
+                consumed: Offset,
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                offsetPx = (offsetPx + available.y).coerceIn(-heightPx, 0f)
+                offsetPx = (offsetPx + consumed.y).coerceIn(-heightPx, 0f)
                 return Offset.Zero
             }
         }
@@ -127,10 +139,17 @@ fun Modifier.collapsingFooter(
         val floor = minVisibleHeight.roundToPx().coerceAtMost(placeable.height)
         val visibleHeight = (placeable.height + state.offsetPx).roundToInt().coerceIn(floor, placeable.height)
         layout(placeable.width, visibleHeight) {
-            // Keep the bar's *bottom* edge against the bottom of the shrinking box, so what stays
-            // on screen at full collapse is its inset area - plain background behind the gesture
-            // bar. Placing at y = 0 instead would leave the top slice showing, which reads as a row
-            // of icons chopped in half.
-            placeable.place(x = 0, y = visibleHeight - placeable.height)
+            // Slide the bar down out of the shrinking box rather than letting the box close over
+            // it. Pinning the bar's bottom edge (y = visibleHeight - height) keeps it at a fixed
+            // screen position and simply clips more of it away each frame - the icons never move,
+            // they are guillotined where they stand, which reads as the bar blinking out rather
+            // than leaving.
+            //
+            // Travel is scaled by [minVisibleHeight] so the bar clears the bottom edge exactly as
+            // the box reaches its floor. Plain `y = 0` slides correctly but stops a few pixels
+            // short, leaving the tops of the icons showing under the gesture bar.
+            val collapsibleHeight = (placeable.height - floor).toFloat()
+            val progress = if (collapsibleHeight <= 0f) 0f else (placeable.height - visibleHeight) / collapsibleHeight
+            placeable.place(x = 0, y = (floor * progress).roundToInt())
         }
     }
