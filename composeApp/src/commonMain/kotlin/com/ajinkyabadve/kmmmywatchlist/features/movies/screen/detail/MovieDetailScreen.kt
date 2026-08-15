@@ -42,6 +42,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import mywatchlist.composeapp.generated.resources.Res
@@ -190,6 +191,8 @@ fun MovieDetailScreen(
                                 title = detail.title,
                                 onBackClicked = onBackClicked,
                                 isScrolledPastHero = showSolidHeader,
+                                // Matches MovieHeroSection, whose scrim stays dark in both themes.
+                                overHeroColors = HeroColors.onPhoto(),
                                 modifier =
                                     Modifier
                                         .collapsingTopBar(topBarState)

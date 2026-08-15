@@ -143,7 +143,9 @@ fun TvHeroSection(
                     modifier = Modifier.padding(top = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    option.allProviders.take(HeroConstant.MAX_PROVIDER_CHIPS).forEach { HeroProviderChip(provider = it) }
+                    option.allProviders
+                        .take(HeroConstant.MAX_PROVIDER_CHIPS)
+                        .forEach { HeroProviderChip(provider = it, colors = colors) }
                 }
             }
             TvActionRow(

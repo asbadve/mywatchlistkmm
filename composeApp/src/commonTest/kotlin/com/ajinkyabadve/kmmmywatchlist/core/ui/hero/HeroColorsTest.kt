@@ -101,6 +101,34 @@ class HeroColorsTest {
     }
 
     /**
+     * The on-photo set is the movie hero's, and it answers to a stricter bar than the theme-aware
+     * one: its scrim does not fade to the page, so the colour behind the content is known rather
+     * than inherited. Nothing here may depend on the theme - that is the whole premise.
+     */
+    @Test
+    fun testOnPhotoColoursReadAgainstTheirOwnScrim() {
+        val photo = HeroColors.onPhoto()
+
+        // The mid band is the title's zone - 34sp ExtraBold, so large-text AA is the bar it answers
+        // to. Against a white frame it lands near 4:1, which is why this is not the stricter figure.
+        listOf(Color.Black, Color.White).forEach { backdrop ->
+            val band = scrimOver(photo.scrim, photo.midScrimAlpha, backdrop)
+            assertTrue(
+                contrastRatio(photo.onHero, band) >= HeroContrastConstant.AA_LARGE_TEXT,
+                "On-photo title unreadable on its own scrim over a $backdrop backdrop",
+            )
+        }
+
+        // The lower band, where the facts and buttons sit, is denser - and that small print does
+        // have to clear normal-text AA, against the worst backdrop the scrim can be handed.
+        val lowerBand = scrimOver(photo.scrim, photo.baseFadeAlpha, Color.White)
+        assertTrue(
+            contrastRatio(photo.onHero, lowerBand) >= HeroContrastConstant.AA_NORMAL_TEXT,
+            "On-photo foreground unreadable where the content sits",
+        )
+    }
+
+    /**
      * Dark theme was never broken, so this change must not have moved it. Pins the exact values the
      * hero shipped with rather than a property, because "unchanged" is the whole claim.
      */

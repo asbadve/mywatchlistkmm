@@ -33,6 +33,15 @@ private object HeroComponentConstant {
     const val BASE_FADE_START = 0.82f
     const val PROVIDER_LOGO_TARGET_WIDTH_DP = 48
     const val CHIP_TEXT_ALPHA = 0.9f
+
+    // The on-photo scrim's stops, flattened from the design's two separate overlays (a top wash
+    // over the upper 30%, and a bottom ramp over the lower 78%) into one gradient.
+    const val PHOTO_TOP_SCRIM_END = 0.30f
+    const val PHOTO_MID_SCRIM_START = 0.52f
+    const val PHOTO_BASE_FADE_START = 0.81f
+
+    /** Where the on-photo scrim lands at the very bottom, instead of the page background. */
+    const val PHOTO_SCRIM_TAIL = 0xFF08070A
 }
 
 /**
@@ -62,14 +71,38 @@ fun heroScrimBrush(): Brush {
     )
 }
 
+/**
+ * The scrim for a hero treated as a photographic panel: fixed in both themes, and ending in its own
+ * darkness rather than fading to the page background.
+ *
+ * The trade-off against [heroScrimBrush] is the bottom stop. That one dissolves the artwork into the
+ * page, so the hero has no edge; this one keeps the panel intact, which in light theme means the
+ * hero meets the content below it as a visible boundary. That is the design's intent, not a defect -
+ * but it is the first thing to look at if the screen reads as two disconnected halves.
+ */
+@Composable
+internal fun heroOnPhotoScrimBrush(): Brush {
+    val colors = HeroColors.onPhoto()
+    return Brush.verticalGradient(
+        colorStops =
+            arrayOf(
+                0f to colors.scrim.copy(alpha = colors.topScrimAlpha),
+                HeroComponentConstant.PHOTO_TOP_SCRIM_END to Color.Transparent,
+                HeroComponentConstant.PHOTO_MID_SCRIM_START to colors.scrim.copy(alpha = colors.midScrimAlpha),
+                HeroComponentConstant.PHOTO_BASE_FADE_START to colors.scrim.copy(alpha = colors.baseFadeAlpha),
+                1f to Color(HeroComponentConstant.PHOTO_SCRIM_TAIL),
+            ),
+    )
+}
+
 /** Names a streaming service the title is available on, beside the hero's primary button. */
 @Composable
-fun HeroProviderChip(
+internal fun HeroProviderChip(
     provider: WatchProvider,
+    colors: HeroColors,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current.density
-    val colors = heroColors()
     val logoUrl =
         ImageConfigResolver.resolve(
             path = provider.logoPath,

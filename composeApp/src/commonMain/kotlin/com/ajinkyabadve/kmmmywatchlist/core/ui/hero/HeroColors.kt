@@ -32,6 +32,20 @@ private object HeroColorConstant {
     const val LIGHT_CHIP_OUTLINE_ALPHA = 0.38f
     const val LIGHT_BUTTON_SURFACE_ALPHA = 0.06f
     const val LIGHT_BUTTON_OUTLINE_ALPHA = 0.45f
+
+    /** A warm off-white rather than pure white - it sits better on photographic colour. */
+    const val PHOTO_PAPER = 0xFFF3F1EA
+
+    /** Not pure black either: a hair of blue keeps the scrim from deadening warm artwork. */
+    const val PHOTO_SCRIM = 0xFF060507
+
+    const val PHOTO_TOP_SCRIM_ALPHA = 0.55f
+    const val PHOTO_MID_SCRIM_ALPHA = 0.55f
+    const val PHOTO_BASE_FADE_ALPHA = 0.92f
+    const val PHOTO_CHIP_SURFACE_ALPHA = 0.10f
+    const val PHOTO_CHIP_OUTLINE_ALPHA = 0.18f
+    const val PHOTO_BUTTON_SURFACE_ALPHA = 0.08f
+    const val PHOTO_BUTTON_OUTLINE_ALPHA = 0.35f
 }
 
 /**
@@ -109,6 +123,34 @@ internal data class HeroColors(
                     baseFadeAlpha = HeroColorConstant.LIGHT_BASE_FADE_ALPHA,
                 )
             }
+
+        /**
+         * The theme-independent set, for a hero treated as a photographic panel rather than as part
+         * of the page.
+         *
+         * The rule it encodes: content painted directly onto the backdrop keeps fixed tokens in
+         * both themes, and only content painted on the app's own surface follows the theme. A photo
+         * does not get lighter when the page does, so neither does anything sitting on it.
+         *
+         * Currently the movie hero only - see `heroOnPhotoScrimBrush`. Note the cost this buys:
+         * the scrim ends dark instead of dissolving into the page, so in light theme the hero meets
+         * the content below it as a hard edge rather than a fade.
+         */
+        fun onPhoto(): HeroColors {
+            val paper = Color(HeroColorConstant.PHOTO_PAPER)
+            return HeroColors(
+                scrim = Color(HeroColorConstant.PHOTO_SCRIM),
+                onHero = paper,
+                ongoing = Color(HeroColorConstant.DARK_ONGOING),
+                chipSurface = paper.copy(alpha = HeroColorConstant.PHOTO_CHIP_SURFACE_ALPHA),
+                chipOutline = paper.copy(alpha = HeroColorConstant.PHOTO_CHIP_OUTLINE_ALPHA),
+                buttonSurface = paper.copy(alpha = HeroColorConstant.PHOTO_BUTTON_SURFACE_ALPHA),
+                buttonOutline = paper.copy(alpha = HeroColorConstant.PHOTO_BUTTON_OUTLINE_ALPHA),
+                topScrimAlpha = HeroColorConstant.PHOTO_TOP_SCRIM_ALPHA,
+                midScrimAlpha = HeroColorConstant.PHOTO_MID_SCRIM_ALPHA,
+                baseFadeAlpha = HeroColorConstant.PHOTO_BASE_FADE_ALPHA,
+            )
+        }
     }
 }
 

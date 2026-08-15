@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.back_content_description
@@ -51,20 +52,20 @@ private object DetailTopBarConstant {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailTopBar(
+internal fun DetailTopBar(
     title: String,
     onBackClicked: () -> Unit,
     modifier: Modifier = Modifier,
     isScrolledPastHero: Boolean? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     showBackButton: Boolean = true,
+    // Defaulted to the theme-aware set, and overridden by screens whose hero keeps fixed on-photo
+    // colours in both themes: the icon has to match the scrim it is actually drawn on, not the one
+    // the theme would imply.
+    overHeroColors: HeroColors = heroColors(),
 ) {
     val isOverHero = isScrolledPastHero == false
     val isSolid = !isOverHero
-    // Over the hero this bar draws on the hero's own scrim, so it takes the hero's colours rather
-    // than a hardcoded black-and-white pair - otherwise a white icon over a light-theme hero is the
-    // next thing to disappear.
-    val heroColors = heroColors()
 
     val containerColor by animateColorAsState(
         targetValue = if (isSolid) MaterialTheme.colorScheme.background else Color.Transparent,
@@ -89,7 +90,7 @@ fun DetailTopBar(
                         modifier =
                             if (isOverHero) {
                                 Modifier.background(
-                                    heroColors.scrim.copy(alpha = DetailTopBarConstant.HERO_SCRIM_ALPHA),
+                                    overHeroColors.scrim.copy(alpha = DetailTopBarConstant.HERO_SCRIM_ALPHA),
                                     CircleShape,
                                 )
                             } else {
@@ -99,7 +100,7 @@ fun DetailTopBar(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(Res.string.back_content_description),
-                            tint = if (isOverHero) heroColors.onHero else MaterialTheme.colorScheme.onSurface,
+                            tint = if (isOverHero) overHeroColors.onHero else MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }

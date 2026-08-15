@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -24,10 +25,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,8 +43,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.format.toOneDecimalString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroConstant
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroProviderChip
-import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
-import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroScrimBrush
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroOnPhotoScrimBrush
 import com.ajinkyabadve.kmmmywatchlist.core.usecase.FindYoutubeTrailerUseCase
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.openUrl
@@ -55,8 +58,13 @@ import org.jetbrains.compose.resources.stringResource
 private object MovieHeroConstant {
     const val RELEASE_YEAR_LENGTH = 4
     const val OVERLAY_TEXT_ALPHA = 0.75f
-    const val CERTIFICATION_TEXT_ALPHA = 0.85f
-    const val CERTIFICATION_BORDER_ALPHA = 0.35f
+    const val CERTIFICATION_BORDER_ALPHA = 0.40f
+    const val META_ITEM_SPACING_DP = 9
+    const val META_DOT_SIZE_DP = 3
+    const val META_DOT_ALPHA = 0.5f
+    const val TITLE_SHADOW_ALPHA = 0.6f
+    const val TITLE_SHADOW_OFFSET_Y = 4f
+    const val TITLE_SHADOW_BLUR = 24f
 }
 
 /**
@@ -75,7 +83,9 @@ fun MovieHeroSection(
     onOpenUrl: (String) -> Unit = { openUrl(it) },
 ) {
     val density = LocalDensity.current.density
-    val colors = heroColors()
+    // Fixed in both themes: this hero is a photographic panel, and a photo does not get lighter
+    // because the page around it did. Only the content below the hero follows the theme.
+    val colors = HeroColors.onPhoto()
     val backdropUrl =
         ImageConfigResolver.resolve(
             path = detail.backdropPath,
@@ -98,7 +108,7 @@ fun MovieHeroSection(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )
-        Box(modifier = Modifier.fillMaxSize().background(heroScrimBrush()))
+        Box(modifier = Modifier.fillMaxSize().background(heroOnPhotoScrimBrush()))
 
         Column(
             modifier =
@@ -113,6 +123,17 @@ fun MovieHeroSection(
                 lineHeight = 36.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = colors.onHero,
+                // The scrim handles an average frame; the shadow is what keeps the title readable
+                // over the bright ones, where a fixed gradient alone cannot win.
+                style =
+                    TextStyle(
+                        shadow =
+                            Shadow(
+                                color = Color.Black.copy(alpha = MovieHeroConstant.TITLE_SHADOW_ALPHA),
+                                offset = Offset(0f, MovieHeroConstant.TITLE_SHADOW_OFFSET_Y),
+                                blurRadius = MovieHeroConstant.TITLE_SHADOW_BLUR,
+                            ),
+                    ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -122,7 +143,9 @@ fun MovieHeroSection(
                     modifier = Modifier.padding(top = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    option.allProviders.take(HeroConstant.MAX_PROVIDER_CHIPS).forEach { HeroProviderChip(provider = it) }
+                    option.allProviders
+                        .take(HeroConstant.MAX_PROVIDER_CHIPS)
+                        .forEach { HeroProviderChip(provider = it, colors = colors) }
                 }
             }
             HeroActionRow(
@@ -165,31 +188,66 @@ private fun HeroMetaRow(
     val certification = detail.usCertification()
     if (facts.isEmpty() && certification.isNullOrEmpty()) return
 
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    // Year, age rating, runtime and score are peers, so the design separates them with a drawn dot
+    // rather than an interpunct - it lets the age rating sit inline as a pill instead of being
+    // bolted onto the front of a single joined string.
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MovieHeroConstant.META_ITEM_SPACING_DP.dp),
+    ) {
+        val leadingFact = facts.firstOrNull()
+        val trailingFacts = facts.drop(1)
+
+        leadingFact?.let { HeroFactText(text = it, colors = colors) }
+
         certification?.takeIf { it.isNotEmpty() }?.let {
+            if (leadingFact != null) HeroMetaDot(colors = colors)
             Text(
                 text = it,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                color = colors.onHero.copy(alpha = MovieHeroConstant.CERTIFICATION_TEXT_ALPHA),
+                color = colors.onHero,
                 modifier =
                     Modifier
                         .border(
                             1.dp,
                             colors.onHero.copy(alpha = MovieHeroConstant.CERTIFICATION_BORDER_ALPHA),
                             RoundedCornerShape(4.dp),
-                        ).padding(horizontal = 5.dp, vertical = 1.dp),
+                        ).padding(horizontal = 6.dp, vertical = 1.dp),
             )
         }
-        if (facts.isNotEmpty()) {
-            Text(
-                text = facts.joinToString(HeroConstant.META_SEPARATOR),
-                fontSize = 13.sp,
-                color = colors.onHero.copy(alpha = MovieHeroConstant.OVERLAY_TEXT_ALPHA),
-                modifier = Modifier.padding(start = if (certification.isNullOrEmpty()) 0.dp else 10.dp),
-            )
+
+        trailingFacts.forEach { fact ->
+            HeroMetaDot(colors = colors)
+            HeroFactText(text = fact, colors = colors)
         }
     }
+}
+
+/** One fact in the meta row, quieter than the title but still on the artwork. */
+@Composable
+private fun HeroFactText(
+    text: String,
+    colors: HeroColors,
+) {
+    Text(
+        text = text,
+        fontSize = 13.sp,
+        color = colors.onHero.copy(alpha = MovieHeroConstant.OVERLAY_TEXT_ALPHA),
+    )
+}
+
+/** The drawn separator between meta items. */
+@Composable
+private fun HeroMetaDot(colors: HeroColors) {
+    Box(
+        modifier =
+            Modifier
+                .size(MovieHeroConstant.META_DOT_SIZE_DP.dp)
+                .clip(CircleShape)
+                .background(colors.onHero.copy(alpha = MovieHeroConstant.META_DOT_ALPHA)),
+    )
 }
 
 /**
