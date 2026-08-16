@@ -142,6 +142,26 @@ class SearchRepositoryImplTest {
         }
 
     @Test
+    fun testSearchMultiSendsIncludeAdultTrueWhenRequested() =
+        runTest {
+            var requestedQuery: String? = null
+            val mockEngine =
+                MockEngine { request ->
+                    requestedQuery = request.url.encodedQuery
+                    respond(
+                        content = multiSearchJson,
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val repository = SearchRepositoryImpl(TmdbClient(mockEngine))
+
+            repository.searchMulti(query = "the matrix", pageNo = 1, includeAdult = true)
+
+            assertTrue(requestedQuery.orEmpty().contains("include_adult=true"))
+        }
+
+    @Test
     fun testSearchMultiHandlesEmptyResults() =
         runTest {
             val mockEngine =

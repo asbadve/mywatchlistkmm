@@ -10,11 +10,16 @@ class FakeSearchRepository : SearchRepository {
     /** Every (query, page) pair the model actually requested, in order. */
     val searchMultiCalls = mutableListOf<Pair<String, Int>>()
 
+    /** Every `includeAdult` value the model actually requested, in order. */
+    val includeAdultCalls = mutableListOf<Boolean>()
+
     override suspend fun searchMulti(
         query: String,
         pageNo: Int,
+        includeAdult: Boolean,
     ): SearchPageResult {
         searchMultiCalls.add(query to pageNo)
+        includeAdultCalls.add(includeAdult)
 
         searchMultiResult?.let { result ->
             if (result.isSuccess) {

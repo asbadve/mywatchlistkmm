@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +59,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepositoryImpl
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_screen_title
 import mywatchlist.composeapp.generated.resources.action_close
@@ -68,6 +71,8 @@ import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
 import mywatchlist.composeapp.generated.resources.region_picker_title
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_label
 import mywatchlist.composeapp.generated.resources.settings_region_label
+import mywatchlist.composeapp.generated.resources.settings_restricted_mode_description
+import mywatchlist.composeapp.generated.resources.settings_restricted_mode_label
 import org.jetbrains.compose.resources.stringResource
 
 private object AccountScreenConstant {
@@ -99,6 +104,7 @@ fun AccountScreen(
     webAuthLauncher: WebAuthLauncher = rememberWebAuthLauncher(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     regionRepository: RegionRepository = RegionRepositoryImpl(),
+    restrictedModeRepository: RestrictedModeRepository = RestrictedModeRepositoryImpl(),
     screenModel: AuthScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
 ) {
@@ -107,6 +113,7 @@ fun AccountScreen(
     var showFallbackRegionPicker by remember { mutableStateOf(false) }
     var selectedRegionCode by remember { mutableStateOf(regionRepository.getSelectedRegion()) }
     var fallbackRegionCode by remember { mutableStateOf(regionRepository.getFallbackRegion()) }
+    var restrictedModeEnabled by remember { mutableStateOf(restrictedModeRepository.isRestrictedModeEnabled()) }
 
     LaunchedEffect(webAuthLauncher) {
         screenModel.checkForPendingWebAuth(webAuthLauncher)
@@ -141,8 +148,13 @@ fun AccountScreen(
                         SettingsList(
                             regionCode = selectedRegionCode,
                             fallbackRegionCode = fallbackRegionCode,
+                            restrictedModeEnabled = restrictedModeEnabled,
                             onRegionClicked = { showRegionPicker = true },
                             onFallbackRegionClicked = { showFallbackRegionPicker = true },
+                            onRestrictedModeChanged = { enabled ->
+                                restrictedModeRepository.setRestrictedModeEnabled(enabled)
+                                restrictedModeEnabled = enabled
+                            },
                             onLogoutClicked = {
                                 screenModel.onLogoutClicked()
                                 onBackClicked()
@@ -281,13 +293,18 @@ private fun ProfileSection(session: UserSession) {
     }
 }
 
-/** "Region", "Default fallback region" and "Log out" - future settings rows will follow the same shape. */
+/**
+ * "Region", "Default fallback region", "Restricted Mode" and "Log out" - future settings rows
+ * will follow the same shape.
+ */
 @Composable
 private fun SettingsList(
     regionCode: String,
     fallbackRegionCode: String,
+    restrictedModeEnabled: Boolean,
     onRegionClicked: () -> Unit,
     onFallbackRegionClicked: () -> Unit,
+    onRestrictedModeChanged: (Boolean) -> Unit,
     onLogoutClicked: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -300,6 +317,12 @@ private fun SettingsList(
             label = stringResource(Res.string.settings_fallback_region_label),
             value = "${fallbackRegionCode.toRegionFlagEmoji()} $fallbackRegionCode".trim(),
             onClick = onFallbackRegionClicked,
+        )
+        SettingsSwitchRow(
+            label = stringResource(Res.string.settings_restricted_mode_label),
+            description = stringResource(Res.string.settings_restricted_mode_description),
+            checked = restrictedModeEnabled,
+            onCheckedChange = onRestrictedModeChanged,
         )
         SettingsRow(
             label = stringResource(Res.string.auth_logout),
@@ -343,5 +366,39 @@ private fun SettingsRow(
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
         )
+    }
+}
+
+/**
+ * A boolean settings row - trailing [Switch] instead of [SettingsRow]'s navigating chevron, with
+ * an optional second line explaining what the toggle actually does.
+ */
+@Composable
+private fun SettingsSwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    description: String? = null,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            description?.let {
+                Text(
+                    text = it,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

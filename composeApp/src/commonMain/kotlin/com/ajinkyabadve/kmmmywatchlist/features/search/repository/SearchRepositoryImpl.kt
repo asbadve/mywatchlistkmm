@@ -16,6 +16,7 @@ class SearchRepositoryImpl(
     override suspend fun searchMulti(
         query: String,
         pageNo: Int,
+        includeAdult: Boolean,
     ): SearchPageResult {
         val response: HttpResponse =
             tmdbClient.client.get {
@@ -29,7 +30,7 @@ class SearchRepositoryImpl(
                     // user query are safe to pass straight through.
                     parameters.append(QUERY, query)
                     parameters.append(NetworkConstant.PAGE, pageNo.toString())
-                    parameters.append(INCLUDE_ADULT, INCLUDE_ADULT_VALUE)
+                    parameters.append(INCLUDE_ADULT, includeAdult.toString())
                 }
             }
         return response.body()
@@ -39,6 +40,5 @@ class SearchRepositoryImpl(
         const val SEARCH_MULTI_PATH = "/3/search/multi"
         const val QUERY = "query"
         const val INCLUDE_ADULT = "include_adult"
-        const val INCLUDE_ADULT_VALUE = "false"
     }
 }

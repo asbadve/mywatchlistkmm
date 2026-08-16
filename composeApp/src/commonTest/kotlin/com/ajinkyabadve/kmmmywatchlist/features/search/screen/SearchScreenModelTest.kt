@@ -6,6 +6,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchFilter
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -313,6 +314,40 @@ class SearchScreenModelTest {
 
             assertEquals(listOf("The Matrix"), viewModel.results.map { it.displayTitle })
             assertEquals(null, viewModel.errorMessage)
+        }
+
+    @Test
+    fun testIncludeAdultReflectsRestrictedModeSetting() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val repository =
+                FakeSearchRepository().apply {
+                    searchMultiResult = Result.success(page(listOf(movie(1, "The Matrix"))))
+                }
+            val restrictedModeRepository = FakeRestrictedModeRepository(restrictedModeEnabled = false)
+            val viewModel = SearchScreenModel(repository, restrictedModeRepository, debounceMillis = DEBOUNCE)
+
+            viewModel.onQueryChange("matrix")
+            advanceUntilIdle()
+
+            assertEquals(listOf(true), repository.includeAdultCalls)
+        }
+
+    @Test
+    fun testIncludeAdultIsFalseWhenRestrictedModeIsOn() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            val repository =
+                FakeSearchRepository().apply {
+                    searchMultiResult = Result.success(page(listOf(movie(1, "The Matrix"))))
+                }
+            val restrictedModeRepository = FakeRestrictedModeRepository(restrictedModeEnabled = true)
+            val viewModel = SearchScreenModel(repository, restrictedModeRepository, debounceMillis = DEBOUNCE)
+
+            viewModel.onQueryChange("matrix")
+            advanceUntilIdle()
+
+            assertEquals(listOf(false), repository.includeAdultCalls)
         }
 
     @Test

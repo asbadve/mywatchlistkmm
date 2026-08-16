@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -10,6 +11,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -118,7 +120,32 @@ class AccountScreenUiTest {
             onNodeWithText("@jane_doe").assertIsDisplayed()
             onNodeWithText("Region").assertIsDisplayed()
             onNodeWithText("Default fallback region").assertIsDisplayed()
+            onNodeWithText("Restricted Mode").assertIsDisplayed()
             onNodeWithText("Log out").assertIsDisplayed()
+        }
+
+    @Test
+    fun testTogglingRestrictedModePersistsTheChange() =
+        runComposeUiTest {
+            val session =
+                UserSession(sessionId = "session_999", accountId = 99L, username = "jane_doe", name = "Jane Doe")
+            fakeAuthRepository.saveSession(session)
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            val fakeRestrictedModeRepository = FakeRestrictedModeRepository(restrictedModeEnabled = true)
+
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    screenModel = screenModel,
+                    restrictedModeRepository = fakeRestrictedModeRepository,
+                )
+            }
+
+            onNode(isToggleable()).performClick()
+
+            assertTrue(fakeRestrictedModeRepository.setRestrictedModeCalls.contains(false))
         }
 
     @Test

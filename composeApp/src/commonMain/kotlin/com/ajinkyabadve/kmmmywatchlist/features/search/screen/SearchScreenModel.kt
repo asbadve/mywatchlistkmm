@@ -11,6 +11,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchFilter
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
 import com.ajinkyabadve.kmmmywatchlist.features.search.repository.SearchRepository
 import com.ajinkyabadve.kmmmywatchlist.features.search.repository.SearchRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
 import io.ktor.serialization.ContentConvertException
@@ -31,6 +33,7 @@ import mywatchlist.composeapp.generated.resources.search_error
 
 class SearchScreenModel(
     private val searchRepository: SearchRepository = SearchRepositoryImpl(),
+    private val restrictedModeRepository: RestrictedModeRepository = RestrictedModeRepositoryImpl(),
     private val debounceMillis: Long = SEARCH_DEBOUNCE_MILLIS,
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
@@ -133,7 +136,12 @@ class SearchScreenModel(
     private suspend fun fetchPage(isFirstPage: Boolean) {
         listState = if (isFirstPage) ListState.LOADING else ListState.PAGINATING
         try {
-            val response = searchRepository.searchMulti(submittedQuery, page)
+            val response =
+                searchRepository.searchMulti(
+                    submittedQuery,
+                    page,
+                    includeAdult = !restrictedModeRepository.isRestrictedModeEnabled(),
+                )
             // Results whose media_type isn't one of movie/tv/person have no detail screen to open,
             // so they're dropped rather than rendered as dead cards. `seenKeys.add` returns false
             // for a key already present, which drops TMDB's cross-page repeats in the same pass.

@@ -162,4 +162,8 @@
     <string name="region_empty_message">No regions found.</string>
     <string name="settings_fallback_region_label">Default fallback region</string>
     <string name="fallback_region_picker_title">Select fallback region</string>
+
+    <!-- Restricted mode -->
+    <string name="settings_restricted_mode_label">Restricted Mode</string>
+    <string name="settings_restricted_mode_description">Hide adult content from search results</string>
 </resources>
