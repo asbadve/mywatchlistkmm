@@ -31,7 +31,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,6 +83,8 @@ private object TvHeroConstant {
 @Composable
 internal fun TvHeroSection(
     detail: TvDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     // Injectable for the same reason as the movie hero: `openUrl` is a platform expect, so a test
     // clicking the button would launch a real browser rather than record the tap.
     onOpenUrl: (String) -> Unit = { openUrl(it) },
@@ -99,7 +100,7 @@ internal fun TvHeroSection(
             targetWidthDp = HeroConstant.BACKDROP_TARGET_WIDTH_DP,
             density = density,
         )
-    val watchOption = detail.watchProviders.heroWatchOption(Locale.current.region.uppercase())
+    val watchOption = detail.watchProviders.heroWatchOption(regionCode, fallbackRegionCode)
 
     Box(
         modifier =

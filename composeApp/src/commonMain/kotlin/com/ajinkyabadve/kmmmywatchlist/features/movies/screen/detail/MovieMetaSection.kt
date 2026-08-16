@@ -45,7 +45,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
@@ -72,6 +71,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun MovieMetaSection(
     detail: MovieDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     onCollectionClicked: (Long) -> Unit = {},
 ) {
     val translationsCount = detail.translations?.translations?.size ?: 0
@@ -277,7 +278,7 @@ fun MovieMetaSection(
         MovieExternalLinks(detail = detail)
         MovieFactsSection(detail = detail)
         CollectionBanner(detail = detail, onCollectionClicked = onCollectionClicked)
-        WhereToWatchSection(detail = detail)
+        WhereToWatchSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode)
     }
 }
 
@@ -410,14 +411,16 @@ private fun CollectionBanner(
     }
 }
 
-// "Where to watch" for the user's region (falling back to US, then any region with data).
-// Tapping a provider opens TMDB's watch page, which carries the required JustWatch attribution.
+// "Where to watch" for the user's region (falling back to their chosen fallback region, then any
+// region with data). Tapping a provider opens TMDB's watch page, which carries the required
+// JustWatch attribution.
 @Composable
-private fun WhereToWatchSection(detail: MovieDetail) {
-    val regions = detail.watchProviders?.results.orEmpty()
-    if (regions.isEmpty()) return
-    val regionCode = Locale.current.region.uppercase()
-    val region = regions[regionCode] ?: regions["US"] ?: regions.values.first()
+private fun WhereToWatchSection(
+    detail: MovieDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
+) {
+    val region = detail.watchProviders.resolveRegion(regionCode, fallbackRegionCode) ?: return
     val groups =
         listOf(
             "Stream" to region.flatrate,

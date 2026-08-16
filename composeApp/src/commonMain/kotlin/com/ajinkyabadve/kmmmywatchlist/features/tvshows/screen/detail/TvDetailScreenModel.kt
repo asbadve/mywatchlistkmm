@@ -9,6 +9,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
@@ -39,6 +41,8 @@ sealed interface TvDetailState {
         val tvDetail: TvDetail,
         val currentSeason: TvSeasonDetail?,
         val allSeasonDetails: Map<Int, TvSeasonDetail>,
+        val regionCode: String,
+        val fallbackRegionCode: String,
     ) : TvDetailState
 
     data class Error(
@@ -49,6 +53,7 @@ sealed interface TvDetailState {
 class TvDetailScreenModel(
     private val tvId: Long,
     private val tvRepository: TvRepository = TvRepositoryImpl(),
+    private val regionRepository: RegionRepository = RegionRepositoryImpl(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
 ) : ViewModel() {
@@ -84,6 +89,8 @@ class TvDetailScreenModel(
                         tvDetail = detail,
                         currentSeason = seasonDetails[currentSeasonNumber],
                         allSeasonDetails = seasonDetails,
+                        regionCode = regionRepository.getSelectedRegion(),
+                        fallbackRegionCode = regionRepository.getFallbackRegion(),
                     )
             } catch (httpExceptions: HttpExceptions) {
                 Napier.e(tag = TAG, throwable = httpExceptions) { "HTTP Error fetching details for tvId: $tvId" }

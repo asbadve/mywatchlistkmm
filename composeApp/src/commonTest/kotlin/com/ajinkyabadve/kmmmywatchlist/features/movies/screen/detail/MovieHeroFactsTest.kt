@@ -46,7 +46,7 @@ class MovieHeroFactsTest {
                     ),
             )
 
-        assertEquals(HeroTestConstant.PROVIDER_NETFLIX, providers.heroWatchOption(VIEWER_REGION)?.provider?.providerName)
+        assertEquals(HeroTestConstant.PROVIDER_NETFLIX, providers.heroWatchOption(VIEWER_REGION, RegionConstant.US)?.provider?.providerName)
     }
 
     /** Free-with-ads still costs nothing at the point of tapping, so it outranks rent and buy. */
@@ -57,7 +57,7 @@ class MovieHeroFactsTest {
                 results = mapOf(VIEWER_REGION to region(ads = listOf(provider("ITVX")), buy = listOf(provider("Apple TV")))),
             )
 
-        assertEquals("ITVX", providers.heroWatchOption(VIEWER_REGION)?.provider?.providerName)
+        assertEquals("ITVX", providers.heroWatchOption(VIEWER_REGION, RegionConstant.US)?.provider?.providerName)
     }
 
     /** Within a tier TMDB's own display priority decides, so the button matches what TMDB shows. */
@@ -77,7 +77,7 @@ class MovieHeroFactsTest {
                             ),
                     ),
             )
-        val option = providers.heroWatchOption(VIEWER_REGION)
+        val option = providers.heroWatchOption(VIEWER_REGION, RegionConstant.US)
 
         assertEquals("First Choice", option?.provider?.providerName)
         assertEquals(listOf("First Choice", "Second Choice"), option?.allProviders?.map { it.providerName })
@@ -94,7 +94,7 @@ class MovieHeroFactsTest {
                     ),
             )
 
-        assertEquals("Sky", providers.heroWatchOption(VIEWER_REGION)?.provider?.providerName)
+        assertEquals("Sky", providers.heroWatchOption(VIEWER_REGION, RegionConstant.US)?.provider?.providerName)
     }
 
     /** US is the fallback because it is the region TMDB most reliably has data for. */
@@ -102,7 +102,15 @@ class MovieHeroFactsTest {
     fun testFallsBackToUsWhenTheViewersRegionHasNoData() {
         val providers = WatchProvidersResponse(results = mapOf(RegionConstant.US to region(flatrate = listOf(provider("Hulu")))))
 
-        assertEquals("Hulu", providers.heroWatchOption(VIEWER_REGION)?.provider?.providerName)
+        assertEquals("Hulu", providers.heroWatchOption(VIEWER_REGION, RegionConstant.US)?.provider?.providerName)
+    }
+
+    /** The fallback region is a caller-supplied setting, not always US - honor whatever is passed. */
+    @Test
+    fun testFallsBackToTheCallersChosenFallbackRegionWhenItIsNotUs() {
+        val providers = WatchProvidersResponse(results = mapOf("DE" to region(flatrate = listOf(provider("WOW")))))
+
+        assertEquals("WOW", providers.heroWatchOption(VIEWER_REGION, "DE")?.provider?.providerName)
     }
 
     /** Naming somewhere it streams beats saying nothing, even if it is not the viewer's country. */
@@ -110,7 +118,7 @@ class MovieHeroFactsTest {
     fun testFallsBackToAnyRegionWithDataWhenEvenUsIsMissing() {
         val providers = WatchProvidersResponse(results = mapOf("DE" to region(flatrate = listOf(provider("WOW")))))
 
-        assertEquals("WOW", providers.heroWatchOption(VIEWER_REGION)?.provider?.providerName)
+        assertEquals("WOW", providers.heroWatchOption(VIEWER_REGION, RegionConstant.US)?.provider?.providerName)
     }
 
     /** The link is TMDB's watch page, which carries the JustWatch attribution TMDB requires. */
@@ -121,7 +129,7 @@ class MovieHeroFactsTest {
                 results = mapOf(VIEWER_REGION to region(flatrate = listOf(provider(HeroTestConstant.PROVIDER_NETFLIX)))),
             )
 
-        assertEquals(HeroTestConstant.MOVIE_WATCH_PAGE_LINK, providers.heroWatchOption(VIEWER_REGION)?.link)
+        assertEquals(HeroTestConstant.MOVIE_WATCH_PAGE_LINK, providers.heroWatchOption(VIEWER_REGION, RegionConstant.US)?.link)
     }
 
     /** A region entry with every tier empty must not produce a button pointing at nothing. */
@@ -129,12 +137,12 @@ class MovieHeroFactsTest {
     fun testReturnsNullWhenTheRegionHasNoProvidersInAnyTier() {
         val providers = WatchProvidersResponse(results = mapOf(VIEWER_REGION to region()))
 
-        assertNull(providers.heroWatchOption(VIEWER_REGION))
+        assertNull(providers.heroWatchOption(VIEWER_REGION, RegionConstant.US))
     }
 
     @Test
     fun testReturnsNullWhenThereAreNoRegionsAtAll() {
-        assertNull(WatchProvidersResponse().heroWatchOption(VIEWER_REGION))
+        assertNull(WatchProvidersResponse().heroWatchOption(VIEWER_REGION, RegionConstant.US))
     }
 
     /** The watch/providers append is optional, so the whole object can be absent. */
@@ -142,7 +150,7 @@ class MovieHeroFactsTest {
     fun testReturnsNullWhenTheProvidersAppendIsMissing() {
         val absent: WatchProvidersResponse? = null
 
-        assertNull(absent.heroWatchOption(VIEWER_REGION))
+        assertNull(absent.heroWatchOption(VIEWER_REGION, RegionConstant.US))
     }
 
     /** The movie-side entry point must resolve the same option as the shared one it delegates to. */
@@ -156,7 +164,7 @@ class MovieHeroFactsTest {
                     ),
             )
 
-        assertEquals(HeroTestConstant.PROVIDER_NETFLIX, detail.heroWatchOption(VIEWER_REGION)?.provider?.providerName)
+        assertEquals(HeroTestConstant.PROVIDER_NETFLIX, detail.heroWatchOption(VIEWER_REGION, RegionConstant.US)?.provider?.providerName)
     }
 
     @Test

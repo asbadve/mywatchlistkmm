@@ -116,6 +116,8 @@ class AccountScreenUiTest {
 
             onNodeWithText("Welcome, Jane Doe!").assertIsDisplayed()
             onNodeWithText("@jane_doe").assertIsDisplayed()
+            onNodeWithText("Region").assertIsDisplayed()
+            onNodeWithText("Default fallback region").assertIsDisplayed()
             onNodeWithText("Log out").assertIsDisplayed()
         }
 

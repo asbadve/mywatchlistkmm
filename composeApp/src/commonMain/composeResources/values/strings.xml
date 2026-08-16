@@ -154,4 +154,12 @@
     <string name="action_delete">Delete</string>
     <string name="favorite_content_description">Favorite</string>
     <string name="watchlist_content_description">Watchlist</string>
+
+    <!-- Region -->
+    <string name="settings_region_label">Region</string>
+    <string name="region_picker_title">Select region</string>
+    <string name="region_search_hint">Search regions</string>
+    <string name="region_empty_message">No regions found.</string>
+    <string name="settings_fallback_region_label">Default fallback region</string>
+    <string name="fallback_region_picker_title">Select fallback region</string>
 </resources>

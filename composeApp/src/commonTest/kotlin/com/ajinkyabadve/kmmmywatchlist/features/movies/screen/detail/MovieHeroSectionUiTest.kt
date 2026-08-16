@@ -88,7 +88,13 @@ class MovieHeroSectionUiTest {
     @Test
     fun testRendersTitleAndTheFactsRow() =
         runComposeUiTest {
-            setContent { MovieHeroSection(detail = movie(title = "Inception")) {} }
+            setContent {
+                MovieHeroSection(
+                    detail = movie(title = "Inception"),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
+                ) {}
+            }
 
             onNodeWithText("Inception").assertExists()
             onNodeWithText("2010", substring = true).assertExists()
@@ -101,7 +107,13 @@ class MovieHeroSectionUiTest {
     @Test
     fun testShortRuntimesRenderWithoutAnHoursPart() =
         runComposeUiTest {
-            setContent { MovieHeroSection(detail = movie(runtime = 45)) {} }
+            setContent {
+                MovieHeroSection(
+                    detail = movie(runtime = 45),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
+                ) {}
+            }
 
             onNodeWithText("45m", substring = true).assertExists()
             onAllNodesWithText("0h", substring = true).assertCountEquals(0)
@@ -114,6 +126,8 @@ class MovieHeroSectionUiTest {
             setContent {
                 MovieHeroSection(
                     detail = movie(releaseDate = "", runtime = null, voteAverage = 0.0, certification = null),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
                 ) {}
             }
 
@@ -129,7 +143,11 @@ class MovieHeroSectionUiTest {
     fun testNamesTheStreamingServiceOnThePrimaryButton() =
         runComposeUiTest {
             setContent {
-                MovieHeroSection(detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX))) {}
+                MovieHeroSection(
+                    detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX)),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
+                ) {}
             }
 
             onNodeWithText(HeroTestConstant.WATCH_ON_NETFLIX).assertExists()
@@ -144,6 +162,8 @@ class MovieHeroSectionUiTest {
                 HeroTestSurface {
                     MovieHeroSection(
                         detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX)),
+                        regionCode = RegionConstant.US,
+                        fallbackRegionCode = RegionConstant.US,
                         onOpenUrl = { opened = it },
                     ) {}
                 }
@@ -161,6 +181,8 @@ class MovieHeroSectionUiTest {
             setContent {
                 MovieHeroSection(
                     detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX, "Prime Video", "Disney+")),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
                 ) {}
             }
 
@@ -179,7 +201,12 @@ class MovieHeroSectionUiTest {
             var opened: String? = null
             setContent {
                 HeroTestSurface {
-                    MovieHeroSection(detail = movie(videos = trailer()), onOpenUrl = { opened = it }) {}
+                    MovieHeroSection(
+                        detail = movie(videos = trailer()),
+                        regionCode = RegionConstant.US,
+                        fallbackRegionCode = RegionConstant.US,
+                        onOpenUrl = { opened = it },
+                    ) {}
                 }
             }
 
@@ -197,6 +224,8 @@ class MovieHeroSectionUiTest {
                 HeroTestSurface {
                     MovieHeroSection(
                         detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX), videos = trailer()),
+                        regionCode = RegionConstant.US,
+                        fallbackRegionCode = RegionConstant.US,
                         onOpenUrl = { opened = it },
                     ) {}
                 }
@@ -212,7 +241,7 @@ class MovieHeroSectionUiTest {
     @Test
     fun testDrawsNoActionsWhenThereIsNothingToOpen() =
         runComposeUiTest {
-            setContent { MovieHeroSection(detail = movie()) {} }
+            setContent { MovieHeroSection(detail = movie(), regionCode = RegionConstant.US, fallbackRegionCode = RegionConstant.US) {} }
 
             onAllNodesWithText(HeroTestConstant.PLAY_TRAILER).assertCountEquals(0)
             onAllNodesWithText(HeroTestConstant.WATCH_ON_PREFIX, substring = true).assertCountEquals(0)
@@ -226,6 +255,8 @@ class MovieHeroSectionUiTest {
             setContent {
                 MovieHeroSection(
                     detail = movie(watchProviders = WatchProvidersResponse(results = emptyMap())),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
                     onOpenUrl = { opened = it },
                 ) {}
             }
@@ -255,6 +286,8 @@ class MovieHeroSectionUiTest {
                                     watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX),
                                     videos = trailer(),
                                 ),
+                            regionCode = RegionConstant.US,
+                            fallbackRegionCode = RegionConstant.US,
                         ) {}
                     }
                 }

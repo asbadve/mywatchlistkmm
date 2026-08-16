@@ -14,6 +14,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryIm
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
 import io.ktor.serialization.ContentConvertException
@@ -35,6 +37,8 @@ sealed interface MovieDetailState {
 
     data class Success(
         val movieDetail: MovieDetail,
+        val regionCode: String,
+        val fallbackRegionCode: String,
     ) : MovieDetailState
 
     data class Error(
@@ -45,6 +49,7 @@ sealed interface MovieDetailState {
 class MovieDetailScreenModel(
     private val movieId: Long,
     private val movieRepository: MovieRepository = MovieRepositoryImpl(),
+    private val regionRepository: RegionRepository = RegionRepositoryImpl(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
 ) : ViewModel() {
@@ -73,7 +78,12 @@ class MovieDetailScreenModel(
         viewModelScope.launch(Dispatchers.Main) {
             try {
                 val detail = movieRepository.getMovieDetails(movieId)
-                _uiState.value = MovieDetailState.Success(detail)
+                _uiState.value =
+                    MovieDetailState.Success(
+                        detail,
+                        regionRepository.getSelectedRegion(),
+                        regionRepository.getFallbackRegion(),
+                    )
             } catch (httpExceptions: HttpExceptions) {
                 Napier.e(tag = TAG, throwable = httpExceptions) { "HTTP Error fetching details for movieId: $movieId" }
                 _uiState.value = MovieDetailState.Error(UiText.Plain(httpExceptions.message))

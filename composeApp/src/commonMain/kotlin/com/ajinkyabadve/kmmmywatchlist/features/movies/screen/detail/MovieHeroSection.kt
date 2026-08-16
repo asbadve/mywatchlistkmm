@@ -31,7 +31,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,6 +79,8 @@ private object MovieHeroConstant {
 @Composable
 internal fun MovieHeroSection(
     detail: MovieDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     // Defaulted rather than passed by every caller: the platform `openUrl` is a top-level expect,
     // so a UI test clicking the button would launch a real browser instead of recording the tap.
     onOpenUrl: (String) -> Unit = { openUrl(it) },
@@ -95,7 +96,7 @@ internal fun MovieHeroSection(
             targetWidthDp = HeroConstant.BACKDROP_TARGET_WIDTH_DP,
             density = density,
         )
-    val watchOption = detail.heroWatchOption(Locale.current.region.uppercase())
+    val watchOption = detail.heroWatchOption(regionCode, fallbackRegionCode)
 
     Box(
         modifier =

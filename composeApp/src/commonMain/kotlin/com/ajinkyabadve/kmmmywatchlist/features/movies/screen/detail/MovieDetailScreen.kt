@@ -168,6 +168,8 @@ fun MovieDetailScreen(
                             if (windowSize.isCompact()) {
                                 CompactMovieDetailContent(
                                     detail = detail,
+                                    regionCode = state.regionCode,
+                                    fallbackRegionCode = state.fallbackRegionCode,
                                     lazyListState = lazyListState,
                                     authRepository = authRepository,
                                     mediaActionsState = viewModel.mediaActionsState,
@@ -182,6 +184,8 @@ fun MovieDetailScreen(
                             } else {
                                 ExpandedMovieDetailContent(
                                     detail = detail,
+                                    regionCode = state.regionCode,
+                                    fallbackRegionCode = state.fallbackRegionCode,
                                     leftLazyListState = leftLazyListState,
                                     authRepository = authRepository,
                                     mediaActionsState = viewModel.mediaActionsState,
@@ -231,6 +235,8 @@ fun MovieDetailScreen(
 @Composable
 private fun CompactMovieDetailContent(
     detail: MovieDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     lazyListState: LazyListState,
     authRepository: AuthRepository,
     mediaActionsState: MediaActionsState,
@@ -245,7 +251,7 @@ private fun CompactMovieDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            MovieHeroSection(detail = detail) { colors ->
+            MovieHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
                 MediaActionButtonsSection(
                     mediaId = detail.id.toLong(),
                     colors = colors,
@@ -256,7 +262,12 @@ private fun CompactMovieDetailContent(
             }
         }
         item {
-            MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)
+            MovieMetaSection(
+                detail = detail,
+                regionCode = regionCode,
+                fallbackRegionCode = fallbackRegionCode,
+                onCollectionClicked = onCollectionClicked,
+            )
         }
         item {
             OverviewSection(overview = detail.overview)
@@ -306,6 +317,8 @@ private fun CompactMovieDetailContent(
 @Composable
 private fun ExpandedMovieDetailContent(
     detail: MovieDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     leftLazyListState: LazyListState,
     authRepository: AuthRepository,
     mediaActionsState: MediaActionsState,
@@ -326,7 +339,7 @@ private fun ExpandedMovieDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                MovieHeroSection(detail = detail) { colors ->
+                MovieHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
                     MediaActionButtonsSection(
                         mediaId = detail.id.toLong(),
                         colors = colors,
@@ -337,7 +350,12 @@ private fun ExpandedMovieDetailContent(
                 }
             }
             item {
-                MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)
+                MovieMetaSection(
+                    detail = detail,
+                    regionCode = regionCode,
+                    fallbackRegionCode = fallbackRegionCode,
+                    onCollectionClicked = onCollectionClicked,
+                )
             }
             item {
                 OverviewSection(overview = detail.overview)

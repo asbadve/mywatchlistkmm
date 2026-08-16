@@ -87,7 +87,13 @@ class TvHeroSectionUiTest {
     @Test
     fun testRendersTitleAndTheSeriesFacts() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show(title = "Game of Thrones")) {} }
+            setContent {
+                TvHeroSection(
+                    detail = show(title = "Game of Thrones"),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
+                ) {}
+            }
 
             onNodeWithText("Game of Thrones").assertExists()
             onNodeWithText("2011", substring = true).assertExists()
@@ -101,7 +107,13 @@ class TvHeroSectionUiTest {
     @Test
     fun testASingleSeasonIsNotPluralised() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show(numberOfSeasons = 1)) {} }
+            setContent {
+                TvHeroSection(
+                    detail = show(numberOfSeasons = 1),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
+                ) {}
+            }
 
             onNodeWithText("1 Season", substring = true).assertExists()
             onAllNodesWithText("1 Seasons", substring = true).assertCountEquals(0)
@@ -115,7 +127,12 @@ class TvHeroSectionUiTest {
     fun testARunningShowIsBadgedWithItsTmdbStatus() =
         runComposeUiTest {
             setContent {
-                TvHeroSection(detail = show(status = TvStatusTestConstant.RETURNING)) {}
+                TvHeroSection(
+                    detail = show(status = TvStatusTestConstant.RETURNING),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
+                ) {
+                }
             }
 
             onNodeWithText(TvStatusTestConstant.RETURNING).assertExists()
@@ -124,7 +141,14 @@ class TvHeroSectionUiTest {
     @Test
     fun testAFinishedShowCarriesNoBadge() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show(status = TvStatusTestConstant.ENDED)) {} }
+            setContent {
+                TvHeroSection(
+                    detail = show(status = TvStatusTestConstant.ENDED),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
+                ) {
+                }
+            }
 
             onAllNodesWithText(TvStatusTestConstant.ENDED).assertCountEquals(0)
         }
@@ -140,6 +164,8 @@ class TvHeroSectionUiTest {
                             nextEpisodeToAir = Episode(id = 2, name = "What Comes Next", seasonNumber = 3, episodeNumber = 4),
                             lastEpisodeToAir = Episode(id = 1, name = "What Just Aired", seasonNumber = 3, episodeNumber = 3),
                         ),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
                 ) {}
             }
 
@@ -159,6 +185,8 @@ class TvHeroSectionUiTest {
                             status = TvStatusTestConstant.ENDED,
                             lastEpisodeToAir = Episode(id = 1, name = "The Finale", seasonNumber = 6, episodeNumber = 10),
                         ),
+                    regionCode = RegionConstant.US,
+                    fallbackRegionCode = RegionConstant.US,
                 ) {}
             }
 
@@ -173,6 +201,8 @@ class TvHeroSectionUiTest {
                 HeroTestSurface {
                     TvHeroSection(
                         detail = show(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX)),
+                        regionCode = RegionConstant.US,
+                        fallbackRegionCode = RegionConstant.US,
                         onOpenUrl = { opened = it },
                     ) {}
                 }
@@ -189,7 +219,12 @@ class TvHeroSectionUiTest {
             var opened: String? = null
             setContent {
                 HeroTestSurface {
-                    TvHeroSection(detail = show(videos = trailer()), onOpenUrl = { opened = it }) {}
+                    TvHeroSection(
+                        detail = show(videos = trailer()),
+                        regionCode = RegionConstant.US,
+                        fallbackRegionCode = RegionConstant.US,
+                        onOpenUrl = { opened = it },
+                    ) {}
                 }
             }
 
@@ -206,6 +241,8 @@ class TvHeroSectionUiTest {
                 HeroTestSurface {
                     TvHeroSection(
                         detail = show(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX), videos = trailer()),
+                        regionCode = RegionConstant.US,
+                        fallbackRegionCode = RegionConstant.US,
                         onOpenUrl = { opened = it },
                     ) {}
                 }
@@ -220,7 +257,7 @@ class TvHeroSectionUiTest {
     @Test
     fun testDrawsNoActionsWhenThereIsNothingToOpen() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show()) {} }
+            setContent { TvHeroSection(detail = show(), regionCode = RegionConstant.US, fallbackRegionCode = RegionConstant.US) {} }
 
             onAllNodesWithText(HeroTestConstant.PLAY_TRAILER).assertCountEquals(0)
             onAllNodesWithText(HeroTestConstant.WATCH_ON_PREFIX, substring = true).assertCountEquals(0)
@@ -246,6 +283,8 @@ class TvHeroSectionUiTest {
                                     watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX),
                                     nextEpisodeToAir = Episode(id = 2, name = "What Comes Next", seasonNumber = 3, episodeNumber = 4),
                                 ),
+                            regionCode = RegionConstant.US,
+                            fallbackRegionCode = RegionConstant.US,
                         ) {}
                     }
                 }

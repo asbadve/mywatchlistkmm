@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -30,9 +33,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,6 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthErrorContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthorizingContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.LoggedOutContent
@@ -48,12 +56,18 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.UserAvatar
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_screen_title
 import mywatchlist.composeapp.generated.resources.action_close
 import mywatchlist.composeapp.generated.resources.auth_account_welcome
 import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.back_content_description
+import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
+import mywatchlist.composeapp.generated.resources.region_picker_title
+import mywatchlist.composeapp.generated.resources.settings_fallback_region_label
+import mywatchlist.composeapp.generated.resources.settings_region_label
 import org.jetbrains.compose.resources.stringResource
 
 private object AccountScreenConstant {
@@ -61,6 +75,7 @@ private object AccountScreenConstant {
     val AVATAR_RING_WIDTH = 3.dp
     val DIALOG_WIDTH = 360.dp
     val DIALOG_CORNER_RADIUS = 24.dp
+    val DIALOG_MAX_HEIGHT = 560.dp
 }
 
 /**
@@ -83,10 +98,15 @@ fun AccountScreen(
     modifier: Modifier = Modifier,
     webAuthLauncher: WebAuthLauncher = rememberWebAuthLauncher(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
+    regionRepository: RegionRepository = RegionRepositoryImpl(),
     screenModel: AuthScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
 ) {
     val uiState by screenModel.uiState.collectAsState()
+    var showRegionPicker by remember { mutableStateOf(false) }
+    var showFallbackRegionPicker by remember { mutableStateOf(false) }
+    var selectedRegionCode by remember { mutableStateOf(regionRepository.getSelectedRegion()) }
+    var fallbackRegionCode by remember { mutableStateOf(regionRepository.getFallbackRegion()) }
 
     LaunchedEffect(webAuthLauncher) {
         screenModel.checkForPendingWebAuth(webAuthLauncher)
@@ -96,39 +116,47 @@ fun AccountScreen(
         Column(modifier = Modifier.fillMaxWidth()) {
             AccountScreenHeader(isDialogPresentation = isDialogPresentation, onCloseClicked = onBackClicked)
 
-            when (val state = uiState) {
-                is AuthUiState.LoggedOut -> {
-                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                        LoggedOutContent(onLoginClick = { screenModel.onLoginClicked(webAuthLauncher) })
+            // Scrollable so the settings rows stay reachable once they outgrow one screenful (or
+            // the dialog presentation's capped height) - the header above stays pinned.
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                when (val state = uiState) {
+                    is AuthUiState.LoggedOut -> {
+                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                            LoggedOutContent(onLoginClick = { screenModel.onLoginClicked(webAuthLauncher) })
+                        }
                     }
-                }
 
-                is AuthUiState.Authorizing -> {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(48.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        AuthorizingContent(statusText = state.statusText.asString())
+                    is AuthUiState.Authorizing -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(48.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AuthorizingContent(statusText = state.statusText.asString())
+                        }
                     }
-                }
 
-                is AuthUiState.LoggedIn -> {
-                    ProfileSection(state.session)
-                    HorizontalDivider()
-                    SettingsList(
-                        onLogoutClicked = {
-                            screenModel.onLogoutClicked()
-                            onBackClicked()
-                        },
-                    )
-                }
-
-                is AuthUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                        AuthErrorContent(
-                            errorMessage = state.message.asString(),
-                            onRetryClick = { screenModel.onRetryClicked(webAuthLauncher) },
+                    is AuthUiState.LoggedIn -> {
+                        ProfileSection(state.session)
+                        HorizontalDivider()
+                        SettingsList(
+                            regionCode = selectedRegionCode,
+                            fallbackRegionCode = fallbackRegionCode,
+                            onRegionClicked = { showRegionPicker = true },
+                            onFallbackRegionClicked = { showFallbackRegionPicker = true },
+                            onLogoutClicked = {
+                                screenModel.onLogoutClicked()
+                                onBackClicked()
+                            },
                         )
+                    }
+
+                    is AuthUiState.Error -> {
+                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                            AuthErrorContent(
+                                errorMessage = state.message.asString(),
+                                onRetryClick = { screenModel.onRetryClicked(webAuthLauncher) },
+                            )
+                        }
                     }
                 }
             }
@@ -139,7 +167,7 @@ fun AccountScreen(
         Card(
             shape = RoundedCornerShape(AccountScreenConstant.DIALOG_CORNER_RADIUS),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
-            modifier = modifier.width(AccountScreenConstant.DIALOG_WIDTH),
+            modifier = modifier.width(AccountScreenConstant.DIALOG_WIDTH).heightIn(max = AccountScreenConstant.DIALOG_MAX_HEIGHT),
         ) {
             content()
         }
@@ -150,6 +178,30 @@ fun AccountScreen(
         ) {
             content()
         }
+    }
+
+    if (showRegionPicker) {
+        RegionPickerDialog(
+            title = stringResource(Res.string.region_picker_title),
+            selectedRegionCode = selectedRegionCode,
+            onRegionSelected = { code ->
+                regionRepository.setSelectedRegion(code)
+                selectedRegionCode = code
+            },
+            onDismiss = { showRegionPicker = false },
+        )
+    }
+
+    if (showFallbackRegionPicker) {
+        RegionPickerDialog(
+            title = stringResource(Res.string.fallback_region_picker_title),
+            selectedRegionCode = fallbackRegionCode,
+            onRegionSelected = { code ->
+                regionRepository.setFallbackRegion(code)
+                fallbackRegionCode = code
+            },
+            onDismiss = { showFallbackRegionPicker = false },
+        )
     }
 }
 
@@ -229,11 +281,31 @@ private fun ProfileSection(session: UserSession) {
     }
 }
 
-/** Just "Log out" for now - the shape future settings rows (notifications, region, ...) will follow. */
+/** "Region", "Default fallback region" and "Log out" - future settings rows will follow the same shape. */
 @Composable
-private fun SettingsList(onLogoutClicked: () -> Unit) {
+private fun SettingsList(
+    regionCode: String,
+    fallbackRegionCode: String,
+    onRegionClicked: () -> Unit,
+    onFallbackRegionClicked: () -> Unit,
+    onLogoutClicked: () -> Unit,
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        SettingsRow(label = stringResource(Res.string.auth_logout), onClick = onLogoutClicked)
+        SettingsRow(
+            label = stringResource(Res.string.settings_region_label),
+            value = "${regionCode.toRegionFlagEmoji()} $regionCode".trim(),
+            onClick = onRegionClicked,
+        )
+        SettingsRow(
+            label = stringResource(Res.string.settings_fallback_region_label),
+            value = "${fallbackRegionCode.toRegionFlagEmoji()} $fallbackRegionCode".trim(),
+            onClick = onFallbackRegionClicked,
+        )
+        SettingsRow(
+            label = stringResource(Res.string.auth_logout),
+            onClick = onLogoutClicked,
+            labelColor = MaterialTheme.colorScheme.error,
+        )
     }
 }
 
@@ -241,6 +313,8 @@ private fun SettingsList(onLogoutClicked: () -> Unit) {
 private fun SettingsRow(
     label: String,
     onClick: () -> Unit,
+    value: String? = null,
+    labelColor: Color = MaterialTheme.colorScheme.onBackground,
 ) {
     Row(
         modifier =
@@ -253,9 +327,17 @@ private fun SettingsRow(
         Text(
             text = label,
             fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.error,
+            color = labelColor,
             modifier = Modifier.weight(1f),
         )
+        value?.let {
+            Text(
+                text = it,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                modifier = Modifier.padding(end = 8.dp),
+            )
+        }
         Icon(
             imageVector = Icons.Filled.KeyboardArrowRight,
             contentDescription = null,

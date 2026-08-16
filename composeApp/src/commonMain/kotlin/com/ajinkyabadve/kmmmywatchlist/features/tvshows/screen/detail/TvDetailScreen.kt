@@ -173,6 +173,8 @@ fun TvDetailScreen(
                             if (windowSize.isCompact()) {
                                 CompactTvDetailContent(
                                     detail = detail,
+                                    regionCode = state.regionCode,
+                                    fallbackRegionCode = state.fallbackRegionCode,
                                     currentSeason = state.currentSeason,
                                     lazyListState = lazyListState,
                                     authRepository = authRepository,
@@ -188,6 +190,8 @@ fun TvDetailScreen(
                             } else {
                                 ExpandedTvDetailContent(
                                     detail = detail,
+                                    regionCode = state.regionCode,
+                                    fallbackRegionCode = state.fallbackRegionCode,
                                     currentSeason = state.currentSeason,
                                     leftLazyListState = leftLazyListState,
                                     authRepository = authRepository,
@@ -238,6 +242,8 @@ fun TvDetailScreen(
 @Composable
 private fun CompactTvDetailContent(
     detail: TvDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     currentSeason: TvSeasonDetail?,
     lazyListState: LazyListState,
     authRepository: AuthRepository,
@@ -253,7 +259,7 @@ private fun CompactTvDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            TvHeroSection(detail = detail) { colors ->
+            TvHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
                 MediaActionButtonsSection(
                     mediaId = detail.id.toLong(),
                     colors = colors,
@@ -319,6 +325,8 @@ private fun CompactTvDetailContent(
 @Composable
 private fun ExpandedTvDetailContent(
     detail: TvDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     currentSeason: TvSeasonDetail?,
     leftLazyListState: LazyListState,
     authRepository: AuthRepository,
@@ -340,7 +348,7 @@ private fun ExpandedTvDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                TvHeroSection(detail = detail) { colors ->
+                TvHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
                     MediaActionButtonsSection(
                         mediaId = detail.id.toLong(),
                         colors = colors,
