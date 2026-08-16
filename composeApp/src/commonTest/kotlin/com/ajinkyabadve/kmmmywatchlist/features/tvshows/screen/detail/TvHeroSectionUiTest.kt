@@ -87,7 +87,7 @@ class TvHeroSectionUiTest {
     @Test
     fun testRendersTitleAndTheSeriesFacts() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show(title = "Game of Thrones")) }
+            setContent { TvHeroSection(detail = show(title = "Game of Thrones")) {} }
 
             onNodeWithText("Game of Thrones").assertExists()
             onNodeWithText("2011", substring = true).assertExists()
@@ -101,7 +101,7 @@ class TvHeroSectionUiTest {
     @Test
     fun testASingleSeasonIsNotPluralised() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show(numberOfSeasons = 1)) }
+            setContent { TvHeroSection(detail = show(numberOfSeasons = 1)) {} }
 
             onNodeWithText("1 Season", substring = true).assertExists()
             onAllNodesWithText("1 Seasons", substring = true).assertCountEquals(0)
@@ -114,7 +114,9 @@ class TvHeroSectionUiTest {
     @Test
     fun testARunningShowIsBadgedWithItsTmdbStatus() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show(status = TvStatusTestConstant.RETURNING)) }
+            setContent {
+                TvHeroSection(detail = show(status = TvStatusTestConstant.RETURNING)) {}
+            }
 
             onNodeWithText(TvStatusTestConstant.RETURNING).assertExists()
         }
@@ -122,7 +124,7 @@ class TvHeroSectionUiTest {
     @Test
     fun testAFinishedShowCarriesNoBadge() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show(status = TvStatusTestConstant.ENDED)) }
+            setContent { TvHeroSection(detail = show(status = TvStatusTestConstant.ENDED)) {} }
 
             onAllNodesWithText(TvStatusTestConstant.ENDED).assertCountEquals(0)
         }
@@ -138,7 +140,7 @@ class TvHeroSectionUiTest {
                             nextEpisodeToAir = Episode(id = 2, name = "What Comes Next", seasonNumber = 3, episodeNumber = 4),
                             lastEpisodeToAir = Episode(id = 1, name = "What Just Aired", seasonNumber = 3, episodeNumber = 3),
                         ),
-                )
+                ) {}
             }
 
             onNodeWithText("What Comes Next", substring = true).assertExists()
@@ -157,7 +159,7 @@ class TvHeroSectionUiTest {
                             status = TvStatusTestConstant.ENDED,
                             lastEpisodeToAir = Episode(id = 1, name = "The Finale", seasonNumber = 6, episodeNumber = 10),
                         ),
-                )
+                ) {}
             }
 
             onNodeWithText("The Finale", substring = true).assertExists()
@@ -172,7 +174,7 @@ class TvHeroSectionUiTest {
                     TvHeroSection(
                         detail = show(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX)),
                         onOpenUrl = { opened = it },
-                    )
+                    ) {}
                 }
             }
 
@@ -185,7 +187,11 @@ class TvHeroSectionUiTest {
     fun testTrailerBecomesTheLabelledActionWhenNothingStreamsIt() =
         runComposeUiTest {
             var opened: String? = null
-            setContent { HeroTestSurface { TvHeroSection(detail = show(videos = trailer()), onOpenUrl = { opened = it }) } }
+            setContent {
+                HeroTestSurface {
+                    TvHeroSection(detail = show(videos = trailer()), onOpenUrl = { opened = it }) {}
+                }
+            }
 
             onNodeWithText(HeroTestConstant.PLAY_TRAILER).performClick()
 
@@ -201,7 +207,7 @@ class TvHeroSectionUiTest {
                     TvHeroSection(
                         detail = show(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX), videos = trailer()),
                         onOpenUrl = { opened = it },
-                    )
+                    ) {}
                 }
             }
 
@@ -214,7 +220,7 @@ class TvHeroSectionUiTest {
     @Test
     fun testDrawsNoActionsWhenThereIsNothingToOpen() =
         runComposeUiTest {
-            setContent { TvHeroSection(detail = show()) }
+            setContent { TvHeroSection(detail = show()) {} }
 
             onAllNodesWithText(HeroTestConstant.PLAY_TRAILER).assertCountEquals(0)
             onAllNodesWithText(HeroTestConstant.WATCH_ON_PREFIX, substring = true).assertCountEquals(0)
@@ -240,7 +246,7 @@ class TvHeroSectionUiTest {
                                     watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX),
                                     nextEpisodeToAir = Episode(id = 2, name = "What Comes Next", seasonNumber = 3, episodeNumber = 4),
                                 ),
-                        )
+                        ) {}
                     }
                 }
             }

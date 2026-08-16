@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +59,7 @@ fun DetailTopBar(
     isScrolledPastHero: Boolean? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     showBackButton: Boolean = true,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     val isOverHero = isScrolledPastHero == false
     val isSolid = !isOverHero
@@ -114,6 +116,7 @@ fun DetailTopBar(
                     scrolledContainerColor = containerColor,
                 ),
             scrollBehavior = scrollBehavior,
+            actions = actions,
         )
         // Nothing to divide from while the bar floats over an image.
         if (isSolid) {

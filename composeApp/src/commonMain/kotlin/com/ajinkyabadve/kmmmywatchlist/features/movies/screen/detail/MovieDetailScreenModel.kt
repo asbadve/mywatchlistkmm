@@ -4,6 +4,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.loadOnSessionAvailable
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
@@ -38,14 +45,27 @@ sealed interface MovieDetailState {
 class MovieDetailScreenModel(
     private val movieId: Long,
     private val movieRepository: MovieRepository = MovieRepositoryImpl(),
+    authRepository: AuthRepository = AuthRepositoryImpl(),
+    accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
     private val _uiState = MutableStateFlow<MovieDetailState>(MovieDetailState.Loading)
     val uiState: StateFlow<MovieDetailState> = _uiState.asStateFlow()
 
+    /**
+     * Owned here, not by `MediaActionButtons` itself - see [MediaActionsState]'s kdoc for why a
+     * reusable composable never gets its own `ViewModel`. Launches on this screen's
+     * `viewModelScope`, so the toggle survives past whatever recomposes the hero.
+     */
+    val mediaActionsState = MediaActionsState(MediaTypeConstant.MOVIE, movieId, viewModelScope, accountMediaRepository)
+
     init {
         loadMovieDetails()
+        // This ViewModel triggers the `account_states` pre-check, not `MediaActionButtons` - the
+        // moment a session appears (already logged in, or logging in while this screen is open),
+        // not on some composable's recomposition/LaunchedEffect timing.
+        viewModelScope.launch { mediaActionsState.loadOnSessionAvailable(authRepository) }
     }
 
     fun loadMovieDetails() {

@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,13 +69,21 @@ private object MovieHeroConstant {
  * The provider button is the point. This app does not host anything, so the most useful thing the
  * hero can say is where a title actually streams - which makes the primary action a redirect, and
  * naming the service up front sets that expectation before the tap rather than after it.
+ *
+ * [mediaActionButtons] is a slot, not a typed `mediaActionsState`/`authRepository` parameter: this
+ * composable has no business knowing the favorite/watchlist domain exists, only that *something*
+ * renders in that spot of the action row. The caller (`MovieDetailScreen`'s content composables,
+ * which already own `MovieDetailScreenModel.mediaActionsState`) supplies
+ * `{ colors -> MediaActionButtonsSection(...) }` - keeping this file free of `MediaActionsState`/
+ * `AuthRepository` imports entirely, per code-conventions §7/§8.
  */
 @Composable
-fun MovieHeroSection(
+internal fun MovieHeroSection(
     detail: MovieDetail,
     // Defaulted rather than passed by every caller: the platform `openUrl` is a top-level expect,
     // so a UI test clicking the button would launch a real browser instead of recording the tap.
     onOpenUrl: (String) -> Unit = { openUrl(it) },
+    mediaActionButtons: @Composable (HeroColors) -> Unit,
 ) {
     val density = LocalDensity.current.density
     val colors = heroColors()
@@ -135,6 +144,7 @@ fun MovieHeroSection(
                 watchOption = watchOption,
                 colors = colors,
                 onOpenUrl = onOpenUrl,
+                mediaActionButtons = mediaActionButtons,
                 modifier = Modifier.padding(top = 14.dp),
             )
         }
@@ -205,6 +215,11 @@ private fun HeroMetaRow(
  * and stops two different play buttons competing on the same image. With nowhere to stream it, the
  * trailer is all that is left to offer, so it takes the labelled slot instead of leaving the row as
  * one unexplained icon.
+ *
+ * [FlowRow] rather than [Row]: the "Watch on X" label's width depends on the provider's name, which
+ * can run long enough (localized names especially) that the trailing icons no longer fit - a plain
+ * `Row` doesn't shrink fixed-size children to compensate, it just squeezes/clips them. Wrapping the
+ * icons onto a second line keeps every button at its full tap target instead.
  */
 @Composable
 private fun HeroActionRow(
@@ -212,12 +227,17 @@ private fun HeroActionRow(
     watchOption: HeroWatchOption?,
     colors: HeroColors,
     onOpenUrl: (String) -> Unit,
+    mediaActionButtons: @Composable (HeroColors) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val trailerUrl = remember(detail.videos) { FindYoutubeTrailerUseCase()(detail.videos) }
-    if (watchOption == null && trailerUrl == null) return
 
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
         watchOption?.let { option ->
             HeroPrimaryButton(
                 label = stringResource(Res.string.hero_watch_on, option.provider.providerName),
@@ -253,6 +273,7 @@ private fun HeroActionRow(
                 }
             }
         }
+        mediaActionButtons(colors)
     }
 }
 

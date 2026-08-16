@@ -2,6 +2,13 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.loadOnSessionAvailable
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
@@ -42,14 +49,27 @@ sealed interface TvDetailState {
 class TvDetailScreenModel(
     private val tvId: Long,
     private val tvRepository: TvRepository = TvRepositoryImpl(),
+    authRepository: AuthRepository = AuthRepositoryImpl(),
+    accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
     private val _uiState = MutableStateFlow<TvDetailState>(TvDetailState.Loading)
     val uiState: StateFlow<TvDetailState> = _uiState.asStateFlow()
 
+    /**
+     * Owned here, not by `MediaActionButtons` itself - see [MediaActionsState]'s kdoc for why a
+     * reusable composable never gets its own `ViewModel`. Launches on this screen's
+     * `viewModelScope`, so the toggle survives past whatever recomposes the hero.
+     */
+    val mediaActionsState = MediaActionsState(MediaTypeConstant.TV, tvId, viewModelScope, accountMediaRepository)
+
     init {
         loadTvDetails()
+        // This ViewModel triggers the `account_states` pre-check, not `MediaActionButtons` - the
+        // moment a session appears (already logged in, or logging in while this screen is open),
+        // not on some composable's recomposition/LaunchedEffect timing.
+        viewModelScope.launch { mediaActionsState.loadOnSessionAvailable(authRepository) }
     }
 
     fun loadTvDetails() {

@@ -42,7 +42,11 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionButtonsSection
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
@@ -57,9 +61,11 @@ fun MovieDetailScreen(
     windowSize: WindowSize,
     onBackClicked: () -> Unit,
     onMovieClicked: (Long) -> Unit,
+    authRepository: AuthRepository = AuthRepositoryImpl(),
     onPersonClicked: (Long) -> Unit = {},
     onCollectionClicked: (Long) -> Unit = {},
-    viewModel: MovieDetailScreenModel = viewModel(key = "MovieDetailScreenModel:$movieId") { MovieDetailScreenModel(movieId) },
+    viewModel: MovieDetailScreenModel =
+        viewModel(key = "MovieDetailScreenModel:$movieId") { MovieDetailScreenModel(movieId, authRepository = authRepository) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
@@ -163,6 +169,8 @@ fun MovieDetailScreen(
                                 CompactMovieDetailContent(
                                     detail = detail,
                                     lazyListState = lazyListState,
+                                    authRepository = authRepository,
+                                    mediaActionsState = viewModel.mediaActionsState,
                                     onMovieClicked = onMovieClicked,
                                     onPersonClicked = onPersonClicked,
                                     onCollectionClicked = onCollectionClicked,
@@ -175,6 +183,8 @@ fun MovieDetailScreen(
                                 ExpandedMovieDetailContent(
                                     detail = detail,
                                     leftLazyListState = leftLazyListState,
+                                    authRepository = authRepository,
+                                    mediaActionsState = viewModel.mediaActionsState,
                                     onMovieClicked = onMovieClicked,
                                     onPersonClicked = onPersonClicked,
                                     onCollectionClicked = onCollectionClicked,
@@ -222,6 +232,8 @@ fun MovieDetailScreen(
 private fun CompactMovieDetailContent(
     detail: MovieDetail,
     lazyListState: LazyListState,
+    authRepository: AuthRepository,
+    mediaActionsState: MediaActionsState,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onCollectionClicked: (Long) -> Unit,
@@ -233,7 +245,15 @@ private fun CompactMovieDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            MovieHeroSection(detail = detail)
+            MovieHeroSection(detail = detail) { colors ->
+                MediaActionButtonsSection(
+                    mediaId = detail.id.toLong(),
+                    colors = colors,
+                    showAddToList = true,
+                    authRepository = authRepository,
+                    mediaActionsState = mediaActionsState,
+                )
+            }
         }
         item {
             MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)
@@ -287,6 +307,8 @@ private fun CompactMovieDetailContent(
 private fun ExpandedMovieDetailContent(
     detail: MovieDetail,
     leftLazyListState: LazyListState,
+    authRepository: AuthRepository,
+    mediaActionsState: MediaActionsState,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onCollectionClicked: (Long) -> Unit,
@@ -304,7 +326,15 @@ private fun ExpandedMovieDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                MovieHeroSection(detail = detail)
+                MovieHeroSection(detail = detail) { colors ->
+                    MediaActionButtonsSection(
+                        mediaId = detail.id.toLong(),
+                        colors = colors,
+                        showAddToList = true,
+                        authRepository = authRepository,
+                        mediaActionsState = mediaActionsState,
+                    )
+                }
             }
             item {
                 MovieMetaSection(detail = detail, onCollectionClicked = onCollectionClicked)

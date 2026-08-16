@@ -42,7 +42,11 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionButtonsSection
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CastSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.OverviewSection
@@ -63,8 +67,10 @@ fun TvDetailScreen(
     onBackClicked: () -> Unit,
     onTvShowClicked: (Long) -> Unit,
     onViewAllSeasonsClick: (Long) -> Unit,
+    authRepository: AuthRepository = AuthRepositoryImpl(),
     onPersonClicked: (Long) -> Unit = {},
-    viewModel: TvDetailScreenModel = viewModel(key = "TvDetailScreenModel:$tvShowId") { TvDetailScreenModel(tvShowId) },
+    viewModel: TvDetailScreenModel =
+        viewModel(key = "TvDetailScreenModel:$tvShowId") { TvDetailScreenModel(tvShowId, authRepository = authRepository) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lazyListState = rememberLazyListState()
@@ -169,6 +175,8 @@ fun TvDetailScreen(
                                     detail = detail,
                                     currentSeason = state.currentSeason,
                                     lazyListState = lazyListState,
+                                    authRepository = authRepository,
+                                    mediaActionsState = viewModel.mediaActionsState,
                                     onTvShowClicked = onTvShowClicked,
                                     onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
@@ -182,6 +190,8 @@ fun TvDetailScreen(
                                     detail = detail,
                                     currentSeason = state.currentSeason,
                                     leftLazyListState = leftLazyListState,
+                                    authRepository = authRepository,
+                                    mediaActionsState = viewModel.mediaActionsState,
                                     onTvShowClicked = onTvShowClicked,
                                     onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
@@ -230,6 +240,8 @@ private fun CompactTvDetailContent(
     detail: TvDetail,
     currentSeason: TvSeasonDetail?,
     lazyListState: LazyListState,
+    authRepository: AuthRepository,
+    mediaActionsState: MediaActionsState,
     onTvShowClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
@@ -241,7 +253,17 @@ private fun CompactTvDetailContent(
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
         item {
-            TvHeroSection(detail = detail)
+            TvHeroSection(detail = detail) { colors ->
+                MediaActionButtonsSection(
+                    mediaId = detail.id.toLong(),
+                    colors = colors,
+                    // TMDB's v3 list API only accepts movies (see ListsRepository's kdoc) - no
+                    // "add to list" for TV until a v4-auth pass adds that support.
+                    showAddToList = false,
+                    authRepository = authRepository,
+                    mediaActionsState = mediaActionsState,
+                )
+            }
         }
         item {
             TvMetaSection(detail = detail)
@@ -299,6 +321,8 @@ private fun ExpandedTvDetailContent(
     detail: TvDetail,
     currentSeason: TvSeasonDetail?,
     leftLazyListState: LazyListState,
+    authRepository: AuthRepository,
+    mediaActionsState: MediaActionsState,
     onTvShowClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
@@ -316,7 +340,17 @@ private fun ExpandedTvDetailContent(
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                TvHeroSection(detail = detail)
+                TvHeroSection(detail = detail) { colors ->
+                    MediaActionButtonsSection(
+                        mediaId = detail.id.toLong(),
+                        colors = colors,
+                        // TMDB's v3 list API only accepts movies (see ListsRepository's kdoc) - no
+                        // "add to list" for TV until a v4-auth pass adds that support.
+                        showAddToList = false,
+                        authRepository = authRepository,
+                        mediaActionsState = mediaActionsState,
+                    )
+                }
             }
             item {
                 TvMetaSection(detail = detail)

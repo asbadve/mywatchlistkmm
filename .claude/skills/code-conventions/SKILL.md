@@ -184,3 +184,88 @@ carries `com.ajinkyabadve.kmmmywatchlist.core.UiText` instead:
   outside a composable is fine - only `stringResource()` is composable),
 - `UiText.Plain(httpExceptions.message)` for dynamic server-provided text.
 Screens render it with `state.message.asString()`. Tests assert `UiText` values, not raw strings.
+
+## 6. No API calls from a composable, and the composable never decides *when* to load
+
+A `@Composable` function never calls a repository directly - not from its body, not from a
+`rememberCoroutineScope().launch { }` inside a click handler, and **not indirectly either**, by
+calling a state holder's load method from a `LaunchedEffect` keyed on "this just appeared." Both
+mix network/IO triggering into the render function: the call re-fires on every recomposition key
+change the composable happens to pick, survives no configuration change, and cannot be unit tested
+without standing up the whole Compose test harness.
+
+The ViewModel decides when to fetch, not the composable's lifecycle. Concretely: a ViewModel
+subscribes to whatever *causes* a load (auth session appearing, a navigation arg changing) in its
+own `init { }` via `viewModelScope.launch { repository.someFlow.collect { ... } }`, and the
+composable only ever renders `uiState` and dispatches click events - see
+`MovieDetailScreenModel`/`TvDetailScreenModel`'s `init` blocks, which subscribe to
+`AuthRepository.sessionState` and call `mediaActionsState.load(session.sessionId)` themselves the
+moment a session exists, rather than a `LaunchedEffect(session) { ... }` in `MediaActionButtons`
+doing it.
+
+A `ViewModel` (this codebase's convention names it `<Feature>ScreenModel`, see `AuthScreenModel`,
+`AccountMediaListScreenModel`, `MovieDetailScreenModel`) owns every repository call, exposes a
+`StateFlow<UiState>`, and does its own `viewModelScope.launch { }` (this codebase declares that
+scope explicitly as `CoroutineScope(Dispatchers.Main)` rather than using androidx's built-in
+property - match the existing files, don't mix the two styles). The composable:
+1. Obtains the ScreenModel via `viewModel(key = "...") { FooScreenModel(...) }` (or takes one as an
+   injectable default parameter for tests - see `testing-conventions`).
+2. Reads `val uiState by screenModel.uiState.collectAsState()`.
+3. Dispatches user events as plain method calls (`onClick = screenModel::toggleFavorite`).
+
+Existing composables that still call a repository directly (e.g. `AddToListDialog`) are known debt
+predating this rule, not a precedent to copy - migrate them opportunistically when touching that
+file, and never add a new direct call while touching one.
+
+## 7. A reusable composable never gets its own ViewModel (agreed 2026-08-16)
+
+A `ViewModel` is scoped to a `ViewModelStoreOwner` - an Activity, Fragment, or nav destination -
+i.e. a *screen*. Android's own architecture guidance is explicit that you don't pass `ViewModel`
+instances down to composables, and by extension you don't construct a `ViewModel` (even via
+`viewModel(key = "...:$id")`) *inside* a composable that isn't itself a screen and is reused across
+several places (a hero action row, a list item, anything shared by more than one destination):
+https://developer.android.com/develop/ui/compose/state-hoisting.
+
+Two failure modes this rule exists to stop, both hit while building the favorite/watchlist icons:
+- **A `ViewModel` per widget instance.** An earlier draft of `MediaActionButtons` built its own
+  `viewModel(key = "MediaActionsScreenModel:$mediaType:$mediaId") { MediaActionsScreenModel(...) }`
+  right inside the composable. That's a `ViewModel` for something that isn't a screen, keyed by
+  data the widget happens to be showing - exactly the anti-pattern the guidance above warns about.
+- **A composable triggering its own load.** Even after that state moved into a plain (non-
+  `ViewModel`) holder, the composable itself was still deciding *when* to fetch, via
+  `LaunchedEffect(mediaActionsState, session.sessionId) { mediaActionsState.load(...) }`. That is
+  still business logic living in the render function - see §6.
+
+The fix used throughout this codebase: business/action state that a reusable composable needs
+(here, favorite/watchlist status) is a **plain class** (`MediaActionsState` - holds a
+`StateFlow<UiState>` and mutation methods, nothing lifecycle-aware about it), constructed and
+*owned* by the real screen-level `ViewModel` (`MovieDetailScreenModel.mediaActionsState`,
+`TvDetailScreenModel.mediaActionsState`), running on that ViewModel's `viewModelScope` so its work
+is cancelled with the screen, not with the widget's recomposition. The ViewModel also decides when
+to call its `load()` (see §6). The screen threads the already-built holder down through its section
+composables as a required parameter with no composable-level default.
+
+## 8. A pure/reusable composable takes plain values and callbacks - never a ViewModel, a
+   repository, or a `StateFlow` to collect (agreed 2026-08-16)
+
+§7 stopped `MediaActionButtons` from owning a `ViewModel`. It is not enough by itself: the same
+composable was still reading `mediaActionsState.uiState.collectAsState()` and calling
+`mediaActionsState.toggleFavorite(...)` directly - i.e. it still held a reference to the
+`ViewModel`-owned state holder, just not a `ViewModel` subclass. That is the same coupling with a
+different type signature: the "pure" component still can't be previewed, tested, or reused without
+dragging in a `MediaActionsState`/repository, and still decides *what a click does* instead of just
+reporting that the click happened.
+
+The rule: a presentational composable - anything not itself a screen - takes only what it renders
+(`isFavorite: Boolean`, `isInWatchlist: Boolean`, ...) and a callback per action it can trigger
+(`onFavoriteClick: () -> Unit`, `onWatchlistClick: () -> Unit`). It never takes a repository, a
+`ViewModel`, a state holder like `MediaActionsState`, or anything it would call `.collectAsState()`
+on. `MediaActionButtons` is the reference shape: zero imports from `features.account.repository` or
+`features.auth.*`, nothing but `HeroColors`, booleans, and lambdas.
+
+Something still has to bridge the screen's `ViewModel` to that pure component, and duplicating that
+bridge in every caller is the duplication §2c exists to stop (`HeroActionRow` and `TvActionRow` both
+need it identically). That bridge is its own composable, colocated with the pure one and named for
+what it does (`MediaActionButtonsSection`, not `MediaActionButtons`) - it is the one place allowed
+to hold the `AuthScreenModel`/`MediaActionsState` references, collect their state, and turn clicks
+into ViewModel calls. Screens call the *section*, never the pure component, directly.

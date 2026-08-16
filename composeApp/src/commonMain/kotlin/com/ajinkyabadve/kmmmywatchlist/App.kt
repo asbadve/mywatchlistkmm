@@ -69,6 +69,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
+import com.ajinkyabadve.kmmmywatchlist.features.account.screen.ListDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
@@ -92,6 +93,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.AppKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.CollectionDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeListKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.ListDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MovieDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MoviesKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MyFavKey
@@ -421,7 +423,20 @@ private fun MainAppScaffoldContent(
                             },
                         )
                     }
-                    entry<MyFavKey> { MyFavScreenTab(authRepository = authRepository) }
+                    entry<MyFavKey> {
+                        MyFavScreenTab(
+                            authRepository = authRepository,
+                            onMovieSelected = { movieId ->
+                                topLevelBackStack.add(MovieDetailKey(movieId))
+                            },
+                            onTvSelected = { tvId ->
+                                topLevelBackStack.add(TvDetailKey(tvId))
+                            },
+                            onListSelected = { listId ->
+                                topLevelBackStack.add(ListDetailKey(listId))
+                            },
+                        )
+                    }
                     entry<SearchKey> {
                         SearchScreen(
                             onBackClicked = { topLevelBackStack.removeLast() },
@@ -462,10 +477,23 @@ private fun MainAppScaffoldContent(
                             authRepository = authRepository,
                         )
                     }
+                    entry<ListDetailKey> { key ->
+                        session?.let { activeSession ->
+                            ListDetailScreen(
+                                listId = key.listId,
+                                sessionId = activeSession.sessionId,
+                                onBackClicked = { topLevelBackStack.removeLast() },
+                                onMovieClicked = { movieId ->
+                                    topLevelBackStack.add(MovieDetailKey(movieId))
+                                },
+                            )
+                        }
+                    }
                     entry<MovieDetailKey> { key ->
                         MovieDetailScreen(
                             movieId = key.movieId,
                             windowSize = windowSize,
+                            authRepository = authRepository,
                             onBackClicked = { topLevelBackStack.removeLast() },
                             onMovieClicked = { nextMovieId ->
                                 topLevelBackStack.add(MovieDetailKey(nextMovieId))
@@ -495,6 +523,7 @@ private fun MainAppScaffoldContent(
                         TvDetailScreen(
                             tvShowId = key.tvShowId,
                             windowSize = windowSize,
+                            authRepository = authRepository,
                             onBackClicked = { topLevelBackStack.removeLast() },
                             onTvShowClicked = { nextTvShowId ->
                                 topLevelBackStack.add(TvDetailKey(nextTvShowId))

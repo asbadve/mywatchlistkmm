@@ -60,6 +60,10 @@ data class EpisodeDetailKey(
     val episodeNumber: Int,
 ) : AppKey
 
+data class ListDetailKey(
+    val listId: Long,
+) : AppKey
+
 /**
  * True for the drill-down destinations that open full-screen and bring their own top bar, as
  * opposed to the top-level browse tabs and search. These are the screens that suppress the app's
@@ -74,6 +78,7 @@ fun AppKey?.isDetailKey(): Boolean =
         is AllSeasonsKey,
         is EpisodeListKey,
         is EpisodeDetailKey,
+        is ListDetailKey,
         -> true
 
         else -> false

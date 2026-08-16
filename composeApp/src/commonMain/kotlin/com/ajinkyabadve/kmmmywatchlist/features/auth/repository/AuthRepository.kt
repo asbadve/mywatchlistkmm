@@ -203,7 +203,7 @@ class AuthRepositoryImpl(
                         trailingQuery = true
                         encodedPath = "/3/account"
                         parameters.append(NetworkConstant.API_KEY, BuildConfig.TMDB_API_KEY)
-                        parameters.append("session_id", sessionId)
+                        parameters.append(NetworkConstant.SESSION_ID, sessionId)
                     }
                 }
             response.body()

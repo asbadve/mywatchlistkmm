@@ -88,7 +88,7 @@ class MovieHeroSectionUiTest {
     @Test
     fun testRendersTitleAndTheFactsRow() =
         runComposeUiTest {
-            setContent { MovieHeroSection(detail = movie(title = "Inception")) }
+            setContent { MovieHeroSection(detail = movie(title = "Inception")) {} }
 
             onNodeWithText("Inception").assertExists()
             onNodeWithText("2010", substring = true).assertExists()
@@ -101,7 +101,7 @@ class MovieHeroSectionUiTest {
     @Test
     fun testShortRuntimesRenderWithoutAnHoursPart() =
         runComposeUiTest {
-            setContent { MovieHeroSection(detail = movie(runtime = 45)) }
+            setContent { MovieHeroSection(detail = movie(runtime = 45)) {} }
 
             onNodeWithText("45m", substring = true).assertExists()
             onAllNodesWithText("0h", substring = true).assertCountEquals(0)
@@ -112,7 +112,9 @@ class MovieHeroSectionUiTest {
     fun testOmitsFactsTmdbHasNoDataFor() =
         runComposeUiTest {
             setContent {
-                MovieHeroSection(detail = movie(releaseDate = "", runtime = null, voteAverage = 0.0, certification = null))
+                MovieHeroSection(
+                    detail = movie(releaseDate = "", runtime = null, voteAverage = 0.0, certification = null),
+                ) {}
             }
 
             onNodeWithText(DEFAULT_TITLE).assertExists()
@@ -126,7 +128,9 @@ class MovieHeroSectionUiTest {
     @Test
     fun testNamesTheStreamingServiceOnThePrimaryButton() =
         runComposeUiTest {
-            setContent { MovieHeroSection(detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX))) }
+            setContent {
+                MovieHeroSection(detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX))) {}
+            }
 
             onNodeWithText(HeroTestConstant.WATCH_ON_NETFLIX).assertExists()
         }
@@ -141,7 +145,7 @@ class MovieHeroSectionUiTest {
                     MovieHeroSection(
                         detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX)),
                         onOpenUrl = { opened = it },
-                    )
+                    ) {}
                 }
             }
 
@@ -157,7 +161,7 @@ class MovieHeroSectionUiTest {
             setContent {
                 MovieHeroSection(
                     detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX, "Prime Video", "Disney+")),
-                )
+                ) {}
             }
 
             onNodeWithText(HeroTestConstant.PROVIDER_NETFLIX).assertExists()
@@ -173,7 +177,11 @@ class MovieHeroSectionUiTest {
     fun testTrailerBecomesTheLabelledActionWhenNothingStreamsIt() =
         runComposeUiTest {
             var opened: String? = null
-            setContent { HeroTestSurface { MovieHeroSection(detail = movie(videos = trailer()), onOpenUrl = { opened = it }) } }
+            setContent {
+                HeroTestSurface {
+                    MovieHeroSection(detail = movie(videos = trailer()), onOpenUrl = { opened = it }) {}
+                }
+            }
 
             onNodeWithText(HeroTestConstant.PLAY_TRAILER).performClick()
 
@@ -190,7 +198,7 @@ class MovieHeroSectionUiTest {
                     MovieHeroSection(
                         detail = movie(watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX), videos = trailer()),
                         onOpenUrl = { opened = it },
-                    )
+                    ) {}
                 }
             }
 
@@ -204,7 +212,7 @@ class MovieHeroSectionUiTest {
     @Test
     fun testDrawsNoActionsWhenThereIsNothingToOpen() =
         runComposeUiTest {
-            setContent { MovieHeroSection(detail = movie()) }
+            setContent { MovieHeroSection(detail = movie()) {} }
 
             onAllNodesWithText(HeroTestConstant.PLAY_TRAILER).assertCountEquals(0)
             onAllNodesWithText(HeroTestConstant.WATCH_ON_PREFIX, substring = true).assertCountEquals(0)
@@ -219,7 +227,7 @@ class MovieHeroSectionUiTest {
                 MovieHeroSection(
                     detail = movie(watchProviders = WatchProvidersResponse(results = emptyMap())),
                     onOpenUrl = { opened = it },
-                )
+                ) {}
             }
 
             onAllNodesWithText(HeroTestConstant.WATCH_ON_PREFIX, substring = true).assertCountEquals(0)
@@ -247,7 +255,7 @@ class MovieHeroSectionUiTest {
                                     watchProviders = usProviders(HeroTestConstant.PROVIDER_NETFLIX),
                                     videos = trailer(),
                                 ),
-                        )
+                        ) {}
                     }
                 }
             }

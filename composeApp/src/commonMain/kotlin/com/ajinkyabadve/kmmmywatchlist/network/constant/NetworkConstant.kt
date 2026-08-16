@@ -9,4 +9,5 @@ object NetworkConstant {
     const val HOST = "api.tmdb.org"
     const val API_KEY = "api_key"
     const val PAGE = "page"
+    const val SESSION_ID = "session_id"
 }

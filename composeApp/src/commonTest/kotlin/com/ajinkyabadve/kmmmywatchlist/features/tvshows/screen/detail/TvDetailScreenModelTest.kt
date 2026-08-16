@@ -1,6 +1,10 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
+import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
@@ -202,5 +206,33 @@ class TvDetailScreenModelTest {
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(1, state.tvDetail.id)
+        }
+
+    /**
+     * The ViewModel itself subscribes to `AuthRepository.sessionState` and drives the
+     * `account_states` pre-check the moment a session exists - `MediaActionButtons` never triggers
+     * this (see `MediaActionsState`'s kdoc), so this is the only place that behavior is verified.
+     */
+    @Test
+    fun testAlreadyLoggedInSessionTriggersAccountStatesLoadOnConstruction() =
+        runTest(testDispatcher) {
+            val fakeAuthRepository = FakeAuthRepository()
+            fakeAuthRepository.saveSession(UserSession(sessionId = "session_abc", accountId = 100L, username = "jane", name = "Jane"))
+            val fakeAccountMediaRepository =
+                FakeAccountMediaRepository().apply {
+                    accountStatesResult = Result.success(AccountStates(favorite = true, watchlist = true))
+                }
+            fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show"))
+
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvRepository = fakeRepository,
+                    authRepository = fakeAuthRepository,
+                    accountMediaRepository = fakeAccountMediaRepository,
+                )
+
+            assertTrue(viewModel.mediaActionsState.uiState.value.isFavorite)
+            assertTrue(viewModel.mediaActionsState.uiState.value.isInWatchlist)
         }
 }

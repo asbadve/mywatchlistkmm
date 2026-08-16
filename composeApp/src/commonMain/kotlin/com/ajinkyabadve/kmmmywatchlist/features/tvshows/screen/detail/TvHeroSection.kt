@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -75,13 +76,18 @@ private object TvHeroConstant {
  * A film's hero answers "what is this and where can I watch it". A series has two more questions
  * behind it - is it still running, and how much of it is there - so status, season and episode
  * counts sit in the same glanceable block rather than in separate chip rows further down.
+ *
+ * [mediaActionButtons] is a slot, same reasoning as `MovieHeroSection`'s: this file has no business
+ * knowing `MediaActionsState`/`AuthRepository` exist, only that something renders in that spot -
+ * see `MovieHeroSection`'s kdoc.
  */
 @Composable
-fun TvHeroSection(
+internal fun TvHeroSection(
     detail: TvDetail,
     // Injectable for the same reason as the movie hero: `openUrl` is a platform expect, so a test
     // clicking the button would launch a real browser rather than record the tap.
     onOpenUrl: (String) -> Unit = { openUrl(it) },
+    mediaActionButtons: @Composable (HeroColors) -> Unit,
 ) {
     val density = LocalDensity.current.density
     val colors = heroColors()
@@ -156,6 +162,7 @@ fun TvHeroSection(
                 watchOption = watchOption,
                 colors = colors,
                 onOpenUrl = onOpenUrl,
+                mediaActionButtons = mediaActionButtons,
                 modifier = Modifier.padding(top = 14.dp),
             )
         }
@@ -254,18 +261,29 @@ private fun TvMetaRow(
     }
 }
 
+/**
+ * [FlowRow] rather than [Row]: a long provider name on the "Watch on X" button can leave no room
+ * for the trailer/favorite/watchlist icons on the same line - a plain `Row` doesn't shrink those
+ * fixed-size children, it squeezes/clips them. Wrapping onto a second line keeps every button at
+ * its full tap target instead.
+ */
 @Composable
 private fun TvActionRow(
     detail: TvDetail,
     watchOption: HeroWatchOption?,
     colors: HeroColors,
     onOpenUrl: (String) -> Unit,
+    mediaActionButtons: @Composable (HeroColors) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val trailerUrl = remember(detail.videos) { FindYoutubeTrailerUseCase()(detail.videos) }
-    if (watchOption == null && trailerUrl == null) return
 
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
         watchOption?.let { option ->
             Row(
                 modifier =
@@ -338,5 +356,6 @@ private fun TvActionRow(
                 }
             }
         }
+        mediaActionButtons(colors)
     }
 }

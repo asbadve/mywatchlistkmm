@@ -13,6 +13,7 @@
     <string name="error_unexpected_person">An unexpected error occurred while loading the person. Please try again.</string>
     <string name="error_unexpected_trailers">An unexpected error occurred while loading trailers. Please try again.</string>
     <string name="error_unexpected_collection">An unexpected error occurred while loading the collection. Please try again.</string>
+    <string name="error_unexpected_list">An unexpected error occurred while loading the list. Please try again.</string>
 
     <!-- Actions -->
     <string name="action_retry">Retry</string>
@@ -52,7 +53,6 @@
     <string name="section_reviews">Reviews</string>
     <string name="label_review_by">A review by %1$s</string>
     <string name="title_review_by">Review by %1$s</string>
-    <string name="coming_soon_my_fav_message">Your favorites and watchlist are coming soon.</string>
     <string name="section_trailers_clips">Trailers &amp; Clips</string>
     <string name="section_recommendations">Recommendations</string>
     <string name="section_similar_movies">Similar Movies</string>
@@ -135,4 +135,23 @@
     <string name="account_screen_title">Account</string>
     <string name="tab_favorites">Favorites</string>
     <string name="tab_watchlist">Watchlist</string>
+    <string name="tab_lists">Lists</string>
+    <string name="favorites_empty_message">No favorites yet. Tap the heart on a movie or TV show to add one.</string>
+    <string name="watchlist_empty_message">Your watchlist is empty. Tap the bookmark on a movie or TV show to add one.</string>
+    <string name="lists_empty_message">You have no custom lists yet.</string>
+    <string name="list_create_title">New list</string>
+    <string name="list_name_hint">Name</string>
+    <string name="list_description_hint">Description (optional)</string>
+    <string name="list_create_button">Create</string>
+    <string name="list_delete_button">Delete list</string>
+    <string name="list_delete_confirm_title">Delete this list?</string>
+    <string name="list_delete_confirm_message">This deletes the list and its items from your TMDB account. This cannot be undone.</string>
+    <string name="list_item_count">%1$d movies</string>
+    <string name="action_add_to_list">Add to list</string>
+    <string name="action_remove_from_list">Remove from list</string>
+    <string name="action_create">Create</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="favorite_content_description">Favorite</string>
+    <string name="watchlist_content_description">Watchlist</string>
 </resources>

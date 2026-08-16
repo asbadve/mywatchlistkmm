@@ -6,6 +6,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
@@ -52,7 +54,7 @@ class MyFavScreenTabUiTest {
         }
 
     @Test
-    fun testLoggedInStateRendersProfileCard() =
+    fun testLoggedInStateRendersFavoritesWatchlistAndListsTabs() =
         runComposeUiTest {
             val session =
                 UserSession(
@@ -68,10 +70,13 @@ class MyFavScreenTabUiTest {
                 MyFavScreenTab(
                     webAuthLauncher = fakeWebAuthLauncher,
                     screenModel = screenModel,
+                    accountMediaRepository = FakeAccountMediaRepository(),
+                    listsRepository = FakeListsRepository(),
                 )
             }
 
-            onNodeWithText("Welcome, Jane Doe!").assertIsDisplayed()
-            onNodeWithText("Your favorites and watchlist are coming soon.").assertIsDisplayed()
+            onNodeWithText("Favorites").assertIsDisplayed()
+            onNodeWithText("Watchlist").assertIsDisplayed()
+            onNodeWithText("Lists").assertIsDisplayed()
         }
 }

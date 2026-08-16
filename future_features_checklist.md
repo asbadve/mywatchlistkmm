@@ -91,7 +91,7 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 
 ---
 
-## 3. Account Favorites & Watchlist (Replacing "My Fav" Placeholder)
+## 3. Account Favorites & Watchlist (Replacing "My Fav" Placeholder) — DONE (2026-08-16)
 **Goal**: Build a tabbed layout in the "My Fav" bottom tab where users can view their marked favorite movies/shows and their watchlist.
 
 ### Relevant OAS Endpoints:
@@ -103,15 +103,31 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 - `POST /3/account/{account_id}/watchlist`: Add/remove from watchlist.
 
 ### Implementation Checklist:
-- [ ] **Data Layer**:
-  - Add favorite/watchlist fetch and post functions in repositories.
-- [ ] **Business Logic**:
-  - Manage user authentication state or session IDs (using guest sessions `/3/authentication/guest_session/new` if needed).
-  - Add a ViewModel/ScreenModel for managing favorites/watchlist.
-- [ ] **UI Presentation**:
-  - Build `MyFavScreenTab` with two sub-tabs: "Favorites" and "Watchlist", using our uniform centered pill tab layout.
-  - Implement lists showing favorite movies and TV shows.
-  - Add a "Favorite" (heart) button on media cards to mark/unmark items.
+- [x] **Data Layer**:
+  - `AccountMediaRepository`/`AccountMediaRepositoryImpl` (`features/account/repository/`) cover
+    favorite/watchlist GET (both media types) and the shared POST toggle endpoints. GET responses
+    reuse Search's `SearchPageResult`/`SearchResultItem` rather than a new model - see its kdoc.
+  - Custom lists went further than originally scoped here - full CRUD via `ListsRepository`
+    (`/3/list` v3 API, movie-only - see its kdoc for why, and the deferred v4/TV-list follow-up).
+- [x] **Business Logic**:
+  - `AccountMediaListScreenModel` (one per category × media-type pair) and `ListsScreenModel`
+    mirror `MovieListScreenModel`'s pagination/`ListState` shape exactly.
+  - Session comes from the existing `AuthRepository`/`UserSession` - no guest-session path needed.
+- [x] **UI Presentation**:
+  - `MyFavTabs` (`features/account/screen/`): three tabs - Favorites / Watchlist / Lists - via a
+    `PillTabRow` extracted from `MovieScreenTabs` for reuse. Favorites/Watchlist each have a
+    Movie/TV chip toggle over a paginated grid; Lists has create/view/delete plus a
+    `ListDetailScreen` (add/remove items).
+  - Favorite/Watchlist/Add-to-list icon buttons live on the movie/TV detail hero action row
+    (`MediaActionButtons`, shared by `MovieHeroSection`/`TvHeroSection`), gated on login state -
+    not on every media card as originally scoped, since that was moved to a deliberate choice
+    (see item 3's original card-level heart button idea - decided against it to keep the surface
+    area smaller for this pass).
+
+### Known bugs
+- Poster thumbnails in `ListDetailScreen` render blank/grey instead of the actual poster image
+  (movie titles/overview/rating all render correctly - just the image). Not yet root-caused; found
+  during manual verification against a real account's TMDB lists on 2026-08-16.
 
 ---
 
