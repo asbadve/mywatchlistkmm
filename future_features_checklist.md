@@ -272,37 +272,41 @@ accepts `include_adult` (`true`/`false`).
 
 ---
 
-## 9. Region Selector Driving OTT Availability
+## 9. Region Selector Driving OTT Availability — DONE (2026-08-17)
 **Goal**: Let the user pick their region instead of the app silently falling back to
 [`RegionConstant.US`](../composeApp/src/commonMain/kotlin/com/ajinkyabadve/kmmmywatchlist/core/constant/RegionConstant.kt)
-whenever the device locale has no TMDB entry for release dates/content ratings/watch providers.
-Watch-provider display ("Watch on Amazon Prime Video" etc., see `MovieHeroFacts`/`TvHeroSection`)
-already exists but is not user-adjustable today.
+whenever the device locale has no TMDB entry for watch providers. Watch-provider display ("Watch
+on Amazon Prime Video" etc., see `MovieHeroFacts`/`TvHeroSection`) already existed but was not
+user-adjustable.
 
 ### Relevant OAS endpoints:
-- `GET /3/configuration/countries`: The list of valid region codes + English names to populate a
-  picker.
+- `GET /3/watch/providers/regions`: Regions TMDB actually has watch-provider data for - used
+  instead of the full `/3/configuration/countries` list so the picker never offers an empty region.
 - `GET /3/movie/{movie_id}/watch/providers` & `GET /3/tv/{series_id}/watch/providers`: Already
-  called - keyed by region in the response (`results.{region_code}`); currently only the
-  `RegionConstant.US`/device-locale bucket is read out of it.
-- `GET /3/watch/providers/regions`: Just the regions that actually have watch-provider data (a
-  tighter list than all countries - worth using instead of the full country list so the picker
-  doesn't offer regions with nothing to show).
+  called - keyed by region in the response (`results.{region_code}`).
 
 ### Implementation Checklist:
-- [ ] **Data Layer**:
-  - Add a repository call for `/3/watch/providers/regions` (or `/3/configuration/countries`) to
-    populate the picker.
-  - Persist the chosen region code (`multiplatform-settings`), defaulting to whatever region the
-    device locale resolves to today, falling back to `RegionConstant.US`.
-- [ ] **Business Logic**:
-  - Replace every hardcoded/device-locale region lookup (release dates, content ratings, watch
-    providers) with a read from the persisted setting, so changing it retroactively affects
-    already-open detail screens.
-- [ ] **UI Presentation**:
-  - Add a "Region" row to `AccountScreen`'s settings list that opens a searchable region picker
-    (name + code), consistent with the settings-list shape item 8 introduces.
-  - Re-key the existing watch-provider rendering off the selected region instead of the current
-    single fallback bucket.
+- [x] **Data Layer**:
+  - `RegionRepository`/`RegionRepositoryImpl` (`features/settings/repository/`) fetch and
+    week-long-cache `/3/watch/providers/regions` (mirrors `ConfigurationRepositoryImpl`'s caching
+    shape), and get/set two persisted `multiplatform-settings` values: the selected region
+    (defaults to device locale) and a separate fallback region (defaults to `RegionConstant.US`,
+    also user-configurable - see below).
+- [x] **Business Logic**:
+  - `WatchProvidersResponse?.resolveRegion(regionCode, fallbackRegionCode)`
+    (`MovieHeroFacts.kt`) replaced the old hardcoded-US fallback chain; `MovieHeroSection`,
+    `TvHeroSection`, and `MovieMetaSection`'s "Where to watch" all resolve through the
+    persisted selected/fallback region now, sourced once per screen load in
+    `MovieDetailScreenModel`/`TvDetailScreenModel`.
+  - Deliberate scope cut: content ratings/release-dates lookups (`usCertification()`) still read
+    `RegionConstant.US` directly - only watch-provider region was in scope. Also, changing the
+    region does not retroactively refresh an already-open detail screen (resolved once at load) -
+    confirmed acceptable by the user rather than implemented.
+- [x] **UI Presentation**:
+  - `AccountScreen`'s settings list has "Region" and "Default fallback region" rows, each opening
+    `RegionPickerDialog` (search + list, `features/auth/screen/RegionPickerDialog.kt`) backed by
+    `RegionScreenModel`. Each region row shows a flag emoji
+    (`core/format/RegionFlag.kt`'s `toRegionFlagEmoji()`, built from Unicode Regional Indicator
+    Symbols - no bundled flag images).
 
 
