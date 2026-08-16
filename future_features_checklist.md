@@ -131,7 +131,7 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 
 ---
 
-## 4. Media Detailed Views (Movies & TV Shows)
+## 4. Media Detailed Views (Movies & TV Shows) — DONE (2026-08-16)
 **Goal**: Open a comprehensive detail page when clicking on any Movie or TV Show card.
 
 ### Relevant OAS Endpoints:
@@ -141,17 +141,24 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 - `GET /3/movie/{movie_id}/videos` & `GET /3/tv/{series_id}/videos`: Trailer video keys.
 
 ### Implementation Checklist:
-- [ ] **Data Models**:
-  - Create rich model classes for media details, cast members, and video keys.
-- [ ] **Navigation & Routing**:
-  - Add navigation routes like `movie_detail/{movie_id}` and `tv_detail/{tv_id}` to your routing configurations.
-- [ ] **UI Presentation**:
-  - Create a premium detailed screen Composable featuring:
-    - Large backdrop banner image.
-    - Title, release date, rating, runtime, and overview.
-    - Horizontal scrollable cast list.
-    - Trailer video player (via web link or YouTube helper).
-    - Horizontal browse list of recommendations.
+- [x] **Data Models**:
+  - `MovieDetail`/`TvDetail`/`PersonDetail`/`CollectionDetail` model classes
+    (`features/{movies,tvshows,person}/model/`) cover full metadata, cast/crew, video keys.
+- [x] **Navigation & Routing**:
+  - `MovieDetailScreen`/`TvDetailScreen`/`PersonDetailScreen`/`CollectionDetailScreen`/
+    `EpisodeDetailScreen` are pushed destinations (Voyager screen keys) from every media card
+    across Trending/Movies/TV/Search/Account.
+- [x] **UI Presentation**:
+  - `BackdropSection`/`TvBackdropSection` render the backdrop banner with an overlaid trailer play
+    button (opens the YouTube trailer via web link when a `site == "YouTube" && type == "Trailer"`
+    video exists).
+  - `MovieHeroSection`/`TvHeroSection` carry title, release date, rating, runtime and overview,
+    themed via `HeroColors` (see `TASKS.md`'s hero-contrast work).
+  - `CastSection` (horizontal scrollable cast list) and `RecommendationsSection`/
+    `TvRecommendationsSection` (horizontal recommendations browse row) round out both screens.
+  - Adaptive detail layout (full-screen vs. internal 50/50 split) per
+    `.claude/skills/detail-screen-scroll-jank/SKILL.md` and the memory note on detail-screen split
+    design.
 
 ---
 
