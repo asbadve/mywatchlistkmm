@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,14 @@ object AccountFavoritesWatchlistTabConstant {
  * Favorites and Watchlist share this exact layout - a Movie/TV chip toggle over a paginated grid -
  * only the endpoint category and empty-state copy differ, so both tabs in `MyFavTabs` render the
  * same composable rather than two near-identical ones.
+ *
+ * Refreshes itself on every mount (see the `LaunchedEffect(screenModel)` below), not just on a
+ * manual pull-to-refresh: `viewModel(key = ...)` returns the *same* `AccountMediaListScreenModel`
+ * instance across a tab switch-away-and-back (Navigation3 keeps it alive), so without this a title
+ * favorited/watchlisted elsewhere while this tab sat cached would stay invisible here until the
+ * user thought to pull down - which isn't a gesture desktop's mouse input reliably triggers at
+ * all. Composing this file fresh (which switching tabs does) reruns the effect even though the key
+ * (the cached `screenModel` instance) is unchanged, so this fires every time the user returns here.
  */
 @Composable
 fun AccountFavoritesWatchlistTab(
@@ -75,6 +84,10 @@ fun AccountFavoritesWatchlistTab(
                 )
             }
         }
+
+    LaunchedEffect(screenModel) {
+        screenModel.refresh()
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {

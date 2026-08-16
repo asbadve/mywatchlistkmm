@@ -68,6 +68,15 @@ fun ListsTab(
         },
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+
+    // Re-syncs on every mount, not just on a manual pull-to-refresh: `viewModel(key = ...)`
+    // returns the same cached ScreenModel instance across a tab switch-away-and-back, so a list
+    // created/deleted elsewhere would stay invisible here otherwise - see
+    // AccountFavoritesWatchlistTab's kdoc for the full reasoning (same fix, same cause).
+    LaunchedEffect(screenModel) {
+        screenModel.refresh()
+    }
+
     val lazyListState = rememberLazyListState()
     val shouldPaginate =
         remember {

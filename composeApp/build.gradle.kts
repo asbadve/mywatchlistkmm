@@ -179,11 +179,38 @@ android {
         res.srcDirs("src/androidMain/resources")
         resources.srcDirs("src/commonMain/resources")
     }
+    buildTypes {
+        // Signed with the debug key purely so `assembleRelease`/`installRelease` produce an
+        // installable APK for local scroll-performance benchmarking - Compose's own guidance is
+        // that Lazy layout performance can only be measured reliably in a non-debuggable build
+        // (debug builds carry extra composer/slot-table tracking that debug=true always installs
+        // regardless of minification). Not wired to any signing secret - do not use this to ship.
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+// Prints once when a person actually invokes a Release-variant output task, so the debug-signing
+// benchmark shortcut above can't be ship-forgotten: this key is not a real release credential, and
+// an APK built with it cannot be uploaded as a Play Store update to the existing app (Play
+// enforces the original signing key). Deliberately only the outward-facing tasks, not every
+// internal Release-suffixed task in the dependency graph (dozens of those run per build).
+setOf("assembleRelease", "bundleRelease", "installRelease").forEach { taskName ->
+    tasks.matching { it.name == taskName }.configureEach {
+        doFirst {
+            logger.warn(
+                "\n[!] '$taskName' is signed with the DEBUG key (see composeApp/build.gradle.kts) - " +
+                    "for local benchmarking only. Do NOT distribute this APK/bundle as a real release.\n",
+            )
+        }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.material3.window.size.class1.android)
 }

@@ -26,6 +26,11 @@ optional.
 - `.claude/skills/pr-screenshots/SKILL.md` - before/after screenshots for a visual PR, and how to
   host them without adding permanent weight to git. Read it *before* capturing: the order of
   operations is not recoverable if you rewrite history first.
+- `.claude/skills/detail-screen-scroll-jank/SKILL.md` - Movie/TV detail screen scroll jank
+  investigation, mostly resolved (root cause: measure in release, not debug - debug-build jank was
+  a measurement artifact). Read before touching their scroll performance, or before trusting any
+  on-device jank number in this repo - has the release-build benchmark setup and two documented
+  dead ends so they aren't retried.
 
 ## Verify
 `./gradlew :composeApp:desktopTest` (tests), `:composeApp:compileKotlinDesktop` +
