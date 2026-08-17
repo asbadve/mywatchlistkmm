@@ -81,6 +81,8 @@ import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
 import mywatchlist.composeapp.generated.resources.filter_all
 import mywatchlist.composeapp.generated.resources.filter_all_departments
+import mywatchlist.composeapp.generated.resources.filter_label_department
+import mywatchlist.composeapp.generated.resources.filter_label_media_type
 import mywatchlist.composeapp.generated.resources.filter_movies
 import mywatchlist.composeapp.generated.resources.filter_tv_shows
 import mywatchlist.composeapp.generated.resources.no_filmography_matches
@@ -428,6 +430,7 @@ private fun FilmographySection(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
+        FilmographyFilterLabel(text = stringResource(Res.string.filter_label_media_type))
         FlowRow(
             modifier =
                 Modifier
@@ -456,6 +459,7 @@ private fun FilmographySection(
                 .map { it.first }
         if (departmentFilter != null && departmentFilter !in departments) departmentFilter = null
         if (departments.size > 1) {
+            FilmographyFilterLabel(text = stringResource(Res.string.filter_label_department))
             FlowRow(
                 modifier =
                     Modifier
@@ -659,6 +663,20 @@ private fun PersonCreditCard(
             )
         }
     }
+}
+
+// A caption above each chip row so the media-type filter ("All"/Movies/TV shows) and the
+// department filter ("All departments"/Acting/Directing/...) read as two distinct filter
+// categories instead of one ambiguous chip group.
+@Composable
+private fun FilmographyFilterLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
 }
 
 // M3 filter chips show a leading checkmark while selected (m3.material.io/components/chips).

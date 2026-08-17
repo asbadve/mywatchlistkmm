@@ -100,6 +100,8 @@
     <string name="filter_movies">Movies</string>
     <string name="filter_tv_shows">TV shows</string>
     <string name="filter_all_departments">All departments</string>
+    <string name="filter_label_media_type">Type</string>
+    <string name="filter_label_department">Department</string>
     <string name="filter_in_theaters">In Theaters</string>
     <string name="filter_upcoming">Upcoming</string>
     <string name="filter_popular">Popular</string>

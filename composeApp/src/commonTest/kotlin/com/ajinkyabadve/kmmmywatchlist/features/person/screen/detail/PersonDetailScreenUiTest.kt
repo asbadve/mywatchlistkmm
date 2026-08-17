@@ -207,6 +207,57 @@ class PersonDetailScreenUiTest {
         }
 
     @Test
+    fun testPersonDetailScreen_filmographyFilters_showDistinctCategoryLabels() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakePersonRepository().apply {
+                    getPersonDetailsResult =
+                        Result.success(
+                            successfulPersonDetail().copy(
+                                combinedCredits =
+                                    successfulPersonDetail().combinedCredits?.copy(
+                                        crew =
+                                            listOf(
+                                                PersonCredit(
+                                                    id = 402,
+                                                    mediaType = "tv",
+                                                    name = "Directed Show",
+                                                    job = "Director",
+                                                    department = "Directing",
+                                                    voteCount = 50,
+                                                ),
+                                                PersonCredit(
+                                                    id = 403,
+                                                    mediaType = "tv",
+                                                    name = "Written Show",
+                                                    job = "Writer",
+                                                    department = "Writing",
+                                                    voteCount = 40,
+                                                ),
+                                            ),
+                                    ),
+                            ),
+                        )
+                }
+            val viewModel = PersonDetailScreenModel(personId = 1, personRepository = fakeRepository)
+
+            setContent {
+                PersonDetailScreen(
+                    personId = 1,
+                    windowSize = WindowSize.COMPACT,
+                    onBackClicked = {},
+                    onMovieClicked = {},
+                    onTvShowClicked = {},
+                    viewModel = viewModel,
+                )
+            }
+
+            onAllNodes(hasScrollToIndexAction())[0].performScrollToIndex(FILMOGRAPHY_ITEM_INDEX)
+            onNodeWithText("Type").assertExists()
+            onNodeWithText("Department").assertExists()
+        }
+
+    @Test
     fun testPersonDetailScreen_backClicked_invokesOnBackClicked() =
         runComposeUiTest {
             val fakeRepository =
