@@ -1,9 +1,11 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -26,12 +28,17 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.listStates
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
+import com.ajinkyabadve.kmmmywatchlist.features.search.screen.UpcomingBadge
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.searchMediaRow
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 
 private object AccountMediaGridConstant {
     const val PAGINATION_LOOKAHEAD_ITEMS = 3
     const val POSTER_TARGET_WIDTH_DP = 150
     val GRID_MIN_CELL_SIZE = 150.dp
+    val BADGE_OFFSET = 12.dp
 }
 
 /**
@@ -52,6 +59,7 @@ fun accountMediaGridContent(
     lazyGridState: LazyGridState = rememberLazyGridState(),
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
     val shouldStartPaginate =
         remember {
             derivedStateOf {
@@ -95,13 +103,23 @@ fun accountMediaGridContent(
                     targetWidthDp = AccountMediaGridConstant.POSTER_TARGET_WIDTH_DP,
                     density = density,
                 )
-            searchMediaRow(
-                imageUrl = imageUrl,
-                title = item.displayTitle,
-                mediaType = mediaType,
-                modifier = Modifier,
-                onClick = { onItemSelected(item.id.toLong()) },
-            )
+            Box {
+                searchMediaRow(
+                    imageUrl = imageUrl,
+                    title = item.displayTitle,
+                    mediaType = mediaType,
+                    modifier = Modifier,
+                    onClick = { onItemSelected(item.id.toLong()) },
+                )
+                if (item.isUpcoming(today)) {
+                    UpcomingBadge(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(AccountMediaGridConstant.BADGE_OFFSET),
+                    )
+                }
+            }
         }
         listStates(
             coroutineScope = coroutineScope,

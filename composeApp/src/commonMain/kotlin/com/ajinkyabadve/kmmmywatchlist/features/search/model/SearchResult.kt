@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.search.model
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -71,6 +72,21 @@ data class SearchResultItem(
      */
     val uniqueKey: String
         get() = "$mediaTypeRaw-$id"
+
+    /**
+     * True only for a real, parseable date strictly after [today] - missing, blank or unparsable
+     * dates (e.g. people, or TV shows TMDB hasn't dated yet) read as already released rather than
+     * incorrectly flagged upcoming.
+     */
+    fun isUpcoming(today: LocalDate): Boolean {
+        val dateString = releaseDate ?: firstAirDate
+        if (dateString.isNullOrBlank()) return false
+        return try {
+            LocalDate.parse(dateString) > today
+        } catch (e: IllegalArgumentException) {
+            false
+        }
+    }
 }
 
 private const val YEAR_LENGTH = 4

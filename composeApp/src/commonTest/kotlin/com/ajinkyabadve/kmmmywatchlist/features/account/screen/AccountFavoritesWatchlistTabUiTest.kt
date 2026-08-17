@@ -119,10 +119,45 @@ class AccountFavoritesWatchlistTabUiTest {
             onNodeWithText(NEW_TITLE).assertExists()
         }
 
+    @Test
+    fun testUpcomingMovieShowsUpcomingBadgeAndReleasedMovieDoesNot() =
+        runComposeUiTest {
+            val fake =
+                FakeAccountMediaRepository().apply {
+                    favoriteMoviesResult =
+                        Result.success(
+                            SearchPageResult(
+                                page = 1,
+                                list =
+                                    listOf(
+                                        SearchResultItem(id = 1, title = UPCOMING_MOVIE_TITLE, releaseDate = FAR_FUTURE_DATE),
+                                        SearchResultItem(id = 2, title = MOVIE_TITLE, releaseDate = PAST_DATE),
+                                    ),
+                                totalPages = 1,
+                            ),
+                        )
+                }
+            setContent {
+                AccountFavoritesWatchlistTab(
+                    category = AccountMediaCategory.FAVORITES,
+                    session = testSession(),
+                    onMovieSelected = {},
+                    onTvSelected = {},
+                    accountMediaRepository = fake,
+                )
+            }
+
+            onNodeWithText(UPCOMING_BADGE_TEXT).assertExists()
+        }
+
     private companion object {
         const val OLD_TITLE = "Old Favorite"
         const val NEW_TITLE = "New Favorite"
         const val MOVIE_ID = 11
         const val MOVIE_TITLE = "Star Wars"
+        const val UPCOMING_MOVIE_TITLE = "Not Out Yet"
+        const val FAR_FUTURE_DATE = "2099-01-01"
+        const val PAST_DATE = "2010-01-01"
+        const val UPCOMING_BADGE_TEXT = "Upcoming"
     }
 }
