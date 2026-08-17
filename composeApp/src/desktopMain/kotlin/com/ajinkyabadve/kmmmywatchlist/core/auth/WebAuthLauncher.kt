@@ -55,7 +55,11 @@ class DesktopWebAuthLauncher : WebAuthLauncher {
 
                 // Parse query parameters from GET /auth-callback?request_token=...&approved=true
                 var requestToken: String? = null
-                var approved = true
+                // Fail closed: TMDB only appends approved=true on a genuine approval redirect, and
+                // per its docs doesn't redirect at all on denial. Treating a missing/unexpected
+                // value as approved would let an unapproved token reach createSession(), which TMDB
+                // rejects with 401 - surfacing as a confusing "expired" error instead of "cancelled".
+                var approved = false
                 if (requestLine.contains("?")) {
                     val queryString = requestLine.substringAfter("?").substringBefore(" ")
                     val params =
@@ -66,7 +70,7 @@ class DesktopWebAuthLauncher : WebAuthLauncher {
                             key to value
                         }
                     requestToken = params["request_token"]
-                    approved = params["approved"] != "false"
+                    approved = params["approved"] == "true"
                 }
 
                 val htmlResponse =

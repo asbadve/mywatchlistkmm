@@ -22,11 +22,27 @@ object AndroidAuthCallbackHandler {
         val data: Uri? = intent?.data
         if (data != null && data.scheme == "mywatchlist") {
             val requestToken = data.getQueryParameter("request_token")
-            val approved = data.getBooleanQueryParameter("approved", true) || data.getQueryParameter("approved") == "true"
+            // Fail closed: TMDB only appends approved=true on a genuine approval redirect, and per
+            // its docs doesn't redirect at all on denial. Treating a missing/unexpected value as
+            // approved would let an unapproved token reach createSession(), which TMDB rejects with
+            // 401 - surfacing as a confusing "expired" error instead of the correct "cancelled" one.
+            val approved = data.getQueryParameter("approved") == "true"
             Napier.d(tag = "AndroidAuthCallback") { "Deep link received: token=$requestToken, approved=$approved" }
             pendingCallback?.invoke(requestToken, approved)
             pendingCallback = null
         }
+    }
+
+    // The Custom Tab redirects back via handleIntent() on approval, which runs before onResume()
+    // and clears pendingCallback. If the user instead denies/backs out of the TMDB page, no deep
+    // link ever arrives - only onResume() fires - so a callback still pending here means the user
+    // returned without completing auth. Treat that as a cancellation instead of leaving the caller
+    // (and its spinner) waiting forever.
+    fun handleResume() {
+        val callback = pendingCallback ?: return
+        Napier.d(tag = "AndroidAuthCallback") { "Resumed with no deep link - treating as user cancelled" }
+        pendingCallback = null
+        callback.invoke(null, false)
     }
 }
 

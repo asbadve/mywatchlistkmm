@@ -178,6 +178,57 @@ class AccountScreenUiTest {
         }
 
     @Test
+    fun testLoggedOutStateAlsoShowsRegionAndRestrictedModeSettings() =
+        runComposeUiTest {
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    screenModel = screenModel,
+                )
+            }
+
+            // Region/restricted-mode use TMDB's API-key-only endpoints, so they shouldn't require
+            // being signed in - only "Log out" (which needs a session) is gated behind LoggedIn.
+            onNodeWithText("Region").assertIsDisplayed()
+            onNodeWithText("Default fallback region").assertIsDisplayed()
+            onNodeWithText("Restricted Mode").assertIsDisplayed()
+            onNodeWithText("Log out").assertDoesNotExist()
+        }
+
+    @Test
+    fun testErrorStateAlsoShowsRegionAndRestrictedModeSettings() =
+        runComposeUiTest {
+            val deniedWebAuthLauncher =
+                object : WebAuthLauncher {
+                    override fun launchAuth(
+                        authUrl: String,
+                        redirectScheme: String,
+                        onResult: (requestToken: String?, approved: Boolean) -> Unit,
+                    ) {
+                        onResult(null, false)
+                    }
+                }
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = deniedWebAuthLauncher,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNodeWithText("Log in with TMDB").performClick()
+
+            onNodeWithText("Authentication was cancelled or failed. Please try again.").assertIsDisplayed()
+            onNodeWithText("Region").assertIsDisplayed()
+            onNodeWithText("Restricted Mode").assertIsDisplayed()
+        }
+
+    @Test
     fun testClickingBackInvokesCallback() =
         runComposeUiTest {
             var backClicked = false

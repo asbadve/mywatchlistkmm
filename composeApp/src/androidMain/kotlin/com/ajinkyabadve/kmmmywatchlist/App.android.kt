@@ -55,6 +55,15 @@ class AppActivity : ComponentActivity() {
         com.ajinkyabadve.kmmmywatchlist.core.auth.AndroidAuthCallbackHandler
             .handleIntent(intent)
     }
+
+    override fun onResume() {
+        super.onResume()
+        // onNewIntent() (and its handleIntent() call) always runs before onResume() when the
+        // Custom Tab redirects back via deep link, so a still-pending callback here means the
+        // user returned without one - i.e. they denied or dismissed the TMDB auth page.
+        com.ajinkyabadve.kmmmywatchlist.core.auth.AndroidAuthCallbackHandler
+            .handleResume()
+    }
 }
 
 @Composable

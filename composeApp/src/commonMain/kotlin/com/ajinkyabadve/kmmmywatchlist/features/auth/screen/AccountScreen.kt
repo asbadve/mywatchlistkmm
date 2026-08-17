@@ -145,21 +145,6 @@ fun AccountScreen(
                     is AuthUiState.LoggedIn -> {
                         ProfileSection(state.session)
                         HorizontalDivider()
-                        SettingsList(
-                            regionCode = selectedRegionCode,
-                            fallbackRegionCode = fallbackRegionCode,
-                            restrictedModeEnabled = restrictedModeEnabled,
-                            onRegionClicked = { showRegionPicker = true },
-                            onFallbackRegionClicked = { showFallbackRegionPicker = true },
-                            onRestrictedModeChanged = { enabled ->
-                                restrictedModeRepository.setRestrictedModeEnabled(enabled)
-                                restrictedModeEnabled = enabled
-                            },
-                            onLogoutClicked = {
-                                screenModel.onLogoutClicked()
-                                onBackClicked()
-                            },
-                        )
                     }
 
                     is AuthUiState.Error -> {
@@ -171,6 +156,30 @@ fun AccountScreen(
                         }
                     }
                 }
+
+                // Region/fallback-region/restricted-mode apply to TMDB's API-key-only endpoints
+                // and don't need a session, so they stay reachable no matter the login state - only
+                // "Log out" (which needs a session to end) is gated behind LoggedIn.
+                SettingsList(
+                    regionCode = selectedRegionCode,
+                    fallbackRegionCode = fallbackRegionCode,
+                    restrictedModeEnabled = restrictedModeEnabled,
+                    onRegionClicked = { showRegionPicker = true },
+                    onFallbackRegionClicked = { showFallbackRegionPicker = true },
+                    onRestrictedModeChanged = { enabled ->
+                        restrictedModeRepository.setRestrictedModeEnabled(enabled)
+                        restrictedModeEnabled = enabled
+                    },
+                    onLogoutClicked =
+                        if (uiState is AuthUiState.LoggedIn) {
+                            {
+                                screenModel.onLogoutClicked()
+                                onBackClicked()
+                            }
+                        } else {
+                            null
+                        },
+                )
             }
         }
     }
@@ -305,7 +314,7 @@ private fun SettingsList(
     onRegionClicked: () -> Unit,
     onFallbackRegionClicked: () -> Unit,
     onRestrictedModeChanged: (Boolean) -> Unit,
-    onLogoutClicked: () -> Unit,
+    onLogoutClicked: (() -> Unit)?,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         SettingsRow(
@@ -324,11 +333,13 @@ private fun SettingsList(
             checked = restrictedModeEnabled,
             onCheckedChange = onRestrictedModeChanged,
         )
-        SettingsRow(
-            label = stringResource(Res.string.auth_logout),
-            onClick = onLogoutClicked,
-            labelColor = MaterialTheme.colorScheme.error,
-        )
+        onLogoutClicked?.let {
+            SettingsRow(
+                label = stringResource(Res.string.auth_logout),
+                onClick = it,
+                labelColor = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 

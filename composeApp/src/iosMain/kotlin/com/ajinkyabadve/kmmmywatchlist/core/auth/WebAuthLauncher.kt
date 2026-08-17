@@ -36,7 +36,11 @@ class IosWebAuthLauncher : WebAuthLauncher {
                 val queryItems = components?.queryItems as? List<NSURLQueryItem>
                 val requestToken = queryItems?.firstOrNull { it.name == "request_token" }?.value
                 val approvedStr = queryItems?.firstOrNull { it.name == "approved" }?.value
-                val approved = approvedStr == "true" || approvedStr == null
+                // Fail closed: TMDB only appends approved=true on a genuine approval redirect.
+                // Treating a missing/unexpected value as approved would let an unapproved token
+                // reach createSession(), which TMDB rejects with 401 - surfacing as a confusing
+                // "expired" error instead of "cancelled".
+                val approved = approvedStr == "true"
                 onResult(requestToken, approved)
             }
         }
