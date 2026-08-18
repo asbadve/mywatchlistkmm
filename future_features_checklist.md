@@ -219,6 +219,13 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
   - `MyFavScreenTab` and `MyFavScreenModel` handle authenticated vs unauthenticated UI states seamlessly (showing user account details, avatar, and logout option when signed in, or login prompt when signed out).
   - Platform-specific `WebAuthLauncher` handles opening browser auth URLs (`https://www.themoviedb.org/authenticate/{request_token}?redirect_to=mywatchlist://auth-callback`) and catching callbacks for Android, iOS, Desktop, and JS targets.
 
+**Possible follow-up (not started)**: `WebAuthLauncher`'s per-platform `actual`s (Custom Tabs / iOS
+`ASWebAuthenticationSession` / desktop loopback server / JS redirect) are already TMDB-agnostic
+apart from three of them parsing the `request_token`/`approved` query params by name. Extracting
+this into its own configurable module (and optionally a published KMP library) is feasible with
+modest changes - see `docs/webauth-launcher-extraction-plan.html` (gitignored, local-only) for the
+researched plan and prior-art comparison.
+
 ---
 
 ## 7. Local Notifications (Returning Series, Favorite Actors, Favorite Collections)
