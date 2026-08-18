@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeCredits
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.EpisodeDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
@@ -48,6 +49,7 @@ class EpisodeDetailScreenUiTest {
                     cast = listOf(CastMember(id = 301, name = "Actor One", character = "Hero", order = 0)),
                     guestStars = listOf(CastMember(id = 302, name = "Guest One", character = "Cameo", order = 0)),
                 ),
+            crew = listOf(CrewMember(id = 401, name = "Director One", job = "Director")),
         )
 
     @Test
@@ -130,6 +132,32 @@ class EpisodeDetailScreenUiTest {
             onAllNodes(hasScrollToIndexAction())[0].performScrollToIndex(5)
             onNodeWithText("Guest One").performClick()
             assertEquals(302L, personId)
+        }
+
+    @Test
+    fun testEpisodeDetailScreen_directorClick_invokesOnPersonClicked() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakeTvRepository().apply {
+                    getEpisodeDetailsResult = Result.success(successfulEpisodeDetail())
+                }
+            val viewModel = EpisodeDetailScreenModel(tvId = 1, seasonNumber = 1, episodeNumber = 1, tvRepository = fakeRepository)
+            var personId: Long? = null
+
+            setContent {
+                EpisodeDetailScreen(
+                    tvShowId = 1,
+                    seasonNumber = 1,
+                    episodeNumber = 1,
+                    windowSize = WindowSize.COMPACT,
+                    onBackClicked = {},
+                    onPersonClicked = { personId = it },
+                    viewModel = viewModel,
+                )
+            }
+
+            onNodeWithText("Director One").performClick()
+            assertEquals(401L, personId)
         }
 
     @Test

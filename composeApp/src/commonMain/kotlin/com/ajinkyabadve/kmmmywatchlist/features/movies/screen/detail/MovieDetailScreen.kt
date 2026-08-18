@@ -267,6 +267,7 @@ private fun CompactMovieDetailContent(
                 regionCode = regionCode,
                 fallbackRegionCode = fallbackRegionCode,
                 onCollectionClicked = onCollectionClicked,
+                onPersonClicked = onPersonClicked,
             )
         }
         item {
@@ -355,6 +356,7 @@ private fun ExpandedMovieDetailContent(
                     regionCode = regionCode,
                     fallbackRegionCode = fallbackRegionCode,
                     onCollectionClicked = onCollectionClicked,
+                    onPersonClicked = onPersonClicked,
                 )
             }
             item {

@@ -53,6 +53,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CastSection
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.DirectedByLine
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.OverviewSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.VideoClipsSection
@@ -64,7 +65,6 @@ import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.action_view_on_imdb
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
-import mywatchlist.composeapp.generated.resources.label_directed_by
 import mywatchlist.composeapp.generated.resources.label_production_code
 import mywatchlist.composeapp.generated.resources.label_written_by
 import mywatchlist.composeapp.generated.resources.section_cast
@@ -192,7 +192,7 @@ private fun CompactEpisodeDetailContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
-        item { EpisodeStillHeader(episode = episode) }
+        item { EpisodeStillHeader(episode = episode, onPersonClicked = onPersonClicked) }
         item { OverviewSection(overview = episode.overview) }
         item { VideoClipsSection(videos = episode.videos?.results ?: emptyList()) }
         item {
@@ -234,7 +234,7 @@ private fun ExpandedEpisodeDetailContent(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
-            item { EpisodeStillHeader(episode = episode) }
+            item { EpisodeStillHeader(episode = episode, onPersonClicked = onPersonClicked) }
             item { OverviewSection(overview = episode.overview) }
             item { VideoClipsSection(videos = episode.videos?.results ?: emptyList()) }
             item {
@@ -270,7 +270,10 @@ private fun ExpandedEpisodeDetailContent(
 }
 
 @Composable
-private fun EpisodeStillHeader(episode: EpisodeDetail) {
+private fun EpisodeStillHeader(
+    episode: EpisodeDetail,
+    onPersonClicked: (Long) -> Unit,
+) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         val density = LocalDensity.current.density
         val stillUrl =
@@ -388,7 +391,7 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
             )
         }
 
-        CrewSummary(crew = episode.allCrew)
+        CrewSummary(crew = episode.allCrew, onPersonClicked = onPersonClicked)
 
         episode.externalIds?.imdbId?.let { imdbId ->
             Text(
@@ -409,19 +412,16 @@ private fun EpisodeStillHeader(episode: EpisodeDetail) {
 // Benioff". Departments beyond directing/writing (camera, editing, ...) are collapsed into a
 // single crew count line to keep the header scannable.
 @Composable
-private fun CrewSummary(crew: List<CrewMember>) {
+private fun CrewSummary(
+    crew: List<CrewMember>,
+    onPersonClicked: (Long) -> Unit,
+) {
     if (crew.isEmpty()) return
-    val directors = crew.filter { it.job == "Director" }.map { it.name }
+    val directors = crew.filter { it.job == "Director" }
     val writers = crew.filter { it.department == "Writing" }.map { it.name }.distinct()
     val others = crew.size - crew.count { it.job == "Director" || it.department == "Writing" }
     Column(modifier = Modifier.padding(top = 6.dp)) {
-        if (directors.isNotEmpty()) {
-            Text(
-                text = stringResource(Res.string.label_directed_by, directors.joinToString(", ")),
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-            )
-        }
+        DirectedByLine(directors = directors, onPersonClicked = onPersonClicked)
         if (writers.isNotEmpty()) {
             Text(
                 text = stringResource(Res.string.label_written_by, writers.joinToString(", ")),

@@ -18,6 +18,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +54,7 @@ class MovieDetailScreenUiTest {
             credits =
                 Credits(
                     cast = listOf(CastMember(id = 301, name = "Actor One", character = "Hero", order = 0)),
+                    crew = listOf(CrewMember(id = 401, name = "Director One", job = "Director")),
                 ),
             recommendations =
                 MoviePageResult(
@@ -177,6 +179,32 @@ class MovieDetailScreenUiTest {
             onNode(hasScrollToIndexAction()).performScrollToIndex(6)
             onNodeWithText("Actor One").performClick()
             assertEquals(301L, personId)
+        }
+
+    @Test
+    fun testMovieDetailScreen_directorClick_invokesOnPersonClicked() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakeMovieRepository().apply {
+                    getMovieDetailsResult = Result.success(successfulMovieDetail())
+                }
+            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            var personId: Long? = null
+
+            setContent {
+                MovieDetailScreen(
+                    movieId = 1,
+                    windowSize = WindowSize.COMPACT,
+                    onBackClicked = {},
+                    onMovieClicked = {},
+                    onPersonClicked = { personId = it },
+                    viewModel = viewModel,
+                )
+            }
+
+            onNode(hasScrollAction()).performScrollToNode(hasText("Director One", substring = true))
+            onNodeWithText("Director One").performClick()
+            assertEquals(401L, personId)
         }
 
     @Test

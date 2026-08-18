@@ -60,7 +60,7 @@
     <string name="section_latest_trailers">Latest Trailers</string>
 
     <!-- Labels and templates -->
-    <string name="label_directed_by">Directed by %1$s</string>
+    <string name="label_directed_by_prefix">Directed by </string>
     <string name="label_written_by">Written by %1$s</string>
     <string name="label_part_of_collection">Part of the %1$s</string>
     <string name="person_hero_known_for">From %1$s</string>

@@ -56,7 +56,6 @@ import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_close
 import mywatchlist.composeapp.generated.resources.action_view_collection
 import mywatchlist.composeapp.generated.resources.justwatch_attribution
-import mywatchlist.composeapp.generated.resources.label_directed_by
 import mywatchlist.composeapp.generated.resources.label_part_of_collection
 import mywatchlist.composeapp.generated.resources.label_written_by
 import mywatchlist.composeapp.generated.resources.languages_chip
@@ -74,6 +73,7 @@ fun MovieMetaSection(
     regionCode: String,
     fallbackRegionCode: String,
     onCollectionClicked: (Long) -> Unit = {},
+    onPersonClicked: (Long) -> Unit = {},
 ) {
     val translationsCount = detail.translations?.translations?.size ?: 0
     var showLanguagesDropdown by remember { mutableStateOf(false) }
@@ -97,16 +97,13 @@ fun MovieMetaSection(
         }
 
         val crew = detail.credits?.crew.orEmpty()
-        val directors = crew.filter { it.job == "Director" }.map { it.name }
+        val directors = crew.filter { it.job == "Director" }
         val writers = crew.filter { it.department == "Writing" }.map { it.name }.distinct()
-        if (directors.isNotEmpty()) {
-            Text(
-                text = stringResource(Res.string.label_directed_by, directors.joinToString(", ")),
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
+        DirectedByLine(
+            directors = directors,
+            onPersonClicked = onPersonClicked,
+            modifier = Modifier.padding(top = 6.dp),
+        )
         if (writers.isNotEmpty()) {
             Text(
                 text = stringResource(Res.string.label_written_by, writers.joinToString(", ")),
