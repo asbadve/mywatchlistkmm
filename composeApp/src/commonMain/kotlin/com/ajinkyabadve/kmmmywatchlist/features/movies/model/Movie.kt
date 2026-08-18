@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.model
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,4 +33,18 @@ data class Movie(
     @SerialName("vote_average") var voteAverage: Double = 0.0,
     @SerialName("vote_count") var voteCount: Int = 0,
     @SerialName("media_type") var media: String? = null,
-)
+) {
+    /**
+     * True only for a real, parseable release date strictly after [today] - blank or unparsable
+     * dates read as already released rather than incorrectly flagged upcoming. Mirrors
+     * `SearchResultItem.isUpcoming`.
+     */
+    fun isUpcoming(today: LocalDate): Boolean {
+        if (releaseDate.isBlank()) return false
+        return try {
+            LocalDate.parse(releaseDate) > today
+        } catch (e: IllegalArgumentException) {
+            false
+        }
+    }
+}

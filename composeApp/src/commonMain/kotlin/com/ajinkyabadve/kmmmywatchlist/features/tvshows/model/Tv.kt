@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.model
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -26,4 +27,18 @@ data class Tv(
     var video: Boolean = false,
     @SerialName("vote_average") var voteAverage: Double = 0.0,
     @SerialName("vote_count") var voteCount: Int = 0,
-)
+) {
+    /**
+     * True only for a real, parseable first-air date strictly after [today] - blank or unparsable
+     * dates read as already released rather than incorrectly flagged upcoming. Mirrors
+     * `SearchResultItem.isUpcoming`.
+     */
+    fun isUpcoming(today: LocalDate): Boolean {
+        if (firstAirDate.isBlank()) return false
+        return try {
+            LocalDate.parse(firstAirDate) > today
+        } catch (e: IllegalArgumentException) {
+            false
+        }
+    }
+}

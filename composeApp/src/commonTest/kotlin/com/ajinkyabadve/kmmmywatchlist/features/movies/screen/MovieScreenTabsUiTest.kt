@@ -14,8 +14,15 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverFilterRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeGenreRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.DiscoverMovieScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -110,5 +117,74 @@ class MovieScreenTabsUiTest {
             onNodeWithText("Now Playing").performClick()
             onAllNodesWithText("Now Playing Movie A")[0].assertExists()
             assertEquals(1, nowPlayingRepo.getMoviesCalls.size)
+        }
+
+    @Test
+    fun testDiscoverFabOnlyVisibleOnDiscoverTabAndShowsActiveFilterBadge() =
+        runComposeUiTest {
+            val discoverRepository =
+                FakeDiscoverRepository().apply {
+                    discoverMoviesResult = Result.success(MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0))
+                }
+            val discoverScreenModel =
+                DiscoverMovieScreenModel(
+                    discoverRepository = discoverRepository,
+                    genreRepository = FakeGenreRepository(movieGenres = listOf(Genre(id = 28, name = "Action"))),
+                    discoverFilterRepository =
+                        FakeDiscoverFilterRepository(movieFilters = DiscoverFilters(genreIds = setOf(28))),
+                    restrictedModeRepository = FakeRestrictedModeRepository(),
+                )
+
+            setContent {
+                MovieScreenTabs(
+                    onMovieSelected = {},
+                    nowPlayingRepository = fakeRepoWithMovie("Now Playing Movie A"),
+                    discoverScreenModel = discoverScreenModel,
+                )
+            }
+
+            // Not shown while looking at "Now Playing" (the default first tab).
+            onNodeWithText("Filters").assertDoesNotExist()
+
+            onNodeWithText("Discover").performClick()
+
+            // One genre pre-applied via the fake filter repository - badge shows "1". The FAB
+            // merges its icon/text/badge into one clickable semantics node, so the individual
+            // Text children are only visible via the unmerged tree.
+            onNodeWithText("Filters", useUnmergedTree = true).assertExists()
+            onNodeWithText("1", useUnmergedTree = true).assertExists()
+        }
+
+    @Test
+    fun testApplyingADiscoverFilterPersistsAndClosesDialog() =
+        runComposeUiTest {
+            val discoverRepository =
+                FakeDiscoverRepository().apply {
+                    discoverMoviesResult = Result.success(MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0))
+                }
+            val filterRepository = FakeDiscoverFilterRepository()
+            val discoverScreenModel =
+                DiscoverMovieScreenModel(
+                    discoverRepository = discoverRepository,
+                    genreRepository = FakeGenreRepository(movieGenres = listOf(Genre(id = 28, name = "Action"))),
+                    discoverFilterRepository = filterRepository,
+                    restrictedModeRepository = FakeRestrictedModeRepository(),
+                )
+
+            setContent {
+                MovieScreenTabs(
+                    onMovieSelected = {},
+                    nowPlayingRepository = fakeRepoWithMovie("Now Playing Movie A"),
+                    discoverScreenModel = discoverScreenModel,
+                )
+            }
+
+            onNodeWithText("Discover").performClick()
+            onNodeWithText("Filters", useUnmergedTree = true).performClick()
+            onNodeWithText("Action").performClick()
+            onNodeWithText("Apply").performClick()
+
+            assertEquals(setOf(28), filterRepository.setMovieFiltersCalls.last().genreIds)
+            onNodeWithText("Apply").assertDoesNotExist()
         }
 }

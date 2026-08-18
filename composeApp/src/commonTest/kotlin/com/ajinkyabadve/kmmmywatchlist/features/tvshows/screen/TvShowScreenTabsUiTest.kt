@@ -14,8 +14,15 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverFilterRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeGenreRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.DiscoverTvScreenModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -115,5 +122,72 @@ class TvShowScreenTabsUiTest {
             onNodeWithText("Airing Today").performClick()
             onAllNodesWithText("Airing Today Show")[0].assertExists()
             assertEquals(1, airingTodayRepo.getTvShowsCalls.size)
+        }
+
+    @Test
+    fun testDiscoverFabOnlyVisibleOnDiscoverTabAndShowsActiveFilterBadge() =
+        runComposeUiTest {
+            val discoverRepository =
+                FakeDiscoverRepository().apply {
+                    discoverTvShowsResult = Result.success(TvPageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0))
+                }
+            val discoverScreenModel =
+                DiscoverTvScreenModel(
+                    discoverRepository = discoverRepository,
+                    genreRepository = FakeGenreRepository(tvGenres = listOf(Genre(id = 10759, name = "Action & Adventure"))),
+                    discoverFilterRepository =
+                        FakeDiscoverFilterRepository(tvFilters = DiscoverFilters(genreIds = setOf(10759))),
+                    restrictedModeRepository = FakeRestrictedModeRepository(),
+                )
+
+            setContent {
+                TvShowScreenTabs(
+                    onTvShowSelected = {},
+                    airingTodayRepository = fakeRepoWithShow("Airing Today Show"),
+                    discoverScreenModel = discoverScreenModel,
+                )
+            }
+
+            onNodeWithText("Filters").assertDoesNotExist()
+
+            onNodeWithText("Discover").performClick()
+
+            // The FAB merges its icon/text/badge into one clickable semantics node, so the
+            // individual Text children are only visible via the unmerged tree.
+            onNodeWithText("Filters", useUnmergedTree = true).assertExists()
+            onNodeWithText("1", useUnmergedTree = true).assertExists()
+        }
+
+    @Test
+    fun testApplyingADiscoverFilterPersistsAndClosesDialog() =
+        runComposeUiTest {
+            val discoverRepository =
+                FakeDiscoverRepository().apply {
+                    discoverTvShowsResult = Result.success(TvPageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0))
+                }
+            val filterRepository = FakeDiscoverFilterRepository()
+            val discoverScreenModel =
+                DiscoverTvScreenModel(
+                    discoverRepository = discoverRepository,
+                    genreRepository = FakeGenreRepository(tvGenres = listOf(Genre(id = 10759, name = "Action & Adventure"))),
+                    discoverFilterRepository = filterRepository,
+                    restrictedModeRepository = FakeRestrictedModeRepository(),
+                )
+
+            setContent {
+                TvShowScreenTabs(
+                    onTvShowSelected = {},
+                    airingTodayRepository = fakeRepoWithShow("Airing Today Show"),
+                    discoverScreenModel = discoverScreenModel,
+                )
+            }
+
+            onNodeWithText("Discover").performClick()
+            onNodeWithText("Filters", useUnmergedTree = true).performClick()
+            onNodeWithText("Action & Adventure").performClick()
+            onNodeWithText("Apply").performClick()
+
+            assertEquals(setOf(10759), filterRepository.setTvFiltersCalls.last().genreIds)
+            onNodeWithText("Apply").assertDoesNotExist()
         }
 }

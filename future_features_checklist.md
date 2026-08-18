@@ -162,19 +162,44 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 
 ---
 
-## 5. Genre-based Discovery Screen
-**Goal**: Let users filter movies and TV shows by genre, release year, language, or popularity sorting.
+## 5. Genre-based Discovery Screen — DONE (2026-08-18)
+**Goal**: Let users filter movies and TV shows by genre, release year, or sorting.
 
 ### Relevant OAS Endpoints:
 - `GET /3/genre/movie/list` & `GET /3/genre/tv/list`: Fetch available genres.
 - `GET /3/discover/movie` & `GET /3/discover/tv`: Discover content using query parameters.
+- `GET /3/search/keyword`: Keyword autocomplete for the `with_keywords` filter.
 
 ### Implementation Checklist:
-- [ ] **Data Layer**:
-  - Add endpoints to fetch genres and fetch discovered items using dynamic query filters.
-- [ ] **UI Presentation**:
-  - Create a "Discover" search filter panel (e.g. bottom sheet or side panel on desktop) letting users pick genres (Action, Drama, Comedy) and filter parameters.
-  - Render lists using our common scrollable grid screen content.
+- [x] **Data Layer**:
+  - `GenreRepository`/`GenreRepositoryImpl` (`features/movies/repository/`) fetch and day-cache
+    `/3/genre/movie/list` / `/3/genre/tv/list`, mirroring `ConfigurationRepositoryImpl`'s caching
+    shape (genre catalogs barely change).
+  - `DiscoverRepository`/`DiscoverRepositoryImpl` hit `/3/discover/movie` / `/3/discover/tv` with
+    `with_genres`, `with_keywords`, `primary_release_year`/`first_air_date_year`, `sort_by`, and
+    `include_adult` (threaded from the existing `RestrictedModeRepository`) - returns the existing
+    `MoviePageResult`/`TvPageResult`, no new result models.
+  - `KeywordRepository`/`KeywordRepositoryImpl` hits `/3/search/keyword` (not cached - query-driven
+    autocomplete, unlike the genre catalog).
+  - `DiscoverFilterRepository`/`DiscoverFilterRepositoryImpl` persists the *last-applied* filter set
+    per media type (same `multiplatform-settings` store as region/restricted-mode/auth), defaulting
+    to "last year, popularity descending, no genre/keyword restriction" until the user applies one.
+- [x] **Business Logic**:
+  - `DiscoverMovieScreenModel`/`DiscoverTvScreenModel` mirror `MovieListScreenModel`/
+    `TvListScreenModel`'s pagination/`ListState` shape, pre-loaded from the persisted filter set in
+    `init` (already loaded before the filter dialog is ever opened) and re-fetch from page one via
+    `applyFilters(...)` when a new filter set is applied.
+- [x] **UI Presentation**:
+  - `DiscoverMovieTab`/`DiscoverTvTab` (`features/movies/screen/category/`,
+    `features/tvshows/screen/category/`) - a 5th pill tab on `MovieScreenTabs`/`TvShowScreenTabs`
+    (`MovieTab.Discover`/`TvTab.Discover`), alongside Now Playing/Upcoming/Popular/Top Rated and
+    Airing Today/On The Air/Popular/Top Rated respectively - not a separate destination. A
+    `DiscoverFilterButton` (tonal `secondaryContainer`, active-filter count badge) above the grid
+    opens `DiscoverFilterDialog` (`features/discover/screen/`; year dropdown, sort-by dropdown,
+    multi-select genre chips styled like `FilmographyFilterChip` but tinted with the app's
+    `primaryContainer`, and a debounced keyword search field, on a `surfaceContainerHigh` dialog
+    surface) - filters are staged locally and only committed on "Apply", so picking several doesn't
+    trigger a reload per change.
 
 ---
 
@@ -245,7 +270,7 @@ poll's credit ID set); `GET /3/person/{person_id}/changes`.
 
 ---
 
-## 8. Restricted Mode Setting (Adult Content Toggle)
+## 8. Restricted Mode Setting (Adult Content Toggle) — DONE (2026-08-17)
 **Goal**: A user-facing setting - on the `AccountScreen` settings list (alongside "Log out") - to
 opt in to adult content, off by default. Every TMDB list/search/discover call already takes an
 `include_adult` parameter; today it's hardcoded `false` everywhere it's passed. This wires that
@@ -256,19 +281,21 @@ No new endpoint - every existing `GET /3/search/*`, `/3/discover/*`, `/3/trendin
 accepts `include_adult` (`true`/`false`).
 
 ### Implementation Checklist:
-- [ ] **Data Layer**:
-  - Add `restrictedModeEnabled: Boolean` (default `true`, i.e. adult content **off**) to the same
-    `multiplatform-settings` store the auth session uses, behind a small `SettingsRepository` (this
-    app has no general app-settings repository yet - auth is the only thing persisted today).
-- [ ] **Business Logic**:
-  - Thread `includeAdult = !restrictedModeEnabled` through every repository call site that
-    currently hardcodes `include_adult=false` (search, discover, trending) instead of the literal.
-- [ ] **UI Presentation**:
-  - Add a "Restricted Mode" toggle row (`Switch`, not a navigating chevron row) to `AccountScreen`'s
-    settings list - likely gated so it only shows once TMDB's own account-level adult-content
-    setting is considered, or clearly scoped as "this device" if it stays local-only.
-  - Consider whether toggling it off mid-session should also filter results already cached in
-    memory, or only apply going forward.
+- [x] **Data Layer**:
+  - `restrictedModeEnabled: Boolean` (default `true`, i.e. adult content **off**) persisted via
+    `RestrictedModeRepository`/`RestrictedModeRepositoryImpl`
+    (`features/settings/repository/`), the same `multiplatform-settings` store the auth session
+    uses.
+- [x] **Business Logic**:
+  - `SearchScreenModel` threads `includeAdult = !restrictedModeRepository.isRestrictedModeEnabled()`
+    into `SearchRepository`'s `include_adult` param.
+  - Scope note: Discover (item 5) and Trending don't call `include_adult` anywhere yet - Discover
+    isn't built, and Trending's endpoints don't expose that param the way search/discover do - so
+    Search is the only wired call site today. Re-check this item if either of those change.
+- [x] **UI Presentation**:
+  - "Restricted Mode" `Switch` row lives in `AccountScreen`'s settings list, alongside Region/
+    Fallback Region/Log out - scoped as a per-device setting, not tied to TMDB's own account-level
+    adult-content flag.
 
 ---
 
