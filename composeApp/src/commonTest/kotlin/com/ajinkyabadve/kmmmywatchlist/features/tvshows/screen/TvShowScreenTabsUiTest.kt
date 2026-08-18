@@ -3,9 +3,11 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -35,6 +37,10 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class TvShowScreenTabsUiTest {
+    private companion object {
+        const val MANY_SHOWS_COUNT = 30
+    }
+
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
@@ -122,6 +128,40 @@ class TvShowScreenTabsUiTest {
             onNodeWithText("Airing Today").performClick()
             onAllNodesWithText("Airing Today Show")[0].assertExists()
             assertEquals(1, airingTodayRepo.getTvShowsCalls.size)
+        }
+
+    @Test
+    fun testRetappingAlreadySelectedTabScrollsGridBackToTop() =
+        runComposeUiTest {
+            val titles = (0 until MANY_SHOWS_COUNT).map { "Airing Today Show $it" }
+            val airingTodayRepo =
+                FakeTvRepository().apply {
+                    getTvShowsResult =
+                        Result.success(
+                            TvPageResult(
+                                page = 1,
+                                list = titles.mapIndexed { index, title -> Tv(id = index, title = title, originalTitle = title) },
+                                totalResults = titles.size,
+                                totalPages = 0,
+                            ),
+                        )
+                }
+
+            setContent {
+                TvShowScreenTabs(onTvShowSelected = {}, airingTodayRepository = airingTodayRepo)
+            }
+
+            onNodeWithText(titles.first()).assertExists()
+
+            // Scroll the grid down - the first item is recycled out of the semantics tree once it's
+            // off-screen, which is what lets the assertion below tell scrolled-down from scrolled-up.
+            onNode(hasScrollToIndexAction()).performScrollToIndex(titles.size - 1)
+            onNodeWithText(titles.first()).assertDoesNotExist()
+
+            // Re-tapping "Airing Today" while it's already selected should scroll back to the top
+            // instead of doing nothing.
+            onNodeWithText("Airing Today").performClick()
+            onNodeWithText(titles.first()).assertExists()
         }
 
     @Test

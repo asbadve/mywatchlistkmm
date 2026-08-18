@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.Discover
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.DiscoverTvTab
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.TvListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.tvShowScreenContent
+import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.discover_filter_button_label
 import mywatchlist.composeapp.generated.resources.discover_filters_content_description
@@ -104,6 +106,26 @@ fun TvShowScreenTabs(
     val topRatedGridState = rememberLazyGridState()
     val discoverGridState = rememberLazyGridState()
     var showFilterDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Re-tapping the already-selected tab is a common "jump back to the top" gesture - scroll its
+    // grid back to the first item instead of doing nothing. Mirrors MovieScreenTabs' identical fix.
+    fun gridStateFor(tab: TvTab): LazyGridState =
+        when (tab) {
+            TvTab.AiringToday -> airingTodayGridState
+            TvTab.OnTheAir -> onTheAirGridState
+            TvTab.Popular -> popularGridState
+            TvTab.TopRated -> topRatedGridState
+            TvTab.Discover -> discoverGridState
+        }
+
+    val onTabSelected: (Int) -> Unit = { index ->
+        if (index == selectedTabIndex) {
+            coroutineScope.launch { gridStateFor(tabs[index]).animateScrollToItem(0) }
+        } else {
+            selectedTabIndex = index
+        }
+    }
 
     // Only resolved (and only constructed) once Discover is actually selected - see the identical
     // comment on MovieScreenTabs' discoverViewModel for why.
@@ -151,7 +173,7 @@ fun TvShowScreenTabs(
                     tabs.forEachIndexed { index, tab ->
                         Tab(
                             selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
+                            onClick = { onTabSelected(index) },
                             text = { Text(tab.title) },
                         )
                     }

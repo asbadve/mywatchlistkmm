@@ -2,10 +2,13 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -15,6 +18,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
+import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.tab_favorites
 import mywatchlist.composeapp.generated.resources.tab_lists
@@ -50,11 +54,32 @@ fun MyFavTabs(
             stringResource(Res.string.tab_lists),
         )
 
+    val favoritesGridState = rememberLazyGridState()
+    val watchlistGridState = rememberLazyGridState()
+    val listsListState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Re-tapping the already-selected tab is a common "jump back to the top" gesture - scroll its
+    // list back to the first item instead of doing nothing. Mirrors MovieScreenTabs' identical fix.
+    val onTabSelected: (Int) -> Unit = { index ->
+        if (index == selectedIndex) {
+            coroutineScope.launch {
+                when (tabs[index]) {
+                    MyFavTab.Favorites -> favoritesGridState.animateScrollToItem(0)
+                    MyFavTab.Watchlist -> watchlistGridState.animateScrollToItem(0)
+                    MyFavTab.Lists -> listsListState.animateScrollToItem(0)
+                }
+            }
+        } else {
+            selectedIndex = index
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         PillTabRow(
             tabs = tabTitles,
             selectedIndex = selectedIndex,
-            onTabSelected = { selectedIndex = it },
+            onTabSelected = onTabSelected,
         )
         when (tabs[selectedIndex]) {
             MyFavTab.Favorites ->
@@ -64,6 +89,7 @@ fun MyFavTabs(
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
                     accountMediaRepository = accountMediaRepository,
+                    lazyGridState = favoritesGridState,
                 )
 
             MyFavTab.Watchlist ->
@@ -73,6 +99,7 @@ fun MyFavTabs(
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
                     accountMediaRepository = accountMediaRepository,
+                    lazyGridState = watchlistGridState,
                 )
 
             MyFavTab.Lists ->
@@ -87,6 +114,7 @@ fun MyFavTabs(
                                 listsRepository = listsRepository ?: ListsRepositoryImpl(),
                             )
                         },
+                    lazyListState = listsListState,
                 )
         }
     }

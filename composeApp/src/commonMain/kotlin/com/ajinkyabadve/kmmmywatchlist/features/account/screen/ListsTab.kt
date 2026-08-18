@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -66,6 +67,8 @@ fun ListsTab(
         viewModel(key = "ListsScreenModel:${session.accountId}") {
             ListsScreenModel(accountId = session.accountId, sessionId = session.sessionId)
         },
+    // Hoisted by MyFavTabs so re-tapping the already-selected tab can scroll this list to top.
+    lazyListState: LazyListState = rememberLazyListState(),
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
 
@@ -77,7 +80,6 @@ fun ListsTab(
         screenModel.refresh()
     }
 
-    val lazyListState = rememberLazyListState()
     val shouldPaginate =
         remember {
             derivedStateOf {

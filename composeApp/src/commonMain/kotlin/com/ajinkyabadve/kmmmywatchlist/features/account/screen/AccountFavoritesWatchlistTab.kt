@@ -3,6 +3,8 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +57,8 @@ fun AccountFavoritesWatchlistTab(
     // Test-only seam, same pattern as MovieScreenTabs' per-tab repository overrides: lets a UI
     // test inject a fake so this composable never hits the real network.
     accountMediaRepository: AccountMediaRepository? = null,
+    // Hoisted by MyFavTabs so re-tapping the already-selected tab can scroll this grid to top.
+    lazyGridState: LazyGridState = rememberLazyGridState(),
 ) {
     val mediaTypes = remember { listOf(SearchMediaType.MOVIE, SearchMediaType.TV) }
     var selectedChip by rememberSaveable { mutableStateOf(0) }
@@ -111,6 +115,7 @@ fun AccountFavoritesWatchlistTab(
                 onItemSelected = { id ->
                     if (selectedMediaType == SearchMediaType.MOVIE) onMovieSelected(id) else onTvSelected(id)
                 },
+                lazyGridState = lazyGridState,
             )
         }
     }

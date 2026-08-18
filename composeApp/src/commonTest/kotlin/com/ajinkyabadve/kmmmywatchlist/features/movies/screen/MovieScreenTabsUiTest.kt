@@ -3,9 +3,11 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -35,6 +37,10 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class MovieScreenTabsUiTest {
+    private companion object {
+        const val MANY_MOVIES_COUNT = 30
+    }
+
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
@@ -117,6 +123,40 @@ class MovieScreenTabsUiTest {
             onNodeWithText("Now Playing").performClick()
             onAllNodesWithText("Now Playing Movie A")[0].assertExists()
             assertEquals(1, nowPlayingRepo.getMoviesCalls.size)
+        }
+
+    @Test
+    fun testRetappingAlreadySelectedTabScrollsGridBackToTop() =
+        runComposeUiTest {
+            val titles = (0 until MANY_MOVIES_COUNT).map { "Now Playing Movie $it" }
+            val nowPlayingRepo =
+                FakeMovieRepository().apply {
+                    getMoviesResult =
+                        Result.success(
+                            MoviePageResult(
+                                page = 1,
+                                list = titles.mapIndexed { index, title -> Movie(id = index, title = title) },
+                                totalResults = titles.size,
+                                totalPages = 0,
+                            ),
+                        )
+                }
+
+            setContent {
+                MovieScreenTabs(onMovieSelected = {}, nowPlayingRepository = nowPlayingRepo)
+            }
+
+            onNodeWithText(titles.first()).assertExists()
+
+            // Scroll the grid down - the first item is recycled out of the semantics tree once it's
+            // off-screen, which is what lets the assertion below tell scrolled-down from scrolled-up.
+            onNode(hasScrollToIndexAction()).performScrollToIndex(titles.size - 1)
+            onNodeWithText(titles.first()).assertDoesNotExist()
+
+            // Re-tapping "Now Playing" while it's already selected should scroll back to the top
+            // instead of doing nothing.
+            onNodeWithText("Now Playing").performClick()
+            onNodeWithText(titles.first()).assertExists()
         }
 
     @Test
