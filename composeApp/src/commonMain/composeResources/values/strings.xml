@@ -87,6 +87,7 @@
     <string name="tv_hero_episodes">%1$d Episodes</string>
     <string name="tv_hero_next_episode">S%1$d E%2$d · %3$s</string>
     <string name="search_hint">Search for Movies &amp; Tv shows</string>
+    <string name="episode_latest_badge">Latest</string>
 
     <!-- Placeholders / empty states -->
     <string name="placeholder_select_season">Select a season to view its episodes</string>
@@ -189,6 +190,7 @@
     <string name="region_search_hint">Search regions</string>
     <string name="region_empty_message">No regions found.</string>
     <string name="settings_fallback_region_label">Default fallback region</string>
+    <string name="settings_fallback_region_description">Used for watch provider availability only</string>
     <string name="fallback_region_picker_title">Select fallback region</string>
 
     <!-- Restricted mode -->

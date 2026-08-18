@@ -8,6 +8,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthReposito
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -55,7 +56,7 @@ class TvDetailScreenModelTest {
     }
 
     @Test
-    fun testNextEpisodeToAirResolvesCurrentSeason() =
+    fun testLatestReleasedEpisodeAcrossSeasonsResolvesCurrentSeasonAndEpisode() =
         runTest(testDispatcher) {
             fakeRepository.getTvDetailsResult =
                 Result.success(
@@ -63,8 +64,25 @@ class TvDetailScreenModelTest {
                         id = 1,
                         title = "Show",
                         seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2)),
-                        nextEpisodeToAir = Episode(seasonNumber = 2),
-                        lastEpisodeToAir = Episode(seasonNumber = 1),
+                    ),
+                )
+            fakeRepository.getSeasonDetailsResultsByNumber[1] =
+                Result.success(
+                    TvSeasonDetail(
+                        seasonNumber = 1,
+                        episodes = listOf(Episode(seasonNumber = 1, episodeNumber = 1, airDate = "2000-01-01")),
+                    ),
+                )
+            fakeRepository.getSeasonDetailsResultsByNumber[2] =
+                Result.success(
+                    TvSeasonDetail(
+                        seasonNumber = 2,
+                        episodes =
+                            listOf(
+                                Episode(seasonNumber = 2, episodeNumber = 1, airDate = "2000-02-01"),
+                                // Not yet released - a season announced ahead of time must not win.
+                                Episode(seasonNumber = 2, episodeNumber = 2, airDate = "2099-01-01"),
+                            ),
                     ),
                 )
 
@@ -72,11 +90,12 @@ class TvDetailScreenModelTest {
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(2, state.currentSeason?.seasonNumber)
+            assertEquals(1, state.latestReleasedEpisodeNumber)
             assertEquals(setOf(1, 2), state.allSeasonDetails.keys)
         }
 
     @Test
-    fun testLastEpisodeToAirResolvesCurrentSeasonWhenNoNextEpisode() =
+    fun testAnUnreleasedFutureSeasonIsIgnoredInFavorOfTheLatestReleasedOne() =
         runTest(testDispatcher) {
             fakeRepository.getTvDetailsResult =
                 Result.success(
@@ -84,8 +103,20 @@ class TvDetailScreenModelTest {
                         id = 1,
                         title = "Show",
                         seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2)),
-                        nextEpisodeToAir = null,
-                        lastEpisodeToAir = Episode(seasonNumber = 1),
+                    ),
+                )
+            fakeRepository.getSeasonDetailsResultsByNumber[1] =
+                Result.success(
+                    TvSeasonDetail(
+                        seasonNumber = 1,
+                        episodes = listOf(Episode(seasonNumber = 1, episodeNumber = 5, airDate = "2000-01-01")),
+                    ),
+                )
+            fakeRepository.getSeasonDetailsResultsByNumber[2] =
+                Result.success(
+                    TvSeasonDetail(
+                        seasonNumber = 2,
+                        episodes = listOf(Episode(seasonNumber = 2, episodeNumber = 1, airDate = "2099-01-01")),
                     ),
                 )
 
@@ -93,10 +124,11 @@ class TvDetailScreenModelTest {
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(1, state.currentSeason?.seasonNumber)
+            assertEquals(5, state.latestReleasedEpisodeNumber)
         }
 
     @Test
-    fun testFallsBackToMaxSeasonNumberWhenNoEpisodesToAir() =
+    fun testFallsBackToEarliestSeasonWhenNothingHasReleasedYet() =
         runTest(testDispatcher) {
             fakeRepository.getTvDetailsResult =
                 Result.success(
@@ -109,15 +141,23 @@ class TvDetailScreenModelTest {
                                 SeasonSummary(seasonNumber = 1),
                                 SeasonSummary(seasonNumber = 2),
                             ),
-                        nextEpisodeToAir = null,
-                        lastEpisodeToAir = null,
                     ),
                 )
+            listOf(0, 1, 2).forEach { seasonNumber ->
+                fakeRepository.getSeasonDetailsResultsByNumber[seasonNumber] =
+                    Result.success(
+                        TvSeasonDetail(
+                            seasonNumber = seasonNumber,
+                            episodes = listOf(Episode(seasonNumber = seasonNumber, episodeNumber = 1, airDate = "2099-01-01")),
+                        ),
+                    )
+            }
 
             val viewModel = TvDetailScreenModel(1, fakeRepository)
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
-            assertEquals(2, state.currentSeason?.seasonNumber)
+            assertEquals(1, state.currentSeason?.seasonNumber)
+            assertNull(state.latestReleasedEpisodeNumber)
         }
 
     @Test
@@ -144,8 +184,6 @@ class TvDetailScreenModelTest {
                         id = 1,
                         title = "Show",
                         seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2)),
-                        nextEpisodeToAir = null,
-                        lastEpisodeToAir = null,
                     ),
                 )
             fakeRepository.getSeasonDetailsResultsByNumber[2] = Result.failure(IOException("season 2 unavailable"))
@@ -154,8 +192,9 @@ class TvDetailScreenModelTest {
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(setOf(1), state.allSeasonDetails.keys)
-            // Season 2 would have been picked as current (max seasonNumber) but its fetch failed, so it's absent.
-            assertNull(state.currentSeason)
+            // Season 2's fetch failed, so only season 1 remains - and with nothing released in it
+            // (the default fake season has no episodes), it's still the fallback "current" season.
+            assertEquals(1, state.currentSeason?.seasonNumber)
         }
 
     @Test

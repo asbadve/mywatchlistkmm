@@ -531,6 +531,13 @@ private fun MainAppScaffoldContent(
                             onViewAllSeasonsClick = { seasonsTvShowId ->
                                 topLevelBackStack.add(AllSeasonsKey(seasonsTvShowId))
                             },
+                            onCurrentSeasonClick = { seasonsTvShowId, seasonNumber ->
+                                // Push both keys so back from the episode list lands on the season
+                                // list rather than straight back to the show, matching the path
+                                // "View All Seasons" would have taken to get there.
+                                topLevelBackStack.add(AllSeasonsKey(seasonsTvShowId))
+                                topLevelBackStack.add(EpisodeListKey(seasonsTvShowId, seasonNumber))
+                            },
                             onPersonClicked = { personId ->
                                 topLevelBackStack.add(PersonDetailKey(personId))
                             },

@@ -1,6 +1,8 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -112,6 +114,83 @@ class EpisodeListScreenUiTest {
 
             onNodeWithText("1. Pilot").performClick()
             assertEquals(1, clickedEpisodeNumber)
+        }
+
+    @Test
+    fun testEpisodeListScreen_showsLatestBadgeOnlyOnTheLatestReleasedEpisode() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakeTvRepository().apply {
+                    getSeasonDetailsResult =
+                        Result.success(
+                            TvSeasonDetail(
+                                id = 1,
+                                seasonNumber = 1,
+                                name = "Season 1",
+                                episodes =
+                                    listOf(
+                                        Episode(id = 101, name = "Pilot", episodeNumber = 1, seasonNumber = 1, airDate = "2000-01-01"),
+                                        // Highest episode number, but not yet released - must not get the badge.
+                                        Episode(id = 102, name = "Finale", episodeNumber = 2, seasonNumber = 1, airDate = "2099-01-01"),
+                                    ),
+                            ),
+                        )
+                }
+            val viewModel = EpisodeListScreenModel(tvId = 1, seasonNumber = 1, tvRepository = fakeRepository)
+
+            setContent {
+                EpisodeListScreen(
+                    tvShowId = 1,
+                    seasonNumber = 1,
+                    onBackClicked = {},
+                    onEpisodeClicked = {},
+                    viewModel = viewModel,
+                )
+            }
+
+            onNodeWithText("Latest").assertExists()
+            onNodeWithText("2. Finale").assertExists()
+        }
+
+    @Test
+    fun testEpisodeListScreen_sameDayReleaseBreaksTowardHigherEpisodeNumber() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakeTvRepository().apply {
+                    getSeasonDetailsResult =
+                        Result.success(
+                            TvSeasonDetail(
+                                id = 1,
+                                seasonNumber = 1,
+                                name = "Season 1",
+                                episodes =
+                                    (1..4).map { number ->
+                                        Episode(
+                                            id = (100 + number).toLong(),
+                                            name = "Episode $number",
+                                            episodeNumber = number,
+                                            seasonNumber = 1,
+                                            airDate = "2000-01-01",
+                                        )
+                                    },
+                            ),
+                        )
+                }
+            val viewModel = EpisodeListScreenModel(tvId = 1, seasonNumber = 1, tvRepository = fakeRepository)
+
+            setContent {
+                EpisodeListScreen(
+                    tvShowId = 1,
+                    seasonNumber = 1,
+                    onBackClicked = {},
+                    onEpisodeClicked = {},
+                    viewModel = viewModel,
+                )
+            }
+
+            onNodeWithText("Latest").assertExists()
+            onAllNodesWithText("Latest").assertCountEquals(1)
+            onNodeWithText("4. Episode 4").assertExists()
         }
 
     @Test

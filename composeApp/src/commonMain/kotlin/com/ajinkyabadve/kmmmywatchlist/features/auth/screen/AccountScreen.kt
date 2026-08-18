@@ -69,6 +69,7 @@ import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.back_content_description
 import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
 import mywatchlist.composeapp.generated.resources.region_picker_title
+import mywatchlist.composeapp.generated.resources.settings_fallback_region_description
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_label
 import mywatchlist.composeapp.generated.resources.settings_region_label
 import mywatchlist.composeapp.generated.resources.settings_restricted_mode_description
@@ -326,6 +327,7 @@ private fun SettingsList(
             label = stringResource(Res.string.settings_fallback_region_label),
             value = "${fallbackRegionCode.toRegionFlagEmoji()} $fallbackRegionCode".trim(),
             onClick = onFallbackRegionClicked,
+            description = stringResource(Res.string.settings_fallback_region_description),
         )
         SettingsSwitchRow(
             label = stringResource(Res.string.settings_restricted_mode_label),
@@ -349,6 +351,7 @@ private fun SettingsRow(
     onClick: () -> Unit,
     value: String? = null,
     labelColor: Color = MaterialTheme.colorScheme.onBackground,
+    description: String? = null,
 ) {
     Row(
         modifier =
@@ -358,12 +361,21 @@ private fun SettingsRow(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            fontSize = 16.sp,
-            color = labelColor,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                fontSize = 16.sp,
+                color = labelColor,
+            )
+            description?.let {
+                Text(
+                    text = it,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
         value?.let {
             Text(
                 text = it,

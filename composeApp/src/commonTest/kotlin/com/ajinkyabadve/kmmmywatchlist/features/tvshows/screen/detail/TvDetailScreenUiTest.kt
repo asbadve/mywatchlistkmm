@@ -123,14 +123,14 @@ class TvDetailScreenUiTest {
         }
 
     @Test
-    fun testTvDetailScreen_viewAllSeasonsClick_invokesCallbackWithTvShowId() =
+    fun testTvDetailScreen_currentSeasonCardClick_invokesOnCurrentSeasonClickWithResolvedSeasonNumber() =
         runComposeUiTest {
             val fakeRepository =
                 FakeTvRepository().apply {
                     getTvDetailsResult = Result.success(successfulTvDetail())
                 }
             val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
-            var viewAllSeasonsId: Long? = null
+            var currentSeasonClick: Pair<Long, Int>? = null
 
             setContent {
                 TvDetailScreen(
@@ -138,17 +138,19 @@ class TvDetailScreenUiTest {
                     windowSize = WindowSize.COMPACT,
                     onBackClicked = {},
                     onTvShowClicked = {},
-                    onViewAllSeasonsClick = { viewAllSeasonsId = it },
+                    onViewAllSeasonsClick = {},
+                    onCurrentSeasonClick = { tvShowId, seasonNumber -> currentSeasonClick = tvShowId to seasonNumber },
                     viewModel = viewModel,
                 )
             }
 
             onNode(hasScrollToIndexAction()).performScrollToIndex(4)
-            // Clicks the season row rather than the "View All" TextButton - both trigger the same
-            // onViewAllSeasonsClick callback, but the TextButton's ripple/indication machinery
-            // doesn't reliably deliver its click in this embedded, animated-header context.
+            // Clicks the season card body rather than the "View All" TextButton - the two now
+            // trigger different callbacks (this jumps straight into the season's episodes), but the
+            // TextButton's ripple/indication machinery doesn't reliably deliver its click in this
+            // embedded, animated-header context, so the card body is what's driven here.
             onNodeWithText("Season 1", substring = true).performClick()
-            assertEquals(1L, viewAllSeasonsId)
+            assertEquals(1L to 1, currentSeasonClick)
         }
 
     @Test

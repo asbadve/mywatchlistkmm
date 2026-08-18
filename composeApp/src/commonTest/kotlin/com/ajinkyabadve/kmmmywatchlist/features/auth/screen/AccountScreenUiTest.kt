@@ -120,6 +120,7 @@ class AccountScreenUiTest {
             onNodeWithText("@jane_doe").assertIsDisplayed()
             onNodeWithText("Region").assertIsDisplayed()
             onNodeWithText("Default fallback region").assertIsDisplayed()
+            onNodeWithText("Used for watch provider availability only").assertIsDisplayed()
             onNodeWithText("Restricted Mode").assertIsDisplayed()
             onNodeWithText("Log out").assertIsDisplayed()
         }

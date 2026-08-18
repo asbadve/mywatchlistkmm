@@ -51,6 +51,9 @@ import org.jetbrains.compose.resources.stringResource
 fun CurrentSeasonSection(
     season: TvSeasonDetail,
     onViewAllSeasonsClick: () -> Unit = {},
+    // Tapping the season card itself jumps straight into this season's episode list (with the
+    // latest-released episode highlighted there) instead of the full season list "View All" opens.
+    onSeasonClick: () -> Unit = onViewAllSeasonsClick,
 ) {
     Column(
         modifier =
@@ -79,7 +82,7 @@ fun CurrentSeasonSection(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onViewAllSeasonsClick),
+                    .clickable(onClick = onSeasonClick),
         ) {
             val density = androidx.compose.ui.platform.LocalDensity.current.density
             val posterUrl =

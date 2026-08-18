@@ -67,6 +67,9 @@ fun TvDetailScreen(
     onBackClicked: () -> Unit,
     onTvShowClicked: (Long) -> Unit,
     onViewAllSeasonsClick: (Long) -> Unit,
+    // Tapping "Current Season" jumps straight to that season's episode list (with the latest
+    // already-aired episode highlighted there) instead of the full season list "View All" opens.
+    onCurrentSeasonClick: (tvShowId: Long, seasonNumber: Int) -> Unit = { _, _ -> },
     authRepository: AuthRepository = AuthRepositoryImpl(),
     onPersonClicked: (Long) -> Unit = {},
     viewModel: TvDetailScreenModel =
@@ -186,6 +189,9 @@ fun TvDetailScreen(
                                         galleryInitialIndex = index
                                     },
                                     onViewAllSeasonsClick = { onViewAllSeasonsClick(tvShowId) },
+                                    onSeasonClick = {
+                                        state.currentSeason?.seasonNumber?.let { onCurrentSeasonClick(tvShowId, it) }
+                                    },
                                 )
                             } else {
                                 ExpandedTvDetailContent(
@@ -203,6 +209,9 @@ fun TvDetailScreen(
                                         galleryInitialIndex = index
                                     },
                                     onViewAllSeasonsClick = { onViewAllSeasonsClick(tvShowId) },
+                                    onSeasonClick = {
+                                        state.currentSeason?.seasonNumber?.let { onCurrentSeasonClick(tvShowId, it) }
+                                    },
                                     rightColumnTopPadding = topBarHeightDp,
                                 )
                             }
@@ -252,6 +261,7 @@ private fun CompactTvDetailContent(
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
     onViewAllSeasonsClick: () -> Unit,
+    onSeasonClick: () -> Unit = onViewAllSeasonsClick,
 ) {
     LazyColumn(
         state = lazyListState,
@@ -285,6 +295,7 @@ private fun CompactTvDetailContent(
                 CurrentSeasonSection(
                     season = season,
                     onViewAllSeasonsClick = onViewAllSeasonsClick,
+                    onSeasonClick = onSeasonClick,
                 )
             }
         }
@@ -335,6 +346,7 @@ private fun ExpandedTvDetailContent(
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
     onViewAllSeasonsClick: () -> Unit,
+    onSeasonClick: () -> Unit = onViewAllSeasonsClick,
     rightColumnTopPadding: androidx.compose.ui.unit.Dp,
 ) {
     Row(
@@ -374,6 +386,7 @@ private fun ExpandedTvDetailContent(
                     CurrentSeasonSection(
                         season = season,
                         onViewAllSeasonsClick = onViewAllSeasonsClick,
+                        onSeasonClick = onSeasonClick,
                     )
                 }
             }

@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import kotlinx.serialization.SerializationException
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.error_network
@@ -40,6 +43,9 @@ sealed interface TvDetailState {
     data class Success(
         val tvDetail: TvDetail,
         val currentSeason: TvSeasonDetail?,
+        // The latest already-aired episode within [currentSeason], verified against today's date
+        // rather than trusted from TMDB's `last_episode_to_air` alone - see resolveCurrentSeason.
+        val latestReleasedEpisodeNumber: Int?,
         val allSeasonDetails: Map<Int, TvSeasonDetail>,
         val regionCode: String,
         val fallbackRegionCode: String,
@@ -83,11 +89,13 @@ class TvDetailScreenModel(
             try {
                 val detail = tvRepository.getTvDetails(tvId)
                 val seasonDetails = fetchAllSeasonDetails(detail)
-                val currentSeasonNumber = resolveCurrentSeasonNumber(detail)
+                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                val (currentSeasonNumber, latestReleasedEpisodeNumber) = resolveCurrentSeasonAndEpisode(seasonDetails, today)
                 _uiState.value =
                     TvDetailState.Success(
                         tvDetail = detail,
                         currentSeason = seasonDetails[currentSeasonNumber],
+                        latestReleasedEpisodeNumber = latestReleasedEpisodeNumber,
                         allSeasonDetails = seasonDetails,
                         regionCode = regionRepository.getSelectedRegion(),
                         fallbackRegionCode = regionRepository.getFallbackRegion(),
@@ -140,16 +148,6 @@ class TvDetailScreenModel(
         throwable: Throwable,
     ) {
         Napier.e(tag = TAG, throwable = throwable) { "Failed to load season $seasonNumber for tvId: $tvId" }
-    }
-
-    private fun resolveCurrentSeasonNumber(detail: TvDetail): Int? {
-        detail.nextEpisodeToAir?.let { return it.seasonNumber }
-        detail.lastEpisodeToAir?.let { return it.seasonNumber }
-        return detail.seasons
-            ?.filter { it.seasonNumber > 0 }
-            ?.maxByOrNull { it.seasonNumber }
-            ?.seasonNumber
-            ?: detail.seasons?.maxByOrNull { it.seasonNumber }?.seasonNumber
     }
 
     override fun onCleared() {

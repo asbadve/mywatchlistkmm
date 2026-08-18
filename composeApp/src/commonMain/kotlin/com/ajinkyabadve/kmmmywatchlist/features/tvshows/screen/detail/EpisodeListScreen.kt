@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,8 +31,10 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
 import androidx.compose.material3.adaptive.navigation3.LocalListDetailSceneScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,9 +53,13 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
+import mywatchlist.composeapp.generated.resources.episode_latest_badge
 import mywatchlist.composeapp.generated.resources.no_episodes_available
 import mywatchlist.composeapp.generated.resources.no_overview_available_episode
 import mywatchlist.composeapp.generated.resources.title_episodes
@@ -139,14 +146,37 @@ fun EpisodeListScreen(
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         )
                     } else {
+                        val sortedEpisodes = remember(state.season) { state.season.episodes.sortedBy { it.episodeNumber } }
+                        val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
+                        // The latest episode that has actually aired, verified against today's date
+                        // rather than assuming the highest episode number has released - a season
+                        // can list future episodes ahead of time. Ties on air date (e.g. a whole
+                        // season dropping on one day) break toward the higher episode number.
+                        val latestReleasedEpisodeNumber =
+                            remember(sortedEpisodes, today) {
+                                sortedEpisodes
+                                    .filter { it.isReleased(today) }
+                                    .maxWithOrNull(compareBy({ it.airDate.orEmpty() }, { it.episodeNumber }))
+                                    ?.episodeNumber
+                            }
+
+                        LaunchedEffect(latestReleasedEpisodeNumber) {
+                            val index = sortedEpisodes.indexOfFirst { it.episodeNumber == latestReleasedEpisodeNumber }
+                            if (index >= 0) listState.scrollToItem(index)
+                        }
+
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(20.dp),
                         ) {
-                            items(state.season.episodes.sortedBy { it.episodeNumber }) { episode ->
-                                EpisodeListItem(episode = episode, onClick = { onEpisodeClicked(episode.episodeNumber) })
+                            items(sortedEpisodes) { episode ->
+                                EpisodeListItem(
+                                    episode = episode,
+                                    isLatestReleased = episode.episodeNumber == latestReleasedEpisodeNumber,
+                                    onClick = { onEpisodeClicked(episode.episodeNumber) },
+                                )
                             }
                         }
                     }
@@ -160,12 +190,21 @@ fun EpisodeListScreen(
 private fun EpisodeListItem(
     episode: Episode,
     onClick: () -> Unit,
+    isLatestReleased: Boolean = false,
 ) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
+                .then(
+                    if (isLatestReleased) {
+                        Modifier
+                            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    } else {
+                        Modifier
+                    },
+                ).clickable(onClick = onClick),
     ) {
         val density = LocalDensity.current.density
         val stillUrl =
@@ -209,14 +248,31 @@ private fun EpisodeListItem(
         Spacer(modifier = Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${episode.episodeNumber}. ${episode.name}",
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${episode.episodeNumber}. ${episode.name}",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (isLatestReleased) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(Res.string.episode_latest_badge),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier =
+                            Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.primary)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+            }
             if (!episode.airDate.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
