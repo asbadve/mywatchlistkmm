@@ -19,8 +19,9 @@ import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthErrorContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthorizingContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.LoggedOutContent
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.MyFavTabs
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
@@ -39,8 +40,9 @@ fun MyFavScreenTab(
     screenModel: AuthScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
     // Test-only seams, same pattern MovieScreenTabs uses for its per-tab repositories.
-    accountMediaRepository: AccountMediaRepository? = null,
     listsRepository: ListsRepository? = null,
+    trackedMediaRepository: TrackedMediaRepository? = null,
+    customListRepository: CustomListRepository? = null,
 ) {
     val uiState by screenModel.uiState.collectAsState()
 
@@ -71,8 +73,9 @@ fun MyFavScreenTab(
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
                     onListSelected = onListSelected,
-                    accountMediaRepository = accountMediaRepository,
                     listsRepository = listsRepository,
+                    trackedMediaRepository = trackedMediaRepository,
+                    customListRepository = customListRepository,
                 )
             }
 

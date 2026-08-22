@@ -7,25 +7,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemKey
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.listStates
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.UpcomingBadge
@@ -33,51 +34,34 @@ import com.ajinkyabadve.kmmmywatchlist.features.search.screen.searchMediaRow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.action_retry
+import org.jetbrains.compose.resources.stringResource
 
 private object AccountMediaGridConstant {
-    const val PAGINATION_LOOKAHEAD_ITEMS = 3
     const val POSTER_TARGET_WIDTH_DP = 150
     val GRID_MIN_CELL_SIZE = 150.dp
     val BADGE_OFFSET = 12.dp
 }
 
 /**
- * A paginated Favorites/Watchlist grid - mirrors `category.screenContent`'s layout and pagination
- * trigger exactly, but reuses [SearchResultItem]/[searchMediaRow] (Search's heterogeneous
- * movie-or-TV shape) instead of `Movie`, and reuses `category.listStates` for the
- * loading/error/exhausted footer unchanged - it already takes only [ListState], no
- * `MovieListScreenModel` coupling.
+ * A Paging3-backed Favorites/Watchlist grid - reuses [SearchResultItem]/[searchMediaRow] (Search's
+ * heterogeneous movie-or-TV shape) instead of `Movie`. Pagination itself (fetching the next page as
+ * the user scrolls) is driven by [lazyPagingItems] internally - see
+ * `TrackedMediaRepository.pagedFlow`/`TrackedMediaRemoteMediator` - this composable only reacts to
+ * [LazyPagingItems.loadState], it never triggers a fetch itself.
  */
 @Composable
 fun accountMediaGridContent(
-    items: List<SearchResultItem>,
-    listState: ListState,
+    lazyPagingItems: LazyPagingItems<SearchResultItem>,
     mediaType: SearchMediaType,
     emptyMessage: String,
-    onLoadMore: () -> Unit,
     onItemSelected: (id: Long) -> Unit,
     lazyGridState: LazyGridState = rememberLazyGridState(),
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
-    val shouldStartPaginate =
-        remember {
-            derivedStateOf {
-                (
-                    lazyGridState.layoutInfo.visibleItemsInfo
-                        .lastOrNull()
-                        ?.index ?: -AccountMediaGridConstant.PAGINATION_LOOKAHEAD_ITEMS
-                ) >=
-                    (lazyGridState.layoutInfo.totalItemsCount - AccountMediaGridConstant.PAGINATION_LOOKAHEAD_ITEMS)
-            }
-        }
-    LaunchedEffect(shouldStartPaginate.value, listState) {
-        if (shouldStartPaginate.value && listState == ListState.IDLE) {
-            onLoadMore()
-        }
-    }
 
-    if (items.isEmpty() && listState == ListState.PAGINATION_EXHAUST) {
+    if (lazyPagingItems.itemCount == 0 && lazyPagingItems.loadState.refresh is LoadState.NotLoading) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = emptyMessage,
@@ -94,7 +78,11 @@ fun accountMediaGridContent(
         columns = GridCells.Adaptive(minSize = AccountMediaGridConstant.GRID_MIN_CELL_SIZE),
         contentPadding = PaddingValues(8.dp),
     ) {
-        items(items, key = { it.uniqueKey }) { item ->
+        items(
+            count = lazyPagingItems.itemCount,
+            key = lazyPagingItems.itemKey { it.uniqueKey },
+        ) { index ->
+            val item = lazyPagingItems[index] ?: return@items
             val density = LocalDensity.current.density
             val imageUrl =
                 ImageConfigResolver.resolve(
@@ -121,11 +109,23 @@ fun accountMediaGridContent(
                 }
             }
         }
-        listStates(
-            coroutineScope = coroutineScope,
-            lazyColumnListState = lazyGridState,
-            listState = listState,
-            networkRetryOnClick = onLoadMore,
-        )
+        when (val appendState = lazyPagingItems.loadState.append) {
+            is LoadState.Loading ->
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+            is LoadState.Error ->
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(appendState.error.message.orEmpty(), textAlign = TextAlign.Center)
+                        Button(onClick = { lazyPagingItems.retry() }) { Text(stringResource(Res.string.action_retry)) }
+                    }
+                }
+
+            is LoadState.NotLoading -> Unit
+        }
     }
 }

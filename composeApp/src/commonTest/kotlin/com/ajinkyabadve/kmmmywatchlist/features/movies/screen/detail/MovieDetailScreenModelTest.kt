@@ -3,10 +3,11 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.ktor.http.HttpStatusCode
@@ -31,7 +32,9 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MovieDetailScreenModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
-    private val fakeRepository = FakeMovieRepository()
+    private val fakeCacheRepository = FakeMovieDetailCacheRepository()
+
+    private fun buildModel(movieId: Long = 42) = MovieDetailScreenModel(movieId = movieId, movieDetailCacheRepository = fakeCacheRepository)
 
     // Built in a standalone runTest{}, isolated from each test's own runTest(testDispatcher){} -
     // see MovieListScreenModelTest for why resolving these inline inside a test body breaks
@@ -55,21 +58,21 @@ class MovieDetailScreenModelTest {
     fun testSuccessLoadsMovieDetail() =
         runTest(testDispatcher) {
             val detail = MovieDetail(id = 42, title = "Fixture Movie")
-            fakeRepository.getMovieDetailsResult = Result.success(detail)
+            fakeCacheRepository.refreshResult = Result.success(detail)
 
-            val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
             assertEquals(detail, state.movieDetail)
-            assertEquals(listOf(42L), fakeRepository.getMovieDetailsCalls)
+            assertEquals(listOf(42L), fakeCacheRepository.refreshCalls)
         }
 
     @Test
     fun testHttpExceptionsSetsErrorWithResponseMessage() =
         runTest(testDispatcher) {
-            fakeRepository.getMovieDetailsResult = Result.failure(notFoundException)
+            fakeCacheRepository.refreshResult = Result.failure(notFoundException)
 
-            val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
             assertEquals(UiText.Plain(notFoundException.message), state.message)
@@ -78,9 +81,9 @@ class MovieDetailScreenModelTest {
     @Test
     fun testIOExceptionSetsNetworkErrorMessage() =
         runTest(testDispatcher) {
-            fakeRepository.getMovieDetailsResult = Result.failure(IOException("Mock network failure"))
+            fakeCacheRepository.refreshResult = Result.failure(IOException("Mock network failure"))
 
-            val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
             assertEquals(UiText.Resource(Res.string.error_network), state.message)
@@ -89,9 +92,9 @@ class MovieDetailScreenModelTest {
     @Test
     fun testSerializationExceptionSetsGenericErrorMessage() =
         runTest(testDispatcher) {
-            fakeRepository.getMovieDetailsResult = Result.failure(SerializationException("Boom"))
+            fakeCacheRepository.refreshResult = Result.failure(SerializationException("Boom"))
 
-            val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<MovieDetailState.Error>(viewModel.uiState.value)
             assertEquals(UiText.Resource(Res.string.error_unexpected_movie_details), state.message)
@@ -100,17 +103,30 @@ class MovieDetailScreenModelTest {
     @Test
     fun testRetryAfterErrorSucceeds() =
         runTest(testDispatcher) {
-            fakeRepository.getMovieDetailsResult = Result.failure(IOException("Mock network failure"))
-            val viewModel = MovieDetailScreenModel(42, fakeRepository)
+            fakeCacheRepository.refreshResult = Result.failure(IOException("Mock network failure"))
+            val viewModel = buildModel()
             assertIs<MovieDetailState.Error>(viewModel.uiState.value)
 
             val detail = MovieDetail(id = 42, title = "Fixture Movie")
-            fakeRepository.getMovieDetailsResult = Result.success(detail)
+            fakeCacheRepository.refreshResult = Result.success(detail)
             viewModel.loadMovieDetails()
 
             val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
             assertEquals(detail, state.movieDetail)
-            assertTrue(fakeRepository.getMovieDetailsCalls.size == 2)
+            assertTrue(fakeCacheRepository.refreshCalls.size == 2)
+        }
+
+    @Test
+    fun testLocalCacheSurvivesANetworkErrorOnTheInitialLoad() =
+        runTest(testDispatcher) {
+            val cachedDetail = MovieDetail(id = 42, title = "Cached Movie")
+            fakeCacheRepository.seedCached(42, cachedDetail)
+            fakeCacheRepository.refreshResult = Result.failure(IOException("Mock network failure"))
+
+            val viewModel = buildModel()
+
+            val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
+            assertEquals(cachedDetail, state.movieDetail)
         }
 
     /**
@@ -127,14 +143,15 @@ class MovieDetailScreenModelTest {
                 FakeAccountMediaRepository().apply {
                     accountStatesResult = Result.success(AccountStates(favorite = true, watchlist = true))
                 }
-            fakeRepository.getMovieDetailsResult = Result.success(MovieDetail(id = 42, title = "Fixture Movie"))
+            fakeCacheRepository.refreshResult = Result.success(MovieDetail(id = 42, title = "Fixture Movie"))
 
             val viewModel =
                 MovieDetailScreenModel(
                     movieId = 42,
-                    movieRepository = fakeRepository,
+                    movieDetailCacheRepository = fakeCacheRepository,
                     authRepository = fakeAuthRepository,
                     accountMediaRepository = fakeAccountMediaRepository,
+                    trackedMediaRepository = FakeTrackedMediaRepository(),
                 )
 
             assertTrue(viewModel.mediaActionsState.uiState.value.isFavorite)

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -28,8 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,11 +38,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbList
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_cancel
+import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.list_create_button
 import mywatchlist.composeapp.generated.resources.list_create_title
 import mywatchlist.composeapp.generated.resources.list_description_hint
@@ -54,10 +54,13 @@ import mywatchlist.composeapp.generated.resources.list_name_hint
 import mywatchlist.composeapp.generated.resources.lists_empty_message
 import org.jetbrains.compose.resources.stringResource
 
-private object ListsTabConstant {
-    const val PAGINATION_LOOKAHEAD_ITEMS = 3
-}
-
+/**
+ * No longer needs an explicit refresh/mount effect or manual pagination trigger -
+ * `QueryPagingSource` (see `CustomListRepository.pagedFlow`) auto-invalidates whenever anything
+ * writes to the local `customList` table, and `collectAsLazyPagingItems()` drives its own
+ * scroll-triggered page fetches - see `AccountFavoritesWatchlistTab`'s identical kdoc for the full
+ * reasoning (same fix, same cause, now shared by both grids).
+ */
 @Composable
 fun ListsTab(
     session: UserSession,
@@ -71,52 +74,38 @@ fun ListsTab(
     lazyListState: LazyListState = rememberLazyListState(),
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
-
-    // Re-syncs on every mount, not just on a manual pull-to-refresh: `viewModel(key = ...)`
-    // returns the same cached ScreenModel instance across a tab switch-away-and-back, so a list
-    // created/deleted elsewhere would stay invisible here otherwise - see
-    // AccountFavoritesWatchlistTab's kdoc for the full reasoning (same fix, same cause).
-    LaunchedEffect(screenModel) {
-        screenModel.refresh()
-    }
-
-    val shouldPaginate =
-        remember {
-            derivedStateOf {
-                (
-                    lazyListState.layoutInfo.visibleItemsInfo
-                        .lastOrNull()
-                        ?.index ?: -ListsTabConstant.PAGINATION_LOOKAHEAD_ITEMS
-                ) >=
-                    (lazyListState.layoutInfo.totalItemsCount - ListsTabConstant.PAGINATION_LOOKAHEAD_ITEMS)
-            }
-        }
-    LaunchedEffect(shouldPaginate.value, screenModel.listState) {
-        if (shouldPaginate.value && screenModel.listState == ListState.IDLE) {
-            screenModel.load()
-        }
-    }
+    val lazyPagingItems = screenModel.pagedLists.collectAsLazyPagingItems()
 
     Box(modifier = modifier.fillMaxSize()) {
         PullToRefreshBox(
             modifier = Modifier.fillMaxSize(),
-            isRefreshing = screenModel.listState == ListState.LOADING,
-            onRefresh = { screenModel.refresh() },
+            isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
+            onRefresh = { lazyPagingItems.refresh() },
         ) {
             LazyColumn(state = lazyListState) {
                 item { NewListRow(onClick = { showCreateDialog = true }) }
-                items(screenModel.lists, key = { it.id }) { list ->
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = lazyPagingItems.itemKey { it.id },
+                ) { index ->
+                    val list = lazyPagingItems[index] ?: return@items
                     ListRow(list = list, onClick = { onListSelected(list.id) })
                 }
                 item {
-                    when (screenModel.listState) {
-                        ListState.LOADING, ListState.PAGINATING ->
+                    when (val appendState = lazyPagingItems.loadState.append) {
+                        is LoadState.Loading ->
                             Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator()
                             }
 
-                        ListState.PAGINATION_EXHAUST ->
-                            if (screenModel.lists.isEmpty()) {
+                        is LoadState.Error ->
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(appendState.error.message.orEmpty(), textAlign = TextAlign.Center)
+                                Button(onClick = { lazyPagingItems.retry() }) { Text(stringResource(Res.string.action_retry)) }
+                            }
+
+                        is LoadState.NotLoading ->
+                            if (lazyPagingItems.itemCount == 0 && lazyPagingItems.loadState.refresh is LoadState.NotLoading) {
                                 Text(
                                     text = stringResource(Res.string.lists_empty_message),
                                     modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -124,8 +113,6 @@ fun ListsTab(
                                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                                 )
                             }
-
-                        else -> {}
                     }
                 }
             }

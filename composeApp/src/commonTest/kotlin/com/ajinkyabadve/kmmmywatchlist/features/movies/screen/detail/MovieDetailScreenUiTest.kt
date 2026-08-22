@@ -17,7 +17,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
@@ -76,11 +76,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_errorState_showsMessageAndRetrySucceeds() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.failure(IOException("boom"))
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.failure(IOException("boom")) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
 
             setContent {
                 MovieDetailScreen(
@@ -95,7 +96,7 @@ class MovieDetailScreenUiTest {
             onNodeWithText("Network Connection Error. Please check your internet connectivity.").assertExists()
 
             // Retry with a now-successful repository response.
-            fakeRepository.getMovieDetailsResult = Result.success(successfulMovieDetail())
+            fakeCacheRepository.refreshResult = Result.success(successfulMovieDetail())
             onNodeWithText("Retry").performClick()
 
             onNodeWithText("Fake Movie Detail").assertExists()
@@ -104,11 +105,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_success_rendersTitleTaglineAndCollectionBanner() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.success(successfulMovieDetail())
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.success(successfulMovieDetail()) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
 
             setContent {
                 MovieDetailScreen(
@@ -132,11 +134,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_collectionBannerClick_invokesOnCollectionClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.success(successfulMovieDetail())
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.success(successfulMovieDetail()) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
             var collectionId: Long? = null
 
             setContent {
@@ -158,11 +161,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_castMemberClick_invokesOnPersonClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.success(successfulMovieDetail())
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.success(successfulMovieDetail()) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
             var personId: Long? = null
 
             setContent {
@@ -184,11 +188,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_directorClick_invokesOnPersonClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.success(successfulMovieDetail())
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.success(successfulMovieDetail()) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
             var personId: Long? = null
 
             setContent {
@@ -210,11 +215,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_recommendationClick_invokesOnMovieClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.success(successfulMovieDetail())
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.success(successfulMovieDetail()) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
             var clickedMovieId: Long? = null
 
             setContent {
@@ -235,11 +241,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_similarMovieClick_invokesOnMovieClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.success(successfulMovieDetail())
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.success(successfulMovieDetail()) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
             var clickedMovieId: Long? = null
 
             setContent {
@@ -260,11 +267,12 @@ class MovieDetailScreenUiTest {
     @Test
     fun testMovieDetailScreen_backClicked_invokesOnBackClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeMovieRepository().apply {
-                    getMovieDetailsResult = Result.success(successfulMovieDetail())
-                }
-            val viewModel = MovieDetailScreenModel(movieId = 1, movieRepository = fakeRepository)
+            val fakeCacheRepository = FakeMovieDetailCacheRepository().apply { refreshResult = Result.success(successfulMovieDetail()) }
+            val viewModel =
+                MovieDetailScreenModel(
+                    movieId = 1,
+                    movieDetailCacheRepository = fakeCacheRepository,
+                )
             var backClicked = false
 
             setContent {

@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,10 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.favorites_empty_message
@@ -39,13 +40,11 @@ object AccountFavoritesWatchlistTabConstant {
  * only the endpoint category and empty-state copy differ, so both tabs in `MyFavTabs` render the
  * same composable rather than two near-identical ones.
  *
- * Refreshes itself on every mount (see the `LaunchedEffect(screenModel)` below), not just on a
- * manual pull-to-refresh: `viewModel(key = ...)` returns the *same* `AccountMediaListScreenModel`
- * instance across a tab switch-away-and-back (Navigation3 keeps it alive), so without this a title
- * favorited/watchlisted elsewhere while this tab sat cached would stay invisible here until the
- * user thought to pull down - which isn't a gesture desktop's mouse input reliably triggers at
- * all. Composing this file fresh (which switching tabs does) reruns the effect even though the key
- * (the cached `screenModel` instance) is unchanged, so this fires every time the user returns here.
+ * No longer needs an explicit refresh-on-mount: `QueryPagingSource` (see
+ * `TrackedMediaRepository.pagedFlow`) auto-invalidates whenever anything writes to the underlying
+ * `trackedMedia` table - including a favorite/watchlist toggle made from a detail screen elsewhere -
+ * so a title favorited/watchlisted while this tab sat cached now appears here on its own, without
+ * requiring the manual mount-triggered refresh the pre-Paging3 version of this composable needed.
  */
 @Composable
 fun AccountFavoritesWatchlistTab(
@@ -55,8 +54,8 @@ fun AccountFavoritesWatchlistTab(
     onTvSelected: (tvId: Long) -> Unit,
     modifier: Modifier = Modifier,
     // Test-only seam, same pattern as MovieScreenTabs' per-tab repository overrides: lets a UI
-    // test inject a fake so this composable never hits the real network.
-    accountMediaRepository: AccountMediaRepository? = null,
+    // test inject a fake so this composable never hits the real network or the real database.
+    trackedMediaRepository: TrackedMediaRepository? = null,
     // Hoisted by MyFavTabs so re-tapping the already-selected tab can scroll this grid to top.
     lazyGridState: LazyGridState = rememberLazyGridState(),
 ) {
@@ -71,27 +70,15 @@ fun AccountFavoritesWatchlistTab(
 
     val screenModel =
         viewModel(key = "AccountMedia:$category:$selectedMediaType") {
-            if (accountMediaRepository != null) {
-                AccountMediaListScreenModel(
-                    category = category,
-                    mediaType = selectedMediaType,
-                    accountId = session.accountId,
-                    sessionId = session.sessionId,
-                    accountMediaRepository = accountMediaRepository,
-                )
-            } else {
-                AccountMediaListScreenModel(
-                    category = category,
-                    mediaType = selectedMediaType,
-                    accountId = session.accountId,
-                    sessionId = session.sessionId,
-                )
-            }
+            AccountMediaListScreenModel(
+                category = category,
+                mediaType = selectedMediaType,
+                accountId = session.accountId,
+                sessionId = session.sessionId,
+                trackedMediaRepository = trackedMediaRepository ?: TrackedMediaRepositoryImpl(),
+            )
         }
-
-    LaunchedEffect(screenModel) {
-        screenModel.refresh()
-    }
+    val lazyPagingItems = screenModel.pagedItems.collectAsLazyPagingItems()
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -103,15 +90,13 @@ fun AccountFavoritesWatchlistTab(
         }
         PullToRefreshBox(
             modifier = Modifier.weight(1f).fillMaxSize().testTag(AccountFavoritesWatchlistTabConstant.PULL_TO_REFRESH_TAG),
-            isRefreshing = screenModel.listState == ListState.LOADING,
-            onRefresh = { screenModel.refresh() },
+            isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
+            onRefresh = { lazyPagingItems.refresh() },
         ) {
             accountMediaGridContent(
-                items = screenModel.items,
-                listState = screenModel.listState,
+                lazyPagingItems = lazyPagingItems,
                 mediaType = selectedMediaType,
                 emptyMessage = emptyMessage,
-                onLoadMore = { screenModel.load() },
                 onItemSelected = { id ->
                     if (selectedMediaType == SearchMediaType.MOVIE) onMovieSelected(id) else onTvSelected(id)
                 },

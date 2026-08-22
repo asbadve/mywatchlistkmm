@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbListDetail
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeCustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import kotlinx.coroutines.Dispatchers
@@ -28,11 +29,13 @@ private object ListDetailScreenUiTestConstant {
 class ListDetailScreenUiTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeListsRepository: FakeListsRepository
+    private lateinit var fakeCustomListRepository: FakeCustomListRepository
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeListsRepository = FakeListsRepository()
+        fakeCustomListRepository = FakeCustomListRepository()
     }
 
     @AfterTest
@@ -45,12 +48,13 @@ class ListDetailScreenUiTest {
             listId = ListDetailScreenUiTestConstant.LIST_ID,
             sessionId = ListDetailScreenUiTestConstant.SESSION_ID,
             listsRepository = fakeListsRepository,
+            customListRepository = fakeCustomListRepository,
         )
 
     @Test
     fun testRendersListNameAndItems() =
         runComposeUiTest {
-            fakeListsRepository.listDetailsResult =
+            fakeCustomListRepository.refreshListDetailResult =
                 Result.success(TmdbListDetail(name = "Marvel Movies", items = listOf(Movie(id = 1, title = "Iron Man"))))
             val viewModel = buildModel()
 
@@ -71,7 +75,7 @@ class ListDetailScreenUiTest {
     @Test
     fun testRemovingItemDropsItFromTheList() =
         runComposeUiTest {
-            fakeListsRepository.listDetailsResult =
+            fakeCustomListRepository.refreshListDetailResult =
                 Result.success(
                     TmdbListDetail(name = "Marvel Movies", items = listOf(Movie(id = 1, title = "Iron Man"))),
                 )
@@ -95,7 +99,7 @@ class ListDetailScreenUiTest {
     @Test
     fun testDeletingListInvokesOnBackClicked() =
         runComposeUiTest {
-            fakeListsRepository.listDetailsResult = Result.success(TmdbListDetail(name = "Marvel Movies"))
+            fakeCustomListRepository.refreshListDetailResult = Result.success(TmdbListDetail(name = "Marvel Movies"))
             val viewModel = buildModel()
             var backClicked = false
 

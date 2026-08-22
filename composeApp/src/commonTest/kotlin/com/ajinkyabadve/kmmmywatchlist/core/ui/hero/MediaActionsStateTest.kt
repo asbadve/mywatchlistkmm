@@ -3,6 +3,11 @@ package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
+import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
+import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
+import io.ktor.http.HttpStatusCode
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +19,7 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -27,10 +33,19 @@ private object MediaActionsStateTestConstant {
 class MediaActionsStateTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private val fakeAccountMediaRepository = FakeAccountMediaRepository()
+    private val fakeTrackedMediaRepository = FakeTrackedMediaRepository()
+
+    // Built in a standalone runTest{}, isolated from each test's own runTest(testDispatcher){} -
+    // see MovieListScreenModelTest's identical setup for why resolving this inline inside a test
+    // body confuses UnconfinedTestDispatcher's eager execution of the state holder's own launch{}.
+    private lateinit var forbiddenException: HttpExceptions
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        runTest {
+            forbiddenException = HttpExceptionsTestFactory.create(HttpStatusCode.Forbidden)
+        }
     }
 
     @AfterTest
@@ -44,6 +59,7 @@ class MediaActionsStateTest {
             MediaActionsStateTestConstant.MOVIE_ID,
             CoroutineScope(testDispatcher),
             fakeAccountMediaRepository,
+            fakeTrackedMediaRepository,
         )
 
     /** Before `load()` is ever called, the icons must show a ghost/shimmer, not a guessed state. */
@@ -85,4 +101,57 @@ class MediaActionsStateTest {
 
         assertTrue(mediaActionsState.uiState.value.isFavorite)
     }
+
+    /** Removing while offline queues the delete locally instead of bouncing the icon back. */
+    @Test
+    fun testTurningFavoriteOffWhileOfflineQueuesTheLocalDeleteAndKeepsTheIconOff() =
+        runTest(testDispatcher) {
+            fakeAccountMediaRepository.accountStatesResult = Result.success(AccountStates(favorite = true))
+            fakeAccountMediaRepository.setFavoriteResult = Result.failure(IOException("Mock network failure"))
+            val mediaActionsState = state()
+            mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID)
+
+            mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertFalse(mediaActionsState.uiState.value.isFavorite)
+            assertEquals(
+                listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
+                fakeTrackedMediaRepository.markPendingDeleteCalls,
+            )
+            assertTrue(fakeTrackedMediaRepository.confirmDeleteCalls.isEmpty())
+        }
+
+    /** A real server-side rejection (not offline) rolls both the icon and the local queue back. */
+    @Test
+    fun testTurningFavoriteOffFailingOutrightRestoresTheIconAndClearsTheQueuedDelete() =
+        runTest(testDispatcher) {
+            fakeAccountMediaRepository.accountStatesResult = Result.success(AccountStates(favorite = true))
+            fakeAccountMediaRepository.setFavoriteResult = Result.failure(forbiddenException)
+            val mediaActionsState = state()
+            mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID)
+
+            mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertTrue(mediaActionsState.uiState.value.isFavorite)
+            assertEquals(
+                listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
+                fakeTrackedMediaRepository.clearPendingDeleteCalls,
+            )
+        }
+
+    /** A successful removal hard-deletes the queued row rather than leaving it marked pending. */
+    @Test
+    fun testTurningFavoriteOffSuccessfullyConfirmsTheDelete() =
+        runTest(testDispatcher) {
+            fakeAccountMediaRepository.accountStatesResult = Result.success(AccountStates(favorite = true))
+            val mediaActionsState = state()
+            mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID)
+
+            mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertEquals(
+                listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
+                fakeTrackedMediaRepository.confirmDeleteCalls,
+            )
+        }
 }

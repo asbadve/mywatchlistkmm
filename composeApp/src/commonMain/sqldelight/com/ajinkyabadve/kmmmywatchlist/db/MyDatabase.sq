@@ -1,0 +1,278 @@
+-- Column choices are aligned against the actual API-backed models this data mirrors, not assumed:
+--   trackedMedia   <- SearchResultItem (features/search/model/SearchResult.kt), what
+--                     AccountMediaRepository's favorite/watchlist GETs already return.
+--   customList     <- TmdbList (features/account/model/, /3/list GET summary shape)
+--   customListItem <- Movie, as returned inside TmdbListDetail.items (/3/list/{id} GET)
+-- `addedAt`/`lastSyncedAt`/`position` are app-local (not TMDB fields) - documented per column.
+-- Ids/counts are left as SQLite's native INTEGER->Long / REAL->Double mapping rather than typed
+-- `AS Int`/`AS Double` column adapters - this app's own models mix Int and Long ids already
+-- (Movie.id: Int, TmdbList.id: Long), so callers narrow with `.toInt()` where needed instead of
+-- fighting SQLDelight's adapter machinery for a distinction SQLite itself doesn't make.
+
+CREATE TABLE trackedMedia (
+    id INTEGER NOT NULL,
+    mediaType TEXT NOT NULL,        -- SearchResultItem.mediaTypeRaw: "movie" | "tv"
+    category TEXT NOT NULL,         -- app-local: "favorite" | "watchlist"
+    title TEXT NOT NULL,            -- SearchResultItem.displayTitle (title ?: name)
+    posterPath TEXT,                -- SearchResultItem.imagePath
+    releaseDate TEXT,               -- SearchResultItem.releaseDate ?: firstAirDate, unified the
+                                     -- same way SearchResultItem.isUpcoming() already does - this
+                                     -- is what drives the "Upcoming" badge from local data alone.
+    voteAverage REAL NOT NULL DEFAULT 0.0,   -- SearchResultItem.voteAverage
+    addedAt INTEGER NOT NULL,       -- app-local: this row's first insert time
+    lastSyncedAt INTEGER NOT NULL,  -- app-local: last time this row matched a sync() pass
+    -- Poll-state columns future_features_checklist.md item 3's pollers read/write - nullable
+    -- until the first poll runs. Not sourced from any single API field.
+    lastKnownNextEpisodeAirDate TEXT,
+    lastKnownCreditIds TEXT,
+    -- Offline-delete queue: set together the moment a user removes a title from favorites/
+    -- watchlist. isDeleted hides the row from selectByCategoryPaged immediately, regardless of
+    -- network state; pendingSync marks that the removal still needs to reach TMDB. A successful flush
+    -- hard-deletes the row (see deleteTrackedMediaRow) - pendingSync never goes back to 0 on its
+    -- own, the row simply stops existing once synced.
+    isDeleted INTEGER NOT NULL DEFAULT 0,
+    pendingSync INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (id, mediaType, category)
+);
+
+CREATE INDEX trackedMedia_category ON trackedMedia(category);
+
+-- Poll-state and offline-delete-queue columns are deliberately absent from both the column list
+-- and the conflict clause, so a RemoteMediator refresh (which knows nothing about poll state or a
+-- locally-queued removal) never clobbers what item 3's poller or markTrackedMediaPendingDelete
+-- already recorded for a row that already existed.
+upsertTrackedMedia:
+INSERT INTO trackedMedia (id, mediaType, category, title, posterPath, releaseDate, voteAverage, addedAt, lastSyncedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (id, mediaType, category) DO UPDATE SET
+    title = excluded.title,
+    posterPath = excluded.posterPath,
+    releaseDate = excluded.releaseDate,
+    voteAverage = excluded.voteAverage,
+    lastSyncedAt = excluded.lastSyncedAt;
+
+updatePollState:
+UPDATE trackedMedia
+SET lastKnownNextEpisodeAirDate = ?, lastKnownCreditIds = ?
+WHERE id = ? AND mediaType = ? AND category = ?;
+
+markTrackedMediaPendingDelete:
+UPDATE trackedMedia SET isDeleted = 1, pendingSync = 1 WHERE id = ? AND mediaType = ? AND category = ?;
+
+-- Undo path: toggling a title back on before its removal ever reached TMDB (e.g. un-favorite then
+-- re-favorite while offline, before a flush happened).
+clearTrackedMediaPendingDelete:
+UPDATE trackedMedia SET isDeleted = 0, pendingSync = 0 WHERE id = ? AND mediaType = ? AND category = ?;
+
+deleteTrackedMediaRow:
+DELETE FROM trackedMedia WHERE id = ? AND mediaType = ? AND category = ?;
+
+-- One row regardless of isDeleted/pendingSync - selectByCategoryPaged below excludes isDeleted
+-- rows, so this is what TrackedMediaRemoteMediatorTest uses to confirm a row queued for an
+-- offline delete (isDeleted = 1) is still there, not gone.
+selectTrackedMediaRow:
+SELECT * FROM trackedMedia WHERE id = ? AND mediaType = ? AND category = ?;
+
+-- Backs the Favorites/Watchlist grid's paginated QueryPagingSource - one media type at a time,
+-- LIMIT/OFFSET-shaped (see TrackedMediaRemoteMediator).
+selectByCategoryPaged:
+SELECT * FROM trackedMedia WHERE category = ? AND mediaType = ? AND isDeleted = 0 ORDER BY addedAt DESC LIMIT :limit OFFSET :offset;
+
+countByCategory:
+SELECT COUNT(*) FROM trackedMedia WHERE category = ? AND mediaType = ? AND isDeleted = 0;
+
+-- RemoteMediator's LoadType.REFRESH step: clears this (category, mediaType) slice before refetching
+-- page 1. Scoped by mediaType as well as category - a movie and a TV show can share the same
+-- numeric id (TMDB numbers them in separate spaces), so filtering on category alone would let a
+-- stale movie row survive because a still-current TV show happens to have the same id.
+-- pendingSync = 0 excludes rows still queued for an offline delete - deleteTrackedMediaRow (via a
+-- successful flush) is what actually removes those, not a refresh.
+deleteTrackedMediaPagedRefresh:
+DELETE FROM trackedMedia WHERE category = ? AND mediaType = ? AND pendingSync = 0;
+
+CREATE TABLE customList (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,             -- TmdbList.name
+    description TEXT NOT NULL,      -- TmdbList.description
+    itemCount INTEGER NOT NULL,     -- TmdbList.itemCount
+    posterPath TEXT,                -- TmdbList.posterPath
+    lastSyncedAt INTEGER NOT NULL   -- app-local
+);
+
+selectAllLists:
+SELECT * FROM customList ORDER BY name;
+
+-- Paging3 support - same LIMIT/OFFSET shape as trackedMedia's selectByCategoryPaged, backing a
+-- QueryPagingSource for the Lists grid (see ListsRemoteMediator).
+selectAllListsPaged:
+SELECT * FROM customList ORDER BY name LIMIT :limit OFFSET :offset;
+
+countLists:
+SELECT COUNT(*) FROM customList;
+
+-- ListsRemoteMediator's LoadType.REFRESH step - customList has no isDeleted/pendingSync columns to
+-- protect (unlike trackedMedia/customListItem), so this is a plain clear before refetching page 1.
+deleteAllLists:
+DELETE FROM customList;
+
+selectListById:
+SELECT * FROM customList WHERE id = ?;
+
+upsertList:
+INSERT OR REPLACE INTO customList (id, name, description, itemCount, posterPath, lastSyncedAt)
+VALUES (?, ?, ?, ?, ?, ?);
+
+deleteList:
+DELETE FROM customList WHERE id = ?;
+
+deleteListsNotIn:
+DELETE FROM customList WHERE id NOT IN ?;
+
+CREATE TABLE customListItem (
+    listId INTEGER NOT NULL,
+    movieId INTEGER NOT NULL,
+    title TEXT NOT NULL,            -- Movie.title
+    posterPath TEXT,                -- Movie.posterPath
+    releaseDate TEXT NOT NULL,      -- Movie.releaseDate
+    voteAverage REAL NOT NULL DEFAULT 0.0,  -- Movie.voteAverage
+    overview TEXT NOT NULL DEFAULT '',      -- Movie.overview - ListDetailScreen renders a snippet
+    position INTEGER NOT NULL,      -- app-local: preserves TmdbListDetail.items' array order
+    -- Offline-delete queue - same shape/reasoning as trackedMedia's isDeleted/pendingSync pair.
+    isDeleted INTEGER NOT NULL DEFAULT 0,
+    pendingSync INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (listId, movieId)
+);
+
+selectItemsForList:
+SELECT * FROM customListItem WHERE listId = ? AND isDeleted = 0 ORDER BY position;
+
+selectPendingSyncListItems:
+SELECT * FROM customListItem WHERE pendingSync = 1;
+
+-- True upsert (not INSERT OR REPLACE, which deletes+reinserts and would silently reset
+-- isDeleted/pendingSync to their defaults on a row that already exists) - a resync must never
+-- clobber a locally-queued removal that hasn't reached TMDB yet.
+replaceListItem:
+INSERT INTO customListItem (listId, movieId, title, posterPath, releaseDate, voteAverage, overview, position)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (listId, movieId) DO UPDATE SET
+    title = excluded.title,
+    posterPath = excluded.posterPath,
+    releaseDate = excluded.releaseDate,
+    voteAverage = excluded.voteAverage,
+    overview = excluded.overview,
+    position = excluded.position;
+
+markListItemPendingDelete:
+UPDATE customListItem SET isDeleted = 1, pendingSync = 1 WHERE listId = ? AND movieId = ?;
+
+clearListItemPendingDelete:
+UPDATE customListItem SET isDeleted = 0, pendingSync = 0 WHERE listId = ? AND movieId = ?;
+
+deleteListItemRow:
+DELETE FROM customListItem WHERE listId = ? AND movieId = ?;
+
+deleteListItems:
+DELETE FROM customListItem WHERE listId = ?;
+
+-- pendingSync = 0 excludes rows still queued for an offline delete - deleteListItemRow (via a
+-- successful flush) is what removes those.
+deleteListItemsNotIn:
+DELETE FROM customListItem WHERE listId = ? AND pendingSync = 0 AND movieId NOT IN ?;
+
+-- Detail-screen read-through caches: one row per full API response, stored as a serialized JSON
+-- blob rather than flattened columns - MovieDetail/TvDetail/PersonDetail each carry ~20-30 fields
+-- (many nested: Credits, Genre lists, WatchProvidersResponse, paginated recommendations, etc.) with
+-- no shared base type, so hand-maintaining scalar columns per field isn't worth it here the way it
+-- is for the small, flat list-item shapes above. These are pure read-through caches - never locally
+-- mutated - so plain INSERT OR REPLACE is correct (no isDeleted/pendingSync flags to protect,
+-- unlike trackedMedia/customListItem above).
+--
+-- movieDetailCache/tvDetailCache/personDetailCache are deliberately three separate tables rather
+-- than one shared table keyed by (id, mediaType): TMDB's id space overlaps between movies, TV
+-- shows, and people (the same numeric id can legally denote all three), so one table per entity
+-- type sidesteps that collision the same way trackedMedia's composite PK does for a different
+-- reason. No foreign key exists between these tables and none is needed: TMDB's person response
+-- embeds each credit's own title/poster/overview inline (see PersonCredit in
+-- features/person/model/PersonDetail.kt), so rendering a cached person page never needs to join
+-- back into movieDetailCache/tvDetailCache rows.
+CREATE TABLE movieDetailCache (
+    id INTEGER NOT NULL PRIMARY KEY,
+    json TEXT NOT NULL,             -- kotlinx.serialization Json.encodeToString(MovieDetail)
+    lastSyncedAt INTEGER NOT NULL   -- app-local: reserved for a future cache-vs-network diff/notify feature
+);
+
+selectMovieDetailCache:
+SELECT * FROM movieDetailCache WHERE id = ?;
+
+upsertMovieDetailCache:
+INSERT OR REPLACE INTO movieDetailCache (id, json, lastSyncedAt) VALUES (?, ?, ?);
+
+CREATE TABLE tvDetailCache (
+    id INTEGER NOT NULL PRIMARY KEY,
+    json TEXT NOT NULL,             -- kotlinx.serialization Json.encodeToString(TvDetail)
+    lastSyncedAt INTEGER NOT NULL
+);
+
+selectTvDetailCache:
+SELECT * FROM tvDetailCache WHERE id = ?;
+
+upsertTvDetailCache:
+INSERT OR REPLACE INTO tvDetailCache (id, json, lastSyncedAt) VALUES (?, ?, ?);
+
+-- TvDetailScreenModel fans out to one getSeasonDetails call per season on every load; each season
+-- is cached under its own (tvId, seasonNumber) row rather than nested inside tvDetailCache's blob.
+CREATE TABLE tvSeasonDetailCache (
+    tvId INTEGER NOT NULL,
+    seasonNumber INTEGER NOT NULL,
+    json TEXT NOT NULL,             -- kotlinx.serialization Json.encodeToString(TvSeasonDetail)
+    lastSyncedAt INTEGER NOT NULL,
+    PRIMARY KEY (tvId, seasonNumber)
+);
+
+selectTvSeasonDetailCache:
+SELECT * FROM tvSeasonDetailCache WHERE tvId = ? AND seasonNumber = ?;
+
+-- Backs observeSeasons()'s Flow - all cached seasons for one show, re-queried/re-emitted whenever
+-- any row for this tvId changes.
+selectTvSeasonDetailCacheForTv:
+SELECT * FROM tvSeasonDetailCache WHERE tvId = ?;
+
+upsertTvSeasonDetailCache:
+INSERT OR REPLACE INTO tvSeasonDetailCache (tvId, seasonNumber, json, lastSyncedAt) VALUES (?, ?, ?, ?);
+
+-- Schema included now so a later "cache person detail" pass needs no second migration; no
+-- PersonDetailCacheRepository/PersonDetailScreenModel wiring exists yet - out of scope until then.
+CREATE TABLE personDetailCache (
+    id INTEGER NOT NULL PRIMARY KEY,
+    json TEXT NOT NULL,             -- kotlinx.serialization Json.encodeToString(PersonDetail)
+    lastSyncedAt INTEGER NOT NULL
+);
+
+selectPersonDetailCache:
+SELECT * FROM personDetailCache WHERE id = ?;
+
+upsertPersonDetailCache:
+INSERT OR REPLACE INTO personDetailCache (id, json, lastSyncedAt) VALUES (?, ?, ?);
+
+-- RemoteMediator page-cursor bookkeeping (Paging3). One row per paginated query this app
+-- remote-mediates. queryKey is an app-local id ("favorite_movie", "favorite_tv",
+-- "watchlist_movie", "watchlist_tv", "lists"), not a TMDB field. nextPage/prevPage model TMDB's
+-- page-number pagination (every endpoint paginated in this app uses page/total_pages, not an
+-- opaque cursor); nextKey is an unused opaque-cursor slot reserved for a future endpoint that
+-- isn't page-number based.
+CREATE TABLE remoteKeys (
+    queryKey TEXT NOT NULL PRIMARY KEY,
+    nextPage INTEGER,
+    prevPage INTEGER,
+    nextKey TEXT
+);
+
+selectRemoteKeys:
+SELECT * FROM remoteKeys WHERE queryKey = ?;
+
+upsertRemoteKeys:
+INSERT OR REPLACE INTO remoteKeys (queryKey, nextPage, prevPage, nextKey) VALUES (?, ?, ?, ?);
+
+deleteRemoteKeys:
+DELETE FROM remoteKeys WHERE queryKey = ?;

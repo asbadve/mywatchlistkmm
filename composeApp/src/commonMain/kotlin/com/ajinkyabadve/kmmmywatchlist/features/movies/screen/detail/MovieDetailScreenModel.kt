@@ -9,11 +9,13 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.loadOnSessionAvailable
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -48,10 +50,11 @@ sealed interface MovieDetailState {
 
 class MovieDetailScreenModel(
     private val movieId: Long,
-    private val movieRepository: MovieRepository = MovieRepositoryImpl(),
+    private val movieDetailCacheRepository: MovieDetailCacheRepository = MovieDetailCacheRepositoryImpl(),
     private val regionRepository: RegionRepository = RegionRepositoryImpl(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
+    trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -63,7 +66,8 @@ class MovieDetailScreenModel(
      * reusable composable never gets its own `ViewModel`. Launches on this screen's
      * `viewModelScope`, so the toggle survives past whatever recomposes the hero.
      */
-    val mediaActionsState = MediaActionsState(MediaTypeConstant.MOVIE, movieId, viewModelScope, accountMediaRepository)
+    val mediaActionsState =
+        MediaActionsState(MediaTypeConstant.MOVIE, movieId, viewModelScope, accountMediaRepository, trackedMediaRepository)
 
     init {
         loadMovieDetails()
@@ -74,28 +78,41 @@ class MovieDetailScreenModel(
     }
 
     fun loadMovieDetails() {
-        _uiState.value = MovieDetailState.Loading
+        // MovieDetailCacheRepository is the single source of truth: it decides cache-vs-network and
+        // writes fresh data through to the DB - this only renders whatever it emits, and separately
+        // triggers a refresh. See MovieDetailCacheRepository's kdoc.
+        viewModelScope.launch(Dispatchers.Main) {
+            movieDetailCacheRepository.observe(movieId).collect { detail ->
+                if (detail != null) {
+                    _uiState.value =
+                        MovieDetailState.Success(detail, regionRepository.getSelectedRegion(), regionRepository.getFallbackRegion())
+                }
+            }
+        }
         viewModelScope.launch(Dispatchers.Main) {
             try {
-                val detail = movieRepository.getMovieDetails(movieId)
-                _uiState.value =
-                    MovieDetailState.Success(
-                        detail,
-                        regionRepository.getSelectedRegion(),
-                        regionRepository.getFallbackRegion(),
-                    )
+                movieDetailCacheRepository.refresh(movieId)
             } catch (httpExceptions: HttpExceptions) {
                 Napier.e(tag = TAG, throwable = httpExceptions) { "HTTP Error fetching details for movieId: $movieId" }
-                _uiState.value = MovieDetailState.Error(UiText.Plain(httpExceptions.message))
+                if (_uiState.value !is MovieDetailState.Success) {
+                    _uiState.value = MovieDetailState.Error(UiText.Plain(httpExceptions.message))
+                }
             } catch (e: IOException) {
                 Napier.e(tag = TAG, throwable = e) { "IO/Network Error fetching details for movieId: $movieId" }
-                _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_network))
+                if (_uiState.value !is MovieDetailState.Success) {
+                    _uiState.value =
+                        MovieDetailState.Error(UiText.Resource(Res.string.error_network))
+                }
             } catch (e: ContentConvertException) {
                 logMalformedResponse(e)
-                _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_unexpected_movie_details))
+                if (_uiState.value !is MovieDetailState.Success) {
+                    _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_unexpected_movie_details))
+                }
             } catch (e: SerializationException) {
                 logMalformedResponse(e)
-                _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_unexpected_movie_details))
+                if (_uiState.value !is MovieDetailState.Success) {
+                    _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_unexpected_movie_details))
+                }
             }
         }
     }

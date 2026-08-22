@@ -3,13 +3,14 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.FakeTvDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.ktor.http.HttpStatusCode
@@ -35,7 +36,9 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class TvDetailScreenModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
-    private val fakeRepository = FakeTvRepository()
+    private val fakeCacheRepository = FakeTvDetailCacheRepository()
+
+    private fun buildModel(tvId: Long = 1) = TvDetailScreenModel(tvId = tvId, tvDetailCacheRepository = fakeCacheRepository)
 
     // Built in a standalone runTest{}, isolated from each test's own runTest(testDispatcher){} -
     // see MovieListScreenModelTest for why resolving these inline inside a test body breaks
@@ -58,35 +61,30 @@ class TvDetailScreenModelTest {
     @Test
     fun testLatestReleasedEpisodeAcrossSeasonsResolvesCurrentSeasonAndEpisode() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult =
+            fakeCacheRepository.refreshResult =
                 Result.success(
-                    TvDetail(
-                        id = 1,
-                        title = "Show",
-                        seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2)),
-                    ),
+                    TvDetail(id = 1, title = "Show", seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2))),
                 )
-            fakeRepository.getSeasonDetailsResultsByNumber[1] =
-                Result.success(
-                    TvSeasonDetail(
-                        seasonNumber = 1,
-                        episodes = listOf(Episode(seasonNumber = 1, episodeNumber = 1, airDate = "2000-01-01")),
-                    ),
-                )
-            fakeRepository.getSeasonDetailsResultsByNumber[2] =
-                Result.success(
-                    TvSeasonDetail(
-                        seasonNumber = 2,
-                        episodes =
-                            listOf(
-                                Episode(seasonNumber = 2, episodeNumber = 1, airDate = "2000-02-01"),
-                                // Not yet released - a season announced ahead of time must not win.
-                                Episode(seasonNumber = 2, episodeNumber = 2, airDate = "2099-01-01"),
-                            ),
-                    ),
+            fakeCacheRepository.refreshSeasonsResult =
+                mapOf(
+                    1 to
+                        TvSeasonDetail(
+                            seasonNumber = 1,
+                            episodes = listOf(Episode(seasonNumber = 1, episodeNumber = 1, airDate = "2000-01-01")),
+                        ),
+                    2 to
+                        TvSeasonDetail(
+                            seasonNumber = 2,
+                            episodes =
+                                listOf(
+                                    Episode(seasonNumber = 2, episodeNumber = 1, airDate = "2000-02-01"),
+                                    // Not yet released - a season announced ahead of time must not win.
+                                    Episode(seasonNumber = 2, episodeNumber = 2, airDate = "2099-01-01"),
+                                ),
+                        ),
                 )
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(2, state.currentSeason?.seasonNumber)
@@ -97,30 +95,25 @@ class TvDetailScreenModelTest {
     @Test
     fun testAnUnreleasedFutureSeasonIsIgnoredInFavorOfTheLatestReleasedOne() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult =
+            fakeCacheRepository.refreshResult =
                 Result.success(
-                    TvDetail(
-                        id = 1,
-                        title = "Show",
-                        seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2)),
-                    ),
+                    TvDetail(id = 1, title = "Show", seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2))),
                 )
-            fakeRepository.getSeasonDetailsResultsByNumber[1] =
-                Result.success(
-                    TvSeasonDetail(
-                        seasonNumber = 1,
-                        episodes = listOf(Episode(seasonNumber = 1, episodeNumber = 5, airDate = "2000-01-01")),
-                    ),
-                )
-            fakeRepository.getSeasonDetailsResultsByNumber[2] =
-                Result.success(
-                    TvSeasonDetail(
-                        seasonNumber = 2,
-                        episodes = listOf(Episode(seasonNumber = 2, episodeNumber = 1, airDate = "2099-01-01")),
-                    ),
+            fakeCacheRepository.refreshSeasonsResult =
+                mapOf(
+                    1 to
+                        TvSeasonDetail(
+                            seasonNumber = 1,
+                            episodes = listOf(Episode(seasonNumber = 1, episodeNumber = 5, airDate = "2000-01-01")),
+                        ),
+                    2 to
+                        TvSeasonDetail(
+                            seasonNumber = 2,
+                            episodes = listOf(Episode(seasonNumber = 2, episodeNumber = 1, airDate = "2099-01-01")),
+                        ),
                 )
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(1, state.currentSeason?.seasonNumber)
@@ -130,30 +123,23 @@ class TvDetailScreenModelTest {
     @Test
     fun testFallsBackToEarliestSeasonWhenNothingHasReleasedYet() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult =
+            fakeCacheRepository.refreshResult =
                 Result.success(
                     TvDetail(
                         id = 1,
                         title = "Show",
-                        seasons =
-                            listOf(
-                                SeasonSummary(seasonNumber = 0),
-                                SeasonSummary(seasonNumber = 1),
-                                SeasonSummary(seasonNumber = 2),
-                            ),
+                        seasons = listOf(SeasonSummary(seasonNumber = 0), SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2)),
                     ),
                 )
-            listOf(0, 1, 2).forEach { seasonNumber ->
-                fakeRepository.getSeasonDetailsResultsByNumber[seasonNumber] =
-                    Result.success(
-                        TvSeasonDetail(
-                            seasonNumber = seasonNumber,
-                            episodes = listOf(Episode(seasonNumber = seasonNumber, episodeNumber = 1, airDate = "2099-01-01")),
-                        ),
+            fakeCacheRepository.refreshSeasonsResult =
+                listOf(0, 1, 2).associateWith { seasonNumber ->
+                    TvSeasonDetail(
+                        seasonNumber = seasonNumber,
+                        episodes = listOf(Episode(seasonNumber = seasonNumber, episodeNumber = 1, airDate = "2099-01-01")),
                     )
-            }
+                }
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(1, state.currentSeason?.seasonNumber)
@@ -163,46 +149,40 @@ class TvDetailScreenModelTest {
     @Test
     fun testEmptySeasonsListResultsInEmptyAllSeasonDetailsAndNullCurrentSeason() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult =
-                Result.success(
-                    TvDetail(id = 1, title = "Show", seasons = emptyList()),
-                )
+            fakeCacheRepository.refreshResult = Result.success(TvDetail(id = 1, title = "Show", seasons = emptyList()))
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertTrue(state.allSeasonDetails.isEmpty())
             assertNull(state.currentSeason)
         }
 
+    /** A season the repository couldn't fetch/cache is simply absent from the map it hands back -
+     *  the ViewModel just renders whatever it's given; the fetch-fallback behavior itself is
+     *  covered at the repository layer in `TvDetailCacheRepositoryImplTest`. */
     @Test
-    fun testPartialSeasonFetchFailureExcludesFailedSeasonFromMap() =
+    fun testASeasonMissingFromTheRepositoryResultIsExcludedFromTheMap() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult =
+            fakeCacheRepository.refreshResult =
                 Result.success(
-                    TvDetail(
-                        id = 1,
-                        title = "Show",
-                        seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2)),
-                    ),
+                    TvDetail(id = 1, title = "Show", seasons = listOf(SeasonSummary(seasonNumber = 1), SeasonSummary(seasonNumber = 2))),
                 )
-            fakeRepository.getSeasonDetailsResultsByNumber[2] = Result.failure(IOException("season 2 unavailable"))
+            fakeCacheRepository.refreshSeasonsResult = mapOf(1 to TvSeasonDetail(seasonNumber = 1))
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(setOf(1), state.allSeasonDetails.keys)
-            // Season 2's fetch failed, so only season 1 remains - and with nothing released in it
-            // (the default fake season has no episodes), it's still the fallback "current" season.
             assertEquals(1, state.currentSeason?.seasonNumber)
         }
 
     @Test
     fun testHttpExceptionsSetsErrorWithResponseMessage() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult = Result.failure(notFoundException)
+            fakeCacheRepository.refreshResult = Result.failure(notFoundException)
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Error>(viewModel.uiState.value)
             assertEquals(UiText.Plain(notFoundException.message), state.message)
@@ -211,9 +191,9 @@ class TvDetailScreenModelTest {
     @Test
     fun testIOExceptionSetsNetworkErrorMessage() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult = Result.failure(IOException("Mock network failure"))
+            fakeCacheRepository.refreshResult = Result.failure(IOException("Mock network failure"))
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Error>(viewModel.uiState.value)
             assertEquals(UiText.Resource(Res.string.error_network), state.message)
@@ -222,9 +202,9 @@ class TvDetailScreenModelTest {
     @Test
     fun testSerializationExceptionSetsGenericErrorMessage() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult = Result.failure(SerializationException("Boom"))
+            fakeCacheRepository.refreshResult = Result.failure(SerializationException("Boom"))
 
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            val viewModel = buildModel()
 
             val state = assertIs<TvDetailState.Error>(viewModel.uiState.value)
             assertEquals(UiText.Resource(Res.string.error_unexpected_tv_details), state.message)
@@ -233,18 +213,42 @@ class TvDetailScreenModelTest {
     @Test
     fun testRetryAfterErrorSucceeds() =
         runTest(testDispatcher) {
-            fakeRepository.getTvDetailsResult = Result.failure(IOException("Mock network failure"))
-            val viewModel = TvDetailScreenModel(1, fakeRepository)
+            fakeCacheRepository.refreshResult = Result.failure(IOException("Mock network failure"))
+            val viewModel = buildModel()
             assertIs<TvDetailState.Error>(viewModel.uiState.value)
 
-            fakeRepository.getTvDetailsResult =
-                Result.success(
-                    TvDetail(id = 1, title = "Show", seasons = listOf(SeasonSummary(seasonNumber = 1))),
-                )
+            fakeCacheRepository.refreshResult =
+                Result.success(TvDetail(id = 1, title = "Show", seasons = listOf(SeasonSummary(seasonNumber = 1))))
             viewModel.loadTvDetails()
 
             val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
             assertEquals(1, state.tvDetail.id)
+        }
+
+    @Test
+    fun testLocalCacheSurvivesANetworkErrorOnTheInitialLoad() =
+        runTest(testDispatcher) {
+            val cachedDetail = TvDetail(id = 1, title = "Cached Show", seasons = listOf(SeasonSummary(seasonNumber = 1)))
+            fakeCacheRepository.seedCached(1, cachedDetail)
+            fakeCacheRepository.seedCachedSeason(1, TvSeasonDetail(seasonNumber = 1, name = "Cached Season"))
+            fakeCacheRepository.refreshResult = Result.failure(IOException("Mock network failure"))
+
+            val viewModel = buildModel()
+
+            val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
+            assertEquals("Cached Show", state.tvDetail.title)
+            assertEquals("Cached Season", state.currentSeason?.name)
+        }
+
+    @Test
+    fun testSuccessfulLoadTriggersExactlyOneRefresh() =
+        runTest(testDispatcher) {
+            fakeCacheRepository.refreshResult =
+                Result.success(TvDetail(id = 1, title = "Show", seasons = listOf(SeasonSummary(seasonNumber = 1))))
+
+            buildModel()
+
+            assertEquals(listOf(1L), fakeCacheRepository.refreshCalls)
         }
 
     /**
@@ -261,14 +265,15 @@ class TvDetailScreenModelTest {
                 FakeAccountMediaRepository().apply {
                     accountStatesResult = Result.success(AccountStates(favorite = true, watchlist = true))
                 }
-            fakeRepository.getTvDetailsResult = Result.success(TvDetail(id = 1, title = "Show"))
+            fakeCacheRepository.refreshResult = Result.success(TvDetail(id = 1, title = "Show"))
 
             val viewModel =
                 TvDetailScreenModel(
                     tvId = 1,
-                    tvRepository = fakeRepository,
+                    tvDetailCacheRepository = fakeCacheRepository,
                     authRepository = fakeAuthRepository,
                     accountMediaRepository = fakeAccountMediaRepository,
+                    trackedMediaRepository = FakeTrackedMediaRepository(),
                 )
 
             assertTrue(viewModel.mediaActionsState.uiState.value.isFavorite)

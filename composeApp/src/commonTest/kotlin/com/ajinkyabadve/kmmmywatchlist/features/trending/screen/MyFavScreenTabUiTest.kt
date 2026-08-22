@@ -6,8 +6,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeCustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
@@ -70,8 +71,9 @@ class MyFavScreenTabUiTest {
                 MyFavScreenTab(
                     webAuthLauncher = fakeWebAuthLauncher,
                     screenModel = screenModel,
-                    accountMediaRepository = FakeAccountMediaRepository(),
                     listsRepository = FakeListsRepository(),
+                    trackedMediaRepository = FakeTrackedMediaRepository(),
+                    customListRepository = FakeCustomListRepository(),
                 )
             }
 

@@ -9,6 +9,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import kotlinx.coroutines.CoroutineScope
@@ -151,6 +152,7 @@ class MediaActionButtonsSectionUiTest {
                 MediaActionButtonsUiTestConstant.MOVIE_ID,
                 CoroutineScope(UnconfinedTestDispatcher()),
                 fakeAccountMediaRepository,
+                FakeTrackedMediaRepository(),
             )
         state.load(MediaActionButtonsUiTestConstant.SESSION_ID)
         return state
