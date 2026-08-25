@@ -1,6 +1,6 @@
 ---
 name: run-app
-description: Run and visually verify the MyWatchList Compose Multiplatform app on desktop (JVM), iOS Simulator, and Android. Includes how to screenshot each platform, and how to drive the Android UI (scroll/tap) via adb, without user interaction.
+description: Run and visually verify the MyWatchList Compose Multiplatform app on desktop (JVM), iOS Simulator, and Android. Includes how to screenshot each platform, and how to drive the UI - Maestro (tapOn/assertVisible by text) on Android/iOS, Appium + Mac2Driver on desktop (with mandatory teardown), adb/cliclick coordinates where neither reaches (raw scroll gestures, web/JS) - without user interaction.
 ---
 
 # Run & visually verify MyWatchList
@@ -13,10 +13,121 @@ Compile check: `./gradlew :composeApp:compileKotlinDesktop`. Tests: `./gradlew :
 | Need | Platform |
 |---|---|
 | A static screen, fastest | Desktop |
-| Anything triggered by **scrolling, tapping or insets** | **Android** (only `adb` can drive the UI) |
+| Anything triggered by **scrolling, tapping, navigation, or insets** | **Android or iOS, driven with Maestro** (see below) |
+| Same, but on **desktop** specifically | **Appium + Mac2Driver** (see below) |
 | Expanded/split layouts | iOS Simulator (iPad) or desktop, resized |
 
 System-bar / edge-to-edge behaviour is only real on Android - desktop has no insets.
+
+## Driving the UI: prefer Maestro over raw coordinate taps (Android/iOS)
+
+For anything beyond a single static screenshot - opening a detail screen, filling a dialog,
+scrolling to trigger pagination - **use Maestro**, not `adb input tap`/`cliclick` coordinate
+math. Confirmed on 2026-08-23: coordinate-based driving needs a screenshot after nearly every
+tap just to check it landed (each one costs real tokens to view), plus manual window-position/
+coordinate-space recalculation, plus blind retries when a tap silently misses. Maestro's
+`tapOn: "text"` finds the element by its actual text/accessibility label and fails loudly if it's
+not there - no verification screenshot needed per step, only at real checkpoints. The same
+multi-screen flow that took a dozen screenshot round-trips with cliclick took 3 tool calls with
+Maestro.
+
+```bash
+export PATH="$PATH":"$HOME/.maestro/bin"    # installed via: curl -Ls "https://get.maestro.mobile.dev" | bash
+maestro test flow.yaml                       # Android: auto-picks the one attached/booted device
+maestro --udid <UDID> test flow.yaml         # iOS: device id is required
+```
+
+A flow is a small YAML file (write it to the scratchpad, not the repo):
+
+```yaml
+appId: com.ajinkyabadve.kmmmywatchlist.androidApp   # iOS: com.ajinkyabadve.kmmmywatchlist.iosApp
+---
+- launchApp:
+    clearState: false        # keep the existing login session
+- tapOn: "Mutiny"             # matches by visible text/accessibility label, not coordinates
+- extendedWaitUntil:
+    visible: "Genres"         # wait for a real signal the screen finished loading, not a sleep
+    timeout: 15000
+- takeScreenshot: movie_detail
+- tapOn: "Back"
+```
+
+- Install the app first the normal way for each platform (`installDebug` / `xcrun simctl
+  install`, see below) - Maestro drives an already-installed app, it doesn't build one.
+- `assertVisible`/`extendedWaitUntil` are the fail-fast replacement for "screenshot and eyeball
+  it" - only take an actual screenshot when you need to see something Maestro can't assert on
+  (layout, colors, image content).
+- **Coverage gap: Maestro cannot drive this app's desktop (JVM/Swing window) or web/JS targets at
+  all** - confirmed by testing both. Desktop's gap is closed by Appium + Mac2Driver instead (next
+  section) - web's isn't: Compose renders it to one canvas with no DOM/accessibility tree for
+  *any* automation tool to query, Maestro or otherwise. Fall back to `cliclick`/coordinate taps
+  for web only.
+
+## Driving the UI: Appium + Mac2Driver (desktop)
+
+Compose Desktop exposes a real, complete macOS accessibility tree (confirmed 2026-08-23 via
+`System Events`/AX APIs - every nav item, card, and button shows up as a proper `AXRadioButton`/
+`AXButton`/`AXStaticText` with a real accessible label) - Appium's **Mac2Driver** automates
+against exactly that tree, closing the gap Maestro leaves on desktop. It needs a real `.app`
+bundle (not the bare JVM process `./gradlew :composeApp:run` launches) so it can attach via
+`NSWorkspace`/bundle ID:
+
+```bash
+npm install -g appium                 # one-time; already installed as of 2026-08-25
+appium driver install mac2            # one-time
+pip3 install --user Appium-Python-Client   # one-time; client library
+
+./gradlew :composeApp:createDistributable   # builds composeApp/build/compose/binaries/main/app/MyWatchList.app
+                                              # bundle id: com.ajinkyabadve.kmmmywatchlist (build.gradle.kts's nativeDistributions.macOS.bundleID)
+
+appium server --port 4723 &           # start the automation server, per test session
+```
+
+Python client (Appium-Python-Client), locating elements by their accessible label via
+`AppiumBy.ACCESSIBILITY_ID` - the same labels the AX tree dump above showed:
+
+```python
+from appium import webdriver
+from appium.options.mac import Mac2Options
+from appium.webdriver.common.appiumby import AppiumBy
+
+options = Mac2Options()
+options.platform_name = "Mac"
+options.automation_name = "Mac2"
+options.set_capability("appium:bundleId", "com.ajinkyabadve.kmmmywatchlist")
+
+driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
+try:
+    driver.find_element(AppiumBy.ACCESSIBILITY_ID, "Movies").click()
+    driver.find_element(AppiumBy.ACCESSIBILITY_ID, "Now Playing")   # raises if navigation didn't happen
+    driver.save_screenshot("out.png")
+finally:
+    driver.quit()   # mandatory - see teardown below
+```
+
+### Teardown - do this after every test run, not just at session end
+
+`driver.quit()` ends the Appium session but **does not** kill the automation helper process it
+spawned. Left running, it keeps macOS's accessibility-automation indicator active and can
+interfere with the next run's `xcodebuild`/launch step. Confirmed leftover after `driver.quit()`
+on 2026-08-25:
+
+```bash
+ps aux | grep -i "WebDriverAgentRunner-Runner\|xcodebuild.*WebDriverAgentMac"
+```
+
+Kill all of it, plus the server and the app under test, once the test flow is done:
+
+```bash
+pkill -f "WebDriverAgentRunner-Runner"          # the automation helper .app Mac2Driver launches
+pkill -f "xcodebuild.*WebDriverAgentMac"        # the build-for-testing process that launched it
+pkill -f "appium server"                        # the Appium server itself
+pkill -f "MyWatchList.app/Contents/MacOS/MyWatchList"   # the app under test
+```
+
+Do this at the end of every Mac2Driver-based test, not just when wrapping up for the day - a
+stray `WebDriverAgentRunner-Runner` left over from one test can hold accessibility control that
+confuses the next one.
 
 ## Desktop (JVM) — fastest way to see the app
 
@@ -65,14 +176,17 @@ xcrun simctl io <UDID> screenshot shot.png              # retry until non-empty;
 - **`simctl boot` is headless** - when the user wants to SEE the simulator, also run
   `open -a Simulator` (optionally `--args -CurrentDeviceUDID <UDID>`) to show the window.
 - Downscale screenshots before viewing: `sips -Z 1100 shot.png`.
-- **No tap/UI-driving support**: `simctl` has no tap command and `idb`/`axe` are not installed,
-  so only launch-state screens can be verified on iOS. Use desktop for click-through flows.
+- **`simctl` itself has no tap command**, but Maestro does drive iOS taps successfully (see
+  "Driving the UI" above) - `maestro --udid <UDID> test flow.yaml` against the installed app.
+  Reserve raw click-through flows for desktop only when Maestro doesn't apply.
 
-## Android — the only platform that can be UI-driven end to end
+## Android
 
-Compile check: `./gradlew :composeApp:assembleDebug`. Unlike iOS, `adb` can *drive* the app
-(scroll, tap, back), so scroll-triggered behaviour can be verified here and nowhere else.
-Verified against a real device and emulators on 2026-08-06.
+Compile check: `./gradlew :composeApp:assembleDebug`. For element-based taps/navigation, prefer
+Maestro (see "Driving the UI" above) over the raw `adb input tap` coordinates below - reserve
+`adb input swipe`/`tap` for things Maestro can't express (e.g. a raw scroll-by-coordinate gesture
+to specifically test scroll-triggered `LoadState`/prefetch behavior). Verified against a real
+device and emulators on 2026-08-06.
 
 ```bash
 adb devices -l                            # ALWAYS check first
