@@ -7,7 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbList
-import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbListPageResult
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeCustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +29,7 @@ private object ListsTabUiTestConstant {
 class ListsTabUiTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeListsRepository: FakeListsRepository
+    private lateinit var fakeCustomListRepository: FakeCustomListRepository
     private val session =
         UserSession(
             sessionId = ListsTabUiTestConstant.SESSION_ID,
@@ -41,6 +42,7 @@ class ListsTabUiTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeListsRepository = FakeListsRepository()
+        fakeCustomListRepository = FakeCustomListRepository()
     }
 
     @AfterTest
@@ -51,20 +53,19 @@ class ListsTabUiTest {
     @Test
     fun testRendersExistingListsAndNewListRow() =
         runComposeUiTest {
-            fakeListsRepository.listsResult =
-                Result.success(
-                    TmdbListPageResult(page = 1, list = listOf(TmdbList(id = 1, name = "Marvel Movies", itemCount = 12)), totalPages = 1),
-                )
+            fakeCustomListRepository.lists = listOf(TmdbList(id = 1, name = "Marvel Movies", itemCount = 12))
             val screenModel =
                 ListsScreenModel(
                     accountId = ListsTabUiTestConstant.ACCOUNT_ID,
                     sessionId = ListsTabUiTestConstant.SESSION_ID,
                     listsRepository = fakeListsRepository,
+                    customListRepository = fakeCustomListRepository,
                 )
 
             setContent {
                 ListsTab(session = session, onListSelected = {}, screenModel = screenModel)
             }
+            waitForIdle()
 
             onNodeWithText("Marvel Movies").assertIsDisplayed()
             onNodeWithText("New list").assertIsDisplayed()
@@ -79,6 +80,7 @@ class ListsTabUiTest {
                     accountId = ListsTabUiTestConstant.ACCOUNT_ID,
                     sessionId = ListsTabUiTestConstant.SESSION_ID,
                     listsRepository = fakeListsRepository,
+                    customListRepository = fakeCustomListRepository,
                 )
             var selectedListId: Long? = null
 

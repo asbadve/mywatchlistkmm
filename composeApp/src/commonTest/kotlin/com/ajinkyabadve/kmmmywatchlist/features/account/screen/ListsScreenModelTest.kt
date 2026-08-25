@@ -1,10 +1,8 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
-import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbList
-import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbListPageResult
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeCustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
-import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
+import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -15,18 +13,25 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.assertIs
 
 private object ListsScreenModelTestConstant {
     const val ACCOUNT_ID = 100L
     const val SESSION_ID = "session_abc"
 }
 
+/**
+ * Pagination/network-fetch behavior for the Lists grid now lives in
+ * `CustomListRepository.pagedFlow`/`ListsRemoteMediator`, covered against a real database in
+ * `desktopTest`'s `ListsRemoteMediatorTest` - this ScreenModel only wires `accountId`/`sessionId`
+ * through to the repository (mirrors `AccountMediaListScreenModelTest`'s identical scope), plus
+ * `createList`/`ensureAllListsAreSynced`, which stay ScreenModel-owned since they're not paging.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListsScreenModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private val fakeListsRepository = FakeListsRepository()
-    private val fakeAuthRepository = FakeAuthRepository()
+    private val fakeCustomListRepository = FakeCustomListRepository()
 
     @BeforeTest
     fun setUp() {
@@ -43,26 +48,21 @@ class ListsScreenModelTest {
             accountId = ListsScreenModelTestConstant.ACCOUNT_ID,
             sessionId = ListsScreenModelTestConstant.SESSION_ID,
             listsRepository = fakeListsRepository,
-            authRepository = fakeAuthRepository,
+            customListRepository = fakeCustomListRepository,
         )
 
     @Test
-    fun testInitialLoadPopulatesLists() =
-        runTest(testDispatcher) {
-            fakeListsRepository.listsResult =
-                Result.success(
-                    TmdbListPageResult(page = 1, list = listOf(TmdbList(id = 1, name = "My List", itemCount = 3)), totalPages = 1),
-                )
+    fun testConstructionCallsPagedFlowWithAccountIdAndSessionId() {
+        buildModel()
 
-            val viewModel = buildModel()
-
-            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
-            assertEquals(1, viewModel.lists.size)
-            assertEquals("My List", viewModel.lists.first().name)
-        }
+        assertEquals(
+            listOf(ListsScreenModelTestConstant.ACCOUNT_ID to ListsScreenModelTestConstant.SESSION_ID),
+            fakeCustomListRepository.pagedFlowCalls,
+        )
+    }
 
     @Test
-    fun testCreateListAddsNewListAndInvokesCallback() =
+    fun testCreateListAddsNewListLocallyAndInvokesCallback() =
         runTest(testDispatcher) {
             fakeListsRepository.createListResult = Result.success(555L)
             val viewModel = buildModel()
@@ -71,38 +71,31 @@ class ListsScreenModelTest {
             viewModel.createList("New List", "desc") { listId -> createdListId = listId }
 
             assertEquals(555L, createdListId)
+            assertEquals(listOf(555L), fakeCustomListRepository.upsertListLocallyCalls.map { it.id })
+            assertIs<CreateListState.Idle>(viewModel.createListState)
         }
 
     @Test
-    fun testEmptyListsSetsPaginationExhaust() =
+    fun testCreateListFailureSetsErrorState() =
         runTest(testDispatcher) {
-            fakeListsRepository.listsResult = Result.success(TmdbListPageResult(page = 1, list = emptyList(), totalPages = 0))
-
+            fakeListsRepository.createListResult = Result.failure(IOException("Mock network failure"))
             val viewModel = buildModel()
 
-            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
-            assertTrue(viewModel.lists.isEmpty())
+            viewModel.createList("New List", "desc") {}
+
+            assertIs<CreateListState.Error>(viewModel.createListState)
         }
 
-    /** Pull-to-refresh discards pagination progress and re-fetches page one, not the next page. */
     @Test
-    fun testRefreshReplacesListsFromPageOneRatherThanPaginating() =
+    fun testEnsureAllListsAreSyncedCallsRepositorySync() =
         runTest(testDispatcher) {
-            fakeListsRepository.listsResult =
-                Result.success(
-                    TmdbListPageResult(page = 1, list = listOf(TmdbList(id = 1, name = "Old List")), totalPages = 2),
-                )
             val viewModel = buildModel()
-            assertEquals(ListState.IDLE, viewModel.listState)
 
-            fakeListsRepository.listsResult =
-                Result.success(
-                    TmdbListPageResult(page = 1, list = listOf(TmdbList(id = 2, name = "New List")), totalPages = 1),
-                )
-            viewModel.refresh()
+            viewModel.ensureAllListsAreSynced()
 
-            assertEquals(1, viewModel.lists.size)
-            assertEquals("New List", viewModel.lists.first().name)
-            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
+            assertEquals(
+                listOf(ListsScreenModelTestConstant.ACCOUNT_ID to ListsScreenModelTestConstant.SESSION_ID),
+                fakeCustomListRepository.syncCalls,
+            )
         }
 }

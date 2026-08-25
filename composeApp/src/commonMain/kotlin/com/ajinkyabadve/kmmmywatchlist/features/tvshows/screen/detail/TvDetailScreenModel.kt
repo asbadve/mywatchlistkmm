@@ -3,28 +3,25 @@ package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.data.Resource
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.loadOnSessionAvailable
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepositoryImpl
 import io.github.aakira.napier.Napier
-import io.ktor.serialization.ContentConvertException
-import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,10 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
-import kotlinx.serialization.SerializationException
-import mywatchlist.composeapp.generated.resources.Res
-import mywatchlist.composeapp.generated.resources.error_network
-import mywatchlist.composeapp.generated.resources.error_unexpected_tv_details
 
 sealed interface TvDetailState {
     data object Loading : TvDetailState
@@ -58,10 +51,11 @@ sealed interface TvDetailState {
 
 class TvDetailScreenModel(
     private val tvId: Long,
-    private val tvRepository: TvRepository = TvRepositoryImpl(),
+    private val tvDetailCacheRepository: TvDetailCacheRepository = TvDetailCacheRepositoryImpl(),
     private val regionRepository: RegionRepository = RegionRepositoryImpl(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
+    trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -73,7 +67,8 @@ class TvDetailScreenModel(
      * reusable composable never gets its own `ViewModel`. Launches on this screen's
      * `viewModelScope`, so the toggle survives past whatever recomposes the hero.
      */
-    val mediaActionsState = MediaActionsState(MediaTypeConstant.TV, tvId, viewModelScope, accountMediaRepository)
+    val mediaActionsState =
+        MediaActionsState(MediaTypeConstant.TV, tvId, viewModelScope, accountMediaRepository, trackedMediaRepository)
 
     init {
         loadTvDetails()
@@ -84,81 +79,46 @@ class TvDetailScreenModel(
     }
 
     fun loadTvDetails() {
-        _uiState.value = TvDetailState.Loading
+        // TvDetailCacheRepository is the single source of truth: it decides cache-vs-network (per
+        // show and per season) and writes fresh data through to the DB via NetworkBoundResource -
+        // this only renders whatever it emits. See TvDetailCacheRepository's kdoc and
+        // NetworkBoundResource's.
         viewModelScope.launch(Dispatchers.Main) {
-            try {
-                val detail = tvRepository.getTvDetails(tvId)
-                val seasonDetails = fetchAllSeasonDetails(detail)
-                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                val (currentSeasonNumber, latestReleasedEpisodeNumber) = resolveCurrentSeasonAndEpisode(seasonDetails, today)
-                _uiState.value =
-                    TvDetailState.Success(
-                        tvDetail = detail,
-                        currentSeason = seasonDetails[currentSeasonNumber],
-                        latestReleasedEpisodeNumber = latestReleasedEpisodeNumber,
-                        allSeasonDetails = seasonDetails,
-                        regionCode = regionRepository.getSelectedRegion(),
-                        fallbackRegionCode = regionRepository.getFallbackRegion(),
-                    )
-            } catch (httpExceptions: HttpExceptions) {
-                Napier.e(tag = TAG, throwable = httpExceptions) { "HTTP Error fetching details for tvId: $tvId" }
-                _uiState.value = TvDetailState.Error(UiText.Plain(httpExceptions.message))
-            } catch (e: IOException) {
-                Napier.e(tag = TAG, throwable = e) { "IO/Network Error fetching details for tvId: $tvId" }
-                _uiState.value = TvDetailState.Error(UiText.Resource(Res.string.error_network))
-            } catch (e: ContentConvertException) {
-                logMalformedResponse(e)
-                _uiState.value = TvDetailState.Error(UiText.Resource(Res.string.error_unexpected_tv_details))
-            } catch (e: SerializationException) {
-                logMalformedResponse(e)
-                _uiState.value = TvDetailState.Error(UiText.Resource(Res.string.error_unexpected_tv_details))
+            tvDetailCacheRepository.getTvDetail(tvId).collect { resource ->
+                when (resource) {
+                    is Resource.Loading -> Unit // _uiState already starts Loading
+                    is Resource.Success -> _uiState.value = buildSuccessState(resource.data.first, resource.data.second)
+                    is Resource.Error ->
+                        if (resource.data != null) {
+                            _uiState.value = buildSuccessState(resource.data.first, resource.data.second)
+                        } else {
+                            Napier.e(tag = TAG, throwable = resource.cause) { "Error fetching details for tvId: $tvId" }
+                            _uiState.value = TvDetailState.Error(resource.message)
+                        }
+                }
             }
         }
     }
 
-    private suspend fun fetchAllSeasonDetails(detail: TvDetail): Map<Int, TvSeasonDetail> {
-        val seasonNumbers = detail.seasons?.map { it.seasonNumber }?.filter { it >= 0 } ?: emptyList()
-        return coroutineScope {
-            seasonNumbers
-                .map { seasonNumber ->
-                    async { fetchSeasonDetailOrNull(seasonNumber) }
-                }.awaitAll()
-        }.filterNotNull().associateBy { it.seasonNumber }
-    }
-
-    private suspend fun fetchSeasonDetailOrNull(seasonNumber: Int): TvSeasonDetail? =
-        try {
-            tvRepository.getSeasonDetails(tvId, seasonNumber)
-        } catch (e: HttpExceptions) {
-            logSeasonFailure(seasonNumber, e)
-            null
-        } catch (e: IOException) {
-            logSeasonFailure(seasonNumber, e)
-            null
-        } catch (e: ContentConvertException) {
-            logSeasonFailure(seasonNumber, e)
-            null
-        } catch (e: SerializationException) {
-            logSeasonFailure(seasonNumber, e)
-            null
-        }
-
-    private fun logSeasonFailure(
-        seasonNumber: Int,
-        throwable: Throwable,
-    ) {
-        Napier.e(tag = TAG, throwable = throwable) { "Failed to load season $seasonNumber for tvId: $tvId" }
+    private fun buildSuccessState(
+        detail: TvDetail,
+        seasonDetails: Map<Int, TvSeasonDetail>,
+    ): TvDetailState.Success {
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val (currentSeasonNumber, latestReleasedEpisodeNumber) = resolveCurrentSeasonAndEpisode(seasonDetails, today)
+        return TvDetailState.Success(
+            tvDetail = detail,
+            currentSeason = seasonDetails[currentSeasonNumber],
+            latestReleasedEpisodeNumber = latestReleasedEpisodeNumber,
+            allSeasonDetails = seasonDetails,
+            regionCode = regionRepository.getSelectedRegion(),
+            fallbackRegionCode = regionRepository.getFallbackRegion(),
+        )
     }
 
     override fun onCleared() {
         viewModelScope.cancel()
         super.onCleared()
-    }
-
-    private fun logMalformedResponse(throwable: Throwable) {
-        Napier.e(tag = TAG, throwable = throwable) {
-            "Malformed response while loading tv show details"
-        }
     }
 
     private companion object {

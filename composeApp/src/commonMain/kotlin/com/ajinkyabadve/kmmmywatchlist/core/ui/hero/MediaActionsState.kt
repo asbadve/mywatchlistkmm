@@ -2,6 +2,9 @@ package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
@@ -52,6 +55,9 @@ class MediaActionsState(
     private val mediaId: Long,
     private val coroutineScope: CoroutineScope,
     private val accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
+    // Test-only seam, same pattern as accountMediaRepository above - lets a test inject a fake so
+    // this state holder never hits the real database.
+    private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
 ) {
     private val _uiState = MutableStateFlow(MediaActionsUiState())
     val uiState: StateFlow<MediaActionsUiState> = _uiState.asStateFlow()
@@ -75,11 +81,30 @@ class MediaActionsState(
         val newValue = !_uiState.value.isFavorite
         _uiState.update { it.copy(isFavorite = newValue) }
         coroutineScope.launch {
-            val succeeded =
+            if (!newValue) {
+                // Hide it locally right away, regardless of whether the call below succeeds - see
+                // TrackedMediaRepository.markPendingDelete's kdoc.
+                trackedMediaRepository.markPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
+            }
+            val outcome =
                 runCatchingApiCall("toggling favorite for $mediaType/$mediaId") {
                     accountMediaRepository.setFavorite(accountId, sessionId, mediaType, mediaId, newValue)
                 }
-            if (!succeeded) _uiState.update { it.copy(isFavorite = !newValue) }
+            when (outcome) {
+                ToggleOutcome.SUCCESS ->
+                    if (!newValue) {
+                        trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
+                    } else {
+                        trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
+                    }
+                // Offline - leave it queued, both the local hide and the optimistic icon state stay
+                // put; TrackedMediaRepository.sync flushes this the next time Favorites loads online.
+                ToggleOutcome.OFFLINE -> Unit
+                ToggleOutcome.FAILED -> {
+                    _uiState.update { it.copy(isFavorite = !newValue) }
+                    if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
+                }
+            }
         }
     }
 
@@ -90,33 +115,53 @@ class MediaActionsState(
         val newValue = !_uiState.value.isInWatchlist
         _uiState.update { it.copy(isInWatchlist = newValue) }
         coroutineScope.launch {
-            val succeeded =
+            if (!newValue) {
+                trackedMediaRepository.markPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
+            }
+            val outcome =
                 runCatchingApiCall("toggling watchlist for $mediaType/$mediaId") {
                     accountMediaRepository.setWatchlist(accountId, sessionId, mediaType, mediaId, newValue)
                 }
-            if (!succeeded) _uiState.update { it.copy(isInWatchlist = !newValue) }
+            when (outcome) {
+                ToggleOutcome.SUCCESS ->
+                    if (!newValue) {
+                        trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
+                    } else {
+                        trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
+                    }
+                ToggleOutcome.OFFLINE -> Unit
+                ToggleOutcome.FAILED -> {
+                    _uiState.update { it.copy(isInWatchlist = !newValue) }
+                    if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
+                }
+            }
         }
     }
+
+    /** [OFFLINE] is distinguished from [FAILED] so a toggle made without connectivity stays queued
+     *  (see [markPendingDelete][TrackedMediaRepository.markPendingDelete]) instead of bouncing back -
+     *  only a real server-side rejection rolls the toggle back. */
+    private enum class ToggleOutcome { SUCCESS, OFFLINE, FAILED }
 
     private suspend fun runCatchingApiCall(
         action: String,
         block: suspend () -> Unit,
-    ): Boolean =
+    ): ToggleOutcome =
         try {
             block()
-            true
+            ToggleOutcome.SUCCESS
         } catch (e: HttpExceptions) {
             Napier.e(tag = TAG, throwable = e) { "Http error $action" }
-            false
+            ToggleOutcome.FAILED
         } catch (e: IOException) {
-            Napier.e(tag = TAG, throwable = e) { "Network error $action" }
-            false
+            Napier.e(tag = TAG, throwable = e) { "Network error $action - queued for next sync" }
+            ToggleOutcome.OFFLINE
         } catch (e: ContentConvertException) {
             Napier.e(tag = TAG, throwable = e) { "Malformed response $action" }
-            false
+            ToggleOutcome.FAILED
         } catch (e: SerializationException) {
             Napier.e(tag = TAG, throwable = e) { "Malformed response $action" }
-            false
+            ToggleOutcome.FAILED
         }
 
     private companion object {

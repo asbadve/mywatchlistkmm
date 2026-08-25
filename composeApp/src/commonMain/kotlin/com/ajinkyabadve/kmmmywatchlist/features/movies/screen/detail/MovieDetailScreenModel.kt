@@ -5,21 +5,21 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.data.Resource
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.loadOnSessionAvailable
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
-import io.ktor.serialization.ContentConvertException
-import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -27,10 +27,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerializationException
-import mywatchlist.composeapp.generated.resources.Res
-import mywatchlist.composeapp.generated.resources.error_network
-import mywatchlist.composeapp.generated.resources.error_unexpected_movie_details
 
 sealed interface MovieDetailState {
     data object Loading : MovieDetailState
@@ -48,10 +44,11 @@ sealed interface MovieDetailState {
 
 class MovieDetailScreenModel(
     private val movieId: Long,
-    private val movieRepository: MovieRepository = MovieRepositoryImpl(),
+    private val movieDetailCacheRepository: MovieDetailCacheRepository = MovieDetailCacheRepositoryImpl(),
     private val regionRepository: RegionRepository = RegionRepositoryImpl(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
+    trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -63,7 +60,8 @@ class MovieDetailScreenModel(
      * reusable composable never gets its own `ViewModel`. Launches on this screen's
      * `viewModelScope`, so the toggle survives past whatever recomposes the hero.
      */
-    val mediaActionsState = MediaActionsState(MediaTypeConstant.MOVIE, movieId, viewModelScope, accountMediaRepository)
+    val mediaActionsState =
+        MediaActionsState(MediaTypeConstant.MOVIE, movieId, viewModelScope, accountMediaRepository, trackedMediaRepository)
 
     init {
         loadMovieDetails()
@@ -74,41 +72,32 @@ class MovieDetailScreenModel(
     }
 
     fun loadMovieDetails() {
-        _uiState.value = MovieDetailState.Loading
+        // MovieDetailCacheRepository is the single source of truth: it decides cache-vs-network and
+        // writes fresh data through to the DB via NetworkBoundResource - this only renders whatever
+        // it emits. See MovieDetailCacheRepository's kdoc and NetworkBoundResource's.
         viewModelScope.launch(Dispatchers.Main) {
-            try {
-                val detail = movieRepository.getMovieDetails(movieId)
-                _uiState.value =
-                    MovieDetailState.Success(
-                        detail,
-                        regionRepository.getSelectedRegion(),
-                        regionRepository.getFallbackRegion(),
-                    )
-            } catch (httpExceptions: HttpExceptions) {
-                Napier.e(tag = TAG, throwable = httpExceptions) { "HTTP Error fetching details for movieId: $movieId" }
-                _uiState.value = MovieDetailState.Error(UiText.Plain(httpExceptions.message))
-            } catch (e: IOException) {
-                Napier.e(tag = TAG, throwable = e) { "IO/Network Error fetching details for movieId: $movieId" }
-                _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_network))
-            } catch (e: ContentConvertException) {
-                logMalformedResponse(e)
-                _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_unexpected_movie_details))
-            } catch (e: SerializationException) {
-                logMalformedResponse(e)
-                _uiState.value = MovieDetailState.Error(UiText.Resource(Res.string.error_unexpected_movie_details))
+            movieDetailCacheRepository.getMovieDetail(movieId).collect { resource ->
+                when (resource) {
+                    is Resource.Loading -> Unit // _uiState already starts Loading
+                    is Resource.Success -> _uiState.value = successState(resource.data)
+                    is Resource.Error ->
+                        if (resource.data != null) {
+                            _uiState.value = successState(resource.data)
+                        } else {
+                            Napier.e(tag = TAG, throwable = resource.cause) { "Error fetching details for movieId: $movieId" }
+                            _uiState.value = MovieDetailState.Error(resource.message)
+                        }
+                }
             }
         }
     }
 
+    private fun successState(detail: MovieDetail) =
+        MovieDetailState.Success(detail, regionRepository.getSelectedRegion(), regionRepository.getFallbackRegion())
+
     override fun onCleared() {
         viewModelScope.cancel()
         super.onCleared()
-    }
-
-    private fun logMalformedResponse(throwable: Throwable) {
-        Napier.e(tag = TAG, throwable = throwable) {
-            "Malformed response while loading movie details"
-        }
     }
 
     private companion object {

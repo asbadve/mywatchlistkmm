@@ -14,7 +14,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.FakeTvDetailCacheRepository
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -71,11 +72,12 @@ class TvDetailScreenUiTest {
     @Test
     fun testTvDetailScreen_errorState_showsMessageAndRetrySucceeds() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeTvRepository().apply {
-                    getTvDetailsResult = Result.failure(IOException("boom"))
-                }
-            val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
+            val fakeCacheRepository = FakeTvDetailCacheRepository().apply { getTvDetailResult = Result.failure(IOException("boom")) }
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvDetailCacheRepository = fakeCacheRepository,
+                )
 
             setContent {
                 TvDetailScreen(
@@ -88,9 +90,12 @@ class TvDetailScreenUiTest {
                 )
             }
 
-            onNodeWithText("Network Connection Error. Please check your internet connectivity.").assertExists()
+            // FakeTvDetailCacheRepository maps any failure to UiText.Plain(message) - the real
+            // exception-type-to-message mapping now lives in NetworkBoundResource and is covered
+            // against a real repository in TvDetailCacheRepositoryImplTest instead.
+            onNodeWithText("boom").assertExists()
 
-            fakeRepository.getTvDetailsResult = Result.success(successfulTvDetail())
+            fakeCacheRepository.getTvDetailResult = Result.success(successfulTvDetail())
             onNodeWithText("Retry").performClick()
 
             onNodeWithText("Fake Tv Detail").assertExists()
@@ -99,11 +104,16 @@ class TvDetailScreenUiTest {
     @Test
     fun testTvDetailScreen_success_rendersTitleAndCurrentSeason() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeTvRepository().apply {
-                    getTvDetailsResult = Result.success(successfulTvDetail())
+            val fakeCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    getTvDetailResult = Result.success(successfulTvDetail())
+                    getTvDetailSeasonsResult = mapOf(1 to TvSeasonDetail(seasonNumber = 1, name = "Season 1"))
                 }
-            val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvDetailCacheRepository = fakeCacheRepository,
+                )
 
             setContent {
                 TvDetailScreen(
@@ -125,11 +135,16 @@ class TvDetailScreenUiTest {
     @Test
     fun testTvDetailScreen_currentSeasonCardClick_invokesOnCurrentSeasonClickWithResolvedSeasonNumber() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeTvRepository().apply {
-                    getTvDetailsResult = Result.success(successfulTvDetail())
+            val fakeCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    getTvDetailResult = Result.success(successfulTvDetail())
+                    getTvDetailSeasonsResult = mapOf(1 to TvSeasonDetail(seasonNumber = 1, name = "Season 1"))
                 }
-            val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvDetailCacheRepository = fakeCacheRepository,
+                )
             var currentSeasonClick: Pair<Long, Int>? = null
 
             setContent {
@@ -156,11 +171,16 @@ class TvDetailScreenUiTest {
     @Test
     fun testTvDetailScreen_castMemberClick_invokesOnPersonClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeTvRepository().apply {
-                    getTvDetailsResult = Result.success(successfulTvDetail())
+            val fakeCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    getTvDetailResult = Result.success(successfulTvDetail())
+                    getTvDetailSeasonsResult = mapOf(1 to TvSeasonDetail(seasonNumber = 1, name = "Season 1"))
                 }
-            val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvDetailCacheRepository = fakeCacheRepository,
+                )
             var personId: Long? = null
 
             setContent {
@@ -183,11 +203,16 @@ class TvDetailScreenUiTest {
     @Test
     fun testTvDetailScreen_recommendationClick_invokesOnTvShowClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeTvRepository().apply {
-                    getTvDetailsResult = Result.success(successfulTvDetail())
+            val fakeCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    getTvDetailResult = Result.success(successfulTvDetail())
+                    getTvDetailSeasonsResult = mapOf(1 to TvSeasonDetail(seasonNumber = 1, name = "Season 1"))
                 }
-            val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvDetailCacheRepository = fakeCacheRepository,
+                )
             var clickedTvShowId: Long? = null
 
             setContent {
@@ -209,11 +234,16 @@ class TvDetailScreenUiTest {
     @Test
     fun testTvDetailScreen_similarTvShowClick_invokesOnTvShowClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeTvRepository().apply {
-                    getTvDetailsResult = Result.success(successfulTvDetail())
+            val fakeCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    getTvDetailResult = Result.success(successfulTvDetail())
+                    getTvDetailSeasonsResult = mapOf(1 to TvSeasonDetail(seasonNumber = 1, name = "Season 1"))
                 }
-            val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvDetailCacheRepository = fakeCacheRepository,
+                )
             var clickedTvShowId: Long? = null
 
             setContent {
@@ -235,11 +265,16 @@ class TvDetailScreenUiTest {
     @Test
     fun testTvDetailScreen_backClicked_invokesOnBackClicked() =
         runComposeUiTest {
-            val fakeRepository =
-                FakeTvRepository().apply {
-                    getTvDetailsResult = Result.success(successfulTvDetail())
+            val fakeCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    getTvDetailResult = Result.success(successfulTvDetail())
+                    getTvDetailSeasonsResult = mapOf(1 to TvSeasonDetail(seasonNumber = 1, name = "Season 1"))
                 }
-            val viewModel = TvDetailScreenModel(tvId = 1, tvRepository = fakeRepository)
+            val viewModel =
+                TvDetailScreenModel(
+                    tvId = 1,
+                    tvDetailCacheRepository = fakeCacheRepository,
+                )
             var backClicked = false
 
             setContent {

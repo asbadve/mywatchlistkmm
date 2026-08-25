@@ -14,9 +14,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.ui.PillTabRow
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
@@ -42,8 +44,9 @@ fun MyFavTabs(
     onListSelected: (listId: Long) -> Unit,
     modifier: Modifier = Modifier,
     // Test-only seams, same pattern MovieScreenTabs uses for its per-tab repositories.
-    accountMediaRepository: AccountMediaRepository? = null,
     listsRepository: ListsRepository? = null,
+    trackedMediaRepository: TrackedMediaRepository? = null,
+    customListRepository: CustomListRepository? = null,
 ) {
     val tabs = remember { listOf(MyFavTab.Favorites, MyFavTab.Watchlist, MyFavTab.Lists) }
     var selectedIndex by rememberSaveable { mutableStateOf(0) }
@@ -88,7 +91,7 @@ fun MyFavTabs(
                     session = session,
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
-                    accountMediaRepository = accountMediaRepository,
+                    trackedMediaRepository = trackedMediaRepository,
                     lazyGridState = favoritesGridState,
                 )
 
@@ -98,7 +101,7 @@ fun MyFavTabs(
                     session = session,
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
-                    accountMediaRepository = accountMediaRepository,
+                    trackedMediaRepository = trackedMediaRepository,
                     lazyGridState = watchlistGridState,
                 )
 
@@ -112,6 +115,7 @@ fun MyFavTabs(
                                 accountId = session.accountId,
                                 sessionId = session.sessionId,
                                 listsRepository = listsRepository ?: ListsRepositoryImpl(),
+                                customListRepository = customListRepository ?: CustomListRepositoryImpl(),
                             )
                         },
                     lazyListState = listsListState,

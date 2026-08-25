@@ -80,6 +80,23 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.multiplatformSettings)
                 implementation(libs.koin.core)
+                // `generateAsync = true` (required by the JS WebWorkerDriver) makes every
+                // platform's generated Queries API suspend-based - this is what provides the
+                // `.synchronous()` schema adapter (for the sync Android/Native drivers) and the
+                // `.awaitAsList()`/`.await()` extensions the repositories call.
+                implementation(libs.sqlDelight.async.extensions)
+                // Query<T>.asFlow() - lets a repository be the single source of truth for a cache
+                // table (repo decides cache-vs-network, exposes one Flow; see MovieDetailCacheRepository).
+                implementation(libs.sqlDelight.coroutines.extensions)
+                // QueryPagingSource - bridges the paged queries in MyDatabase.sq straight to a
+                // PagingSource for the Favorites/Watchlist/Lists grids. No published `android`
+                // Gradle-module variant exists for this artifact (confirmed against
+                // sqldelight/sqldelight's source), but Gradle's KMP variant matching falls back to
+                // the `-jvm` artifact for the Android compile classpath and it works - see the
+                // paging-3-remote-mediator plan for how this was verified.
+                implementation(libs.sqlDelight.paging3.extensions)
+                implementation(libs.paging.common)
+                implementation(libs.paging.compose)
                 implementation(libs.ktor.serialization.kotlinx.json)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.navigation3.runtime)
@@ -97,6 +114,9 @@ kotlin {
                 implementation(libs.lifecycle.runtime.compose)
                 implementation(libs.lifecycle.viewmodel.compose)
                 implementation(libs.ktor.client.mock)
+                // Flow<PagingData<T>>.asSnapshot() - lets ScreenModel tests assert on paged data
+                // without a Compose test harness.
+                implementation(libs.paging.testing)
             }
         }
 
@@ -144,6 +164,21 @@ kotlin {
             dependencies {
                 implementation(compose.html.core)
                 implementation(libs.sqlDelight.driver.js)
+                // WebWorkerDriver's bundled SQL.js worker needs all three to resolve/bundle
+                // correctly at build time. https://sqldelight.github.io/sqldelight/2.3.2/js_sqlite/
+                // sqldelight-sqljs-worker's own version must match the sqlDelight plugin version
+                // (libs.versions.toml's sqlDelight = "2.3.2") - it's the npm package that ships
+                // the actual sqljs.worker.js DatabaseDriverFactory.kt imports by URL; without an
+                // explicit npm() declaration here it's absent from yarn.lock and webpack fails
+                // with "Module not found: Can't resolve '@cashapp/sqldelight-sqljs-worker/sqljs.worker.js'".
+                implementation(npm("@cashapp/sqldelight-sqljs-worker", "2.3.2"))
+                implementation(npm("sql.js", "1.6.2"))
+                implementation(devNpm("copy-webpack-plugin", "9.1.0"))
+                // okio's FileSystem companion (pulled in via Coil) calls os.tmpdir() at init time -
+                // a real code path, not dead code like sql.js's require("path")/require("fs") - so
+                // it needs an actual polyfill, not resolve.fallback: { os: false }. See
+                // webpack.config.d/sql-js-node-polyfill-fallback.js for where this gets wired in.
+                implementation(devNpm("os-browserify", "0.3.0"))
                 implementation(libs.okio.fakefilesystem)
             }
         }
@@ -271,11 +306,17 @@ buildConfig {
 
 sqldelight {
     databases {
-//        create("MyDatabase") { //todo
-//            // Database configuration here.
-//            // https://cashapp.github.io/sqldelight
-//            packageName.set("com.ajinkyabadve.kmmmywatchlist.db")
-//        }
+        create("MyDatabase") {
+            packageName.set("com.ajinkyabadve.kmmmywatchlist.db")
+            // Required for the JS target's WebWorkerDriver (async by nature) - a database can
+            // only be all-sync or all-async, so every platform's generated Queries API is
+            // suspend-based (`awaitAsList()` etc.) rather than blocking (`executeAsList()`).
+            // https://sqldelight.github.io/sqldelight/2.3.2/js_sqlite/
+            generateAsync.set(true)
+            // Default dialect (sqlite_3_18) predates SQLite's `ON CONFLICT ... DO UPDATE` syntax,
+            // which trackedMedia's upsert needs (SQLite added it in 3.24, generalised in 3.35).
+            dialect(libs.sqlDelight.dialect.sqlite338)
+        }
     }
 }
 

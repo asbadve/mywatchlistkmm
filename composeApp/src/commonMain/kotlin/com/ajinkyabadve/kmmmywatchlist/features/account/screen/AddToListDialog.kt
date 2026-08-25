@@ -22,6 +22,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbList
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
@@ -54,7 +58,10 @@ private object AddToListDialogConstant {
  * state (this dialog does not know which lists already contain the movie, so a row always starts
  * as "Add" even if it's already a member; tapping it again is harmless - TMDB's add_item is
  * idempotent), plus an inline "new list" row so a list can be created and populated in one step.
- * Reuses [ListsScreenModel] for the list index, the same one `ListsTab` uses.
+ * Reuses [ListsScreenModel] for list creation (the same instance `ListsTab` uses, so a list created
+ * here shows up there too), but reads the list index straight from [CustomListRepository.observeLists]
+ * rather than [ListsScreenModel]'s Paging3-backed grid - this picker wants the user's full list of
+ * lists at once, not the grid's scroll-windowed subset.
  */
 @Composable
 fun AddToListDialog(
@@ -63,6 +70,7 @@ fun AddToListDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     listsRepository: ListsRepository = ListsRepositoryImpl(),
+    customListRepository: CustomListRepository = CustomListRepositoryImpl(),
     listsScreenModel: ListsScreenModel =
         viewModel(key = "ListsScreenModel:${session.accountId}") {
             ListsScreenModel(accountId = session.accountId, sessionId = session.sessionId)
@@ -72,6 +80,13 @@ fun AddToListDialog(
     var showCreateField by remember { mutableStateOf(false) }
     var newListName by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    val lists by customListRepository.observeLists().collectAsState(initial = emptyList())
+
+    // The picker needs the user's *complete* list index, not the Lists tab grid's scroll-windowed
+    // subset - see ListsScreenModel.ensureAllListsAreSynced's kdoc.
+    LaunchedEffect(listsScreenModel) {
+        listsScreenModel.ensureAllListsAreSynced()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -118,7 +133,7 @@ fun AddToListDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                if (listsScreenModel.lists.isEmpty()) {
+                if (lists.isEmpty()) {
                     Text(
                         text = stringResource(Res.string.lists_empty_message),
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
@@ -126,7 +141,7 @@ fun AddToListDialog(
                     )
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = AddToListDialogConstant.MAX_HEIGHT)) {
-                        items(listsScreenModel.lists, key = { it.id }) { list ->
+                        items(lists, key = { it.id }) { list ->
                             AddToListRow(
                                 list = list,
                                 isAdded = list.id in addedListIds,

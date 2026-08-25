@@ -1,44 +1,26 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
-import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
-import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchPageResult
-import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
-import io.ktor.utils.io.errors.IOException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 private object AccountMediaListScreenModelTestConstant {
     const val ACCOUNT_ID = 100L
     const val SESSION_ID = "session_abc"
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+/**
+ * Pagination/network-fetch/offline-delete-queue behavior all now lives in
+ * `TrackedMediaRepository.pagedFlow`/`TrackedMediaRemoteMediator`, covered against a real database
+ * in `desktopTest`'s `TrackedMediaRemoteMediatorTest` - this ScreenModel only wires
+ * `category`/`mediaType`/`accountId`/`sessionId` through to the repository's `pagedFlow`, which is
+ * all these tests verify (via the fake's call log, not by materializing `PagingData` content -
+ * `Flow<PagingData<T>>.asSnapshot()` needs a real `AsyncPagingDataDiffer` pump that isn't worth
+ * fighting for a plain wiring check).
+ */
 class AccountMediaListScreenModelTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private val fakeAccountMediaRepository = FakeAccountMediaRepository()
-    private val fakeAuthRepository = FakeAuthRepository()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
+    private val fakeTrackedMediaRepository = FakeTrackedMediaRepository()
 
     private fun buildModel(
         category: AccountMediaCategory,
@@ -48,82 +30,45 @@ class AccountMediaListScreenModelTest {
         mediaType = mediaType,
         accountId = AccountMediaListScreenModelTestConstant.ACCOUNT_ID,
         sessionId = AccountMediaListScreenModelTestConstant.SESSION_ID,
-        accountMediaRepository = fakeAccountMediaRepository,
-        authRepository = fakeAuthRepository,
+        trackedMediaRepository = fakeTrackedMediaRepository,
     )
 
     @Test
-    fun testFavoritesMoviesLoadsFromFavoriteMoviesEndpoint() =
-        runTest(testDispatcher) {
-            fakeAccountMediaRepository.favoriteMoviesResult =
-                Result.success(
-                    SearchPageResult(page = 1, list = listOf(SearchResultItem(id = 1, title = "Movie A")), totalPages = 1),
-                )
+    fun testConstructionCallsPagedFlowWithThisCategoryAndMediaType() {
+        buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.MOVIE)
 
-            val viewModel = buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.MOVIE)
-
-            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
-            assertEquals(1, viewModel.items.size)
-            assertEquals("Movie A", viewModel.items.first().displayTitle)
-        }
-
-    @Test
-    fun testWatchlistTvLoadsFromWatchlistTvEndpoint() =
-        runTest(testDispatcher) {
-            fakeAccountMediaRepository.watchlistTvResult =
-                Result.success(
-                    SearchPageResult(page = 1, list = listOf(SearchResultItem(id = 2, name = "Show B")), totalPages = 1),
-                )
-
-            val viewModel = buildModel(AccountMediaCategory.WATCHLIST, SearchMediaType.TV)
-
-            assertEquals(1, viewModel.items.size)
-            assertEquals("Show B", viewModel.items.first().displayTitle)
-        }
+        assertEquals(
+            listOf(
+                FakeTrackedMediaRepository.PagedFlowCall(
+                    category = AccountMediaCategory.FAVORITES,
+                    mediaType = SearchMediaType.MOVIE,
+                    accountId = AccountMediaListScreenModelTestConstant.ACCOUNT_ID,
+                    sessionId = AccountMediaListScreenModelTestConstant.SESSION_ID,
+                ),
+            ),
+            fakeTrackedMediaRepository.pagedFlowCalls,
+        )
+    }
 
     @Test
-    fun testCanPaginateWhenMorePagesExist() =
-        runTest(testDispatcher) {
-            fakeAccountMediaRepository.favoriteMoviesResult =
-                Result.success(
-                    SearchPageResult(page = 1, list = listOf(SearchResultItem(id = 1, title = "Movie A")), totalPages = 2),
-                )
+    fun testDifferentMediaTypesCallPagedFlowWithTheirOwnMediaType() {
+        buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.MOVIE)
+        buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.TV)
 
-            val viewModel = buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.MOVIE)
-
-            assertEquals(ListState.IDLE, viewModel.listState)
-        }
+        assertEquals(
+            listOf(SearchMediaType.MOVIE, SearchMediaType.TV),
+            fakeTrackedMediaRepository.pagedFlowCalls.map { it.mediaType },
+        )
+    }
 
     @Test
-    fun testNetworkErrorSetsNetworkErrorState() =
-        runTest(testDispatcher) {
-            fakeAccountMediaRepository.favoriteMoviesResult = Result.failure(IOException("Mock network failure"))
+    fun testDifferentCategoriesCallPagedFlowWithTheirOwnCategory() {
+        buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.MOVIE)
+        buildModel(AccountMediaCategory.WATCHLIST, SearchMediaType.MOVIE)
 
-            val viewModel = buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.MOVIE)
-
-            assertEquals(ListState.NETWORK_ERROR, viewModel.listState)
-            assertTrue(viewModel.items.isEmpty())
-        }
-
-    /** Pull-to-refresh discards pagination progress and re-fetches page one, not the next page. */
-    @Test
-    fun testRefreshReplacesItemsFromPageOneRatherThanPaginating() =
-        runTest(testDispatcher) {
-            fakeAccountMediaRepository.favoriteMoviesResult =
-                Result.success(
-                    SearchPageResult(page = 1, list = listOf(SearchResultItem(id = 1, title = "Movie A")), totalPages = 2),
-                )
-            val viewModel = buildModel(AccountMediaCategory.FAVORITES, SearchMediaType.MOVIE)
-            assertEquals(ListState.IDLE, viewModel.listState)
-
-            fakeAccountMediaRepository.favoriteMoviesResult =
-                Result.success(
-                    SearchPageResult(page = 1, list = listOf(SearchResultItem(id = 9, title = "Movie Z")), totalPages = 1),
-                )
-            viewModel.refresh()
-
-            assertEquals(1, viewModel.items.size)
-            assertEquals("Movie Z", viewModel.items.first().displayTitle)
-            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
-        }
+        assertEquals(
+            listOf(AccountMediaCategory.FAVORITES, AccountMediaCategory.WATCHLIST),
+            fakeTrackedMediaRepository.pagedFlowCalls.map { it.category },
+        )
+    }
 }
