@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,25 +51,38 @@ import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
+import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
+import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthErrorContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthorizingContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.LoggedOutContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.UserAvatar
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.isDebugBuild
+import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_screen_title
 import mywatchlist.composeapp.generated.resources.action_close
 import mywatchlist.composeapp.generated.resources.auth_account_welcome
 import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.back_content_description
+import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_description
+import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_label
 import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
 import mywatchlist.composeapp.generated.resources.region_picker_title
+import mywatchlist.composeapp.generated.resources.settings_episode_notifications_description
+import mywatchlist.composeapp.generated.resources.settings_episode_notifications_title
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_description
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_label
 import mywatchlist.composeapp.generated.resources.settings_region_label
@@ -106,6 +120,7 @@ fun AccountScreen(
     authRepository: AuthRepository = AuthRepositoryImpl(),
     regionRepository: RegionRepository = RegionRepositoryImpl(),
     restrictedModeRepository: RestrictedModeRepository = RestrictedModeRepositoryImpl(),
+    notificationSettingsRepository: NotificationSettingsRepository = NotificationSettingsRepositoryImpl(),
     screenModel: AuthScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
 ) {
@@ -115,6 +130,9 @@ fun AccountScreen(
     var selectedRegionCode by remember { mutableStateOf(regionRepository.getSelectedRegion()) }
     var fallbackRegionCode by remember { mutableStateOf(regionRepository.getFallbackRegion()) }
     var restrictedModeEnabled by remember { mutableStateOf(restrictedModeRepository.isRestrictedModeEnabled()) }
+    var episodeNotificationsEnabled by remember { mutableStateOf(notificationSettingsRepository.isEpisodeNotificationsEnabled()) }
+    val notificationPermissionRequester = rememberNotificationPermissionRequester()
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(webAuthLauncher) {
         screenModel.checkForPendingWebAuth(webAuthLauncher)
@@ -165,11 +183,45 @@ fun AccountScreen(
                     regionCode = selectedRegionCode,
                     fallbackRegionCode = fallbackRegionCode,
                     restrictedModeEnabled = restrictedModeEnabled,
+                    episodeNotificationsEnabled = episodeNotificationsEnabled,
                     onRegionClicked = { showRegionPicker = true },
                     onFallbackRegionClicked = { showFallbackRegionPicker = true },
                     onRestrictedModeChanged = { enabled ->
                         restrictedModeRepository.setRestrictedModeEnabled(enabled)
                         restrictedModeEnabled = enabled
+                    },
+                    onEpisodeNotificationsChanged = { enabled ->
+                        if (enabled) {
+                            coroutineScope.launch {
+                                val granted = notificationPermissionRequester.request()
+                                if (granted) {
+                                    notificationSettingsRepository.setEpisodeNotificationsEnabled(true)
+                                    episodeNotificationsEnabled = true
+                                    NotificationScheduler.schedule()
+                                }
+                            }
+                        } else {
+                            notificationSettingsRepository.setEpisodeNotificationsEnabled(false)
+                            episodeNotificationsEnabled = false
+                            NotificationScheduler.cancel()
+                        }
+                    },
+                    showDebugPollNowRow = isDebugBuild(),
+                    onDebugPollNowClicked = {
+                        coroutineScope.launch {
+                            // Debug-only: forces the exact next episode every tracked returning
+                            // series currently has to look newly-announced again, so this can be
+                            // re-tapped for a fresh notification on demand instead of being blocked
+                            // by whatever a previous real poll already recorded.
+                            val trackedMediaRepository = TrackedMediaRepositoryImpl()
+                            val notificationLedgerRepository = NotificationLedgerRepositoryImpl()
+                            trackedMediaRepository.resetAllTvPollStateForDebug()
+                            notificationLedgerRepository.clearAllForDebug()
+                            TvEpisodeNotificationPoller(
+                                trackedMediaRepository = trackedMediaRepository,
+                                notificationLedgerRepository = notificationLedgerRepository,
+                            ).poll()
+                        }
                     },
                     onLogoutClicked =
                         if (uiState is AuthUiState.LoggedIn) {
@@ -312,9 +364,13 @@ private fun SettingsList(
     regionCode: String,
     fallbackRegionCode: String,
     restrictedModeEnabled: Boolean,
+    episodeNotificationsEnabled: Boolean,
     onRegionClicked: () -> Unit,
     onFallbackRegionClicked: () -> Unit,
     onRestrictedModeChanged: (Boolean) -> Unit,
+    onEpisodeNotificationsChanged: (Boolean) -> Unit,
+    showDebugPollNowRow: Boolean,
+    onDebugPollNowClicked: () -> Unit,
     onLogoutClicked: (() -> Unit)?,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -335,6 +391,19 @@ private fun SettingsList(
             checked = restrictedModeEnabled,
             onCheckedChange = onRestrictedModeChanged,
         )
+        SettingsSwitchRow(
+            label = stringResource(Res.string.settings_episode_notifications_title),
+            description = stringResource(Res.string.settings_episode_notifications_description),
+            checked = episodeNotificationsEnabled,
+            onCheckedChange = onEpisodeNotificationsChanged,
+        )
+        if (showDebugPollNowRow) {
+            SettingsRow(
+                label = stringResource(Res.string.debug_poll_notifications_now_label),
+                description = stringResource(Res.string.debug_poll_notifications_now_description),
+                onClick = onDebugPollNowClicked,
+            )
+        }
         onLogoutClicked?.let {
             SettingsRow(
                 label = stringResource(Res.string.auth_logout),

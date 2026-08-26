@@ -25,6 +25,10 @@ CREATE TABLE trackedMedia (
     -- until the first poll runs. Not sourced from any single API field.
     lastKnownNextEpisodeAirDate TEXT,
     lastKnownCreditIds TEXT,
+    -- Cache of TvDetail.status as of the last poll (3a) - lets a poll skip an Ended/Canceled show
+    -- entirely (no network call at all) instead of re-fetching every cycle just to re-learn it's
+    -- over. Null means "never polled yet", not "unknown status".
+    lastKnownStatus TEXT,
     -- Offline-delete queue: set together the moment a user removes a title from favorites/
     -- watchlist. isDeleted hides the row from selectByCategoryPaged immediately, regardless of
     -- network state; pendingSync marks that the removal still needs to reach TMDB. A successful flush
@@ -55,6 +59,32 @@ updatePollState:
 UPDATE trackedMedia
 SET lastKnownNextEpisodeAirDate = ?, lastKnownCreditIds = ?
 WHERE id = ? AND mediaType = ? AND category = ?;
+
+-- Poller-specific writes: scoped by (id, mediaType) only, not category. A show can be tracked
+-- under both favorite and watchlist at once (two separate rows, PRIMARY KEY includes category) -
+-- air date/status are properties of the show itself, not of which list it's tracked under, so
+-- both rows must be written together or they drift out of sync with each other.
+updatePollStateForMediaType:
+UPDATE trackedMedia SET lastKnownNextEpisodeAirDate = ? WHERE id = ? AND mediaType = ?;
+
+updateLastKnownStatusForMediaType:
+UPDATE trackedMedia SET lastKnownStatus = ? WHERE id = ? AND mediaType = ?;
+
+-- The notification poller's candidate set: every non-deleted tracked TV show, deduplicated across
+-- categories - unlike selectByCategoryPaged, this is unpaged (a poll needs the full set, not a
+-- scroll window). DISTINCT is safe because updatePollStateForMediaType/updateLastKnownStatusForMediaType
+-- above always keep a show's rows in sync with each other across categories.
+selectTrackedTvForPolling:
+SELECT DISTINCT id, mediaType, lastKnownNextEpisodeAirDate, lastKnownStatus FROM trackedMedia
+WHERE mediaType = 'tv' AND isDeleted = 0;
+
+-- Debug-only ("Poll episode notifications now" row, AccountScreen - see isDebugBuild()): forgets
+-- every tracked TV show's last-seen air date so the next poll treats its current
+-- next_episode_to_air as newly announced again, regardless of what a previous real poll already
+-- recorded. Paired with clearNotificationLedgerForDebug so the dedup ledger doesn't then suppress
+-- the very notification this exists to force - never called from the real poll path.
+resetAllTvPollStateForDebug:
+UPDATE trackedMedia SET lastKnownNextEpisodeAirDate = NULL WHERE mediaType = 'tv';
 
 markTrackedMediaPendingDelete:
 UPDATE trackedMedia SET isDeleted = 1, pendingSync = 1 WHERE id = ? AND mediaType = ? AND category = ?;
@@ -276,3 +306,29 @@ INSERT OR REPLACE INTO remoteKeys (queryKey, nextPage, prevPage, nextKey) VALUES
 
 deleteRemoteKeys:
 DELETE FROM remoteKeys WHERE queryKey = ?;
+
+-- future_features_checklist.md item 3a: one row per (media, reason) once a notification has
+-- actually been sent for it - the sole source of truth for "have we already notified about this"
+-- so a poll never re-notifies. cursorValue is reason-specific (the episode air_date, for both 3a
+-- reasons "episode_announced"/"episode_airing") - comparing it against the current poll's value is
+-- what lets the SAME reason fire again for a DIFFERENT air date (next season's episode) while
+-- still suppressing an exact repeat.
+CREATE TABLE notificationLedger (
+    id INTEGER NOT NULL,
+    mediaType TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    cursorValue TEXT NOT NULL,
+    notifiedAt INTEGER NOT NULL,
+    PRIMARY KEY (id, mediaType, reason)
+);
+
+selectNotificationLedgerRow:
+SELECT * FROM notificationLedger WHERE id = ? AND mediaType = ? AND reason = ?;
+
+upsertNotificationLedgerRow:
+INSERT OR REPLACE INTO notificationLedger (id, mediaType, reason, cursorValue, notifiedAt) VALUES (?, ?, ?, ?, ?);
+
+-- Debug-only companion to resetAllTvPollStateForDebug above - wipes every dedup row so a forced
+-- test poll isn't suppressed by whatever a previous real poll already recorded.
+clearNotificationLedgerForDebug:
+DELETE FROM notificationLedger;

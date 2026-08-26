@@ -11,6 +11,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -122,6 +123,7 @@ class AccountScreenUiTest {
             onNodeWithText("Default fallback region").assertIsDisplayed()
             onNodeWithText("Used for watch provider availability only").assertIsDisplayed()
             onNodeWithText("Restricted Mode").assertIsDisplayed()
+            onNodeWithText("Episode notifications").assertIsDisplayed()
             onNodeWithText("Log out").assertIsDisplayed()
         }
 
@@ -144,9 +146,56 @@ class AccountScreenUiTest {
                 )
             }
 
-            onNode(isToggleable()).performClick()
+            onAllNodes(isToggleable())[0].performClick()
 
             assertTrue(fakeRestrictedModeRepository.setRestrictedModeCalls.contains(false))
+        }
+
+    @Test
+    fun testTogglingEpisodeNotificationsOnRequestsPermissionAndPersists() =
+        runComposeUiTest {
+            val session =
+                UserSession(sessionId = "session_999", accountId = 99L, username = "jane_doe", name = "Jane Doe")
+            fakeAuthRepository.saveSession(session)
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            val fakeNotificationSettingsRepository = FakeNotificationSettingsRepository(episodeNotificationsEnabled = false)
+
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    screenModel = screenModel,
+                    notificationSettingsRepository = fakeNotificationSettingsRepository,
+                )
+            }
+
+            onAllNodes(isToggleable())[1].performClick()
+            waitForIdle()
+
+            assertTrue(fakeNotificationSettingsRepository.setEpisodeNotificationsEnabledCalls.contains(true))
+        }
+
+    @Test
+    fun testDebugPollNowRowIsShown() =
+        runComposeUiTest {
+            // isDebugBuild() is unconditionally true on desktop (no separate release pipeline
+            // exists for this platform yet - see PlatformUtil.kt), so the row is always present here.
+            val session =
+                UserSession(sessionId = "session_999", accountId = 99L, username = "jane_doe", name = "Jane Doe")
+            fakeAuthRepository.saveSession(session)
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNodeWithText("Poll episode notifications now").assertIsDisplayed()
         }
 
     @Test

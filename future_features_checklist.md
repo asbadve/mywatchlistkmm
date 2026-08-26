@@ -187,26 +187,88 @@ poll set and per-item "last known state" this item needs is exactly what item 2'
 is meant to hold, instead of re-fetching every favorites/watchlist page from TMDB on each poll.
 
 ### Shared infrastructure checklist:
-- [ ] Platform-specific background scheduler (`expect`/`actual`, mirroring the `WebAuthLauncher`
+- [x] Platform-specific background scheduler (`expect`/`actual`, mirroring the `WebAuthLauncher`
   pattern): WorkManager periodic work (Android), `BGTaskScheduler` (iOS), a JVM scheduled executor
-  (Desktop), skip or best-effort `setInterval` while the tab is open (JS - no background execution
-  there).
-- [ ] Platform-specific local notification poster (`expect`/`actual`): `NotificationManager`
-  (Android, needs a channel + `POST_NOTIFICATIONS` runtime permission on API 33+),
-  `UNUserNotificationCenter` (iOS, needs authorization request), the `Notification` Web API (JS,
-  needs permission prompt), a tray notification or no-op (Desktop).
-- [ ] A "notifications" settings section (ties into item 10 for the permission/settings UI shape)
-  with a master toggle plus one toggle per sub-feature below.
-- [ ] Persist a "last notified" cursor per tracked item (`multiplatform-settings`, same store the
-  auth session already uses) so a poll never re-notifies for something already surfaced.
+  (Desktop), best-effort `setInterval` while the tab is open (JS). Done 2026-08-26 -
+  `core/notification/NotificationScheduler.kt` + per-platform `actual`s.
+- [x] Platform-specific local notification poster (`expect`/`actual`): `NotificationManager`
+  (Android, channel + `POST_NOTIFICATIONS` runtime permission on API 33+),
+  `UNUserNotificationCenter` (iOS, authorization request), the `Notification` Web API (JS,
+  permission prompt), `SystemTray`/`TrayIcon` (Desktop). Done 2026-08-26 -
+  `core/notification/LocalNotifier.kt` + `NotificationPermissionRequester.kt` + per-platform `actual`s.
+  - [ ] **Manual follow-up (iOS, not yet done)**: Xcode's `INFOPLIST_KEY_` synthesis doesn't
+    reliably support custom array keys, so `BGTaskSchedulerPermittedIdentifiers` (needs
+    `com.ajinkyabadve.kmmmywatchlist.episodePoll`, matching `IosNotificationSchedulerConstant.TASK_IDENTIFIER`
+    in `NotificationScheduler.kt`, iosMain) has to be added by hand under the `iosApp` target's Info
+    tab in Xcode. `UIBackgroundModes` (fetch/processing) was added via pbxproj and doesn't need this.
+    Without this, `BGTaskScheduler.sharedScheduler().submitTaskRequest(...)` will fail silently and
+    the poll will only ever run via the debug-only "Poll episode notifications now" row, never in
+    the background.
+- [x] A "notifications" settings section: one toggle ("Episode notifications", off by default) on
+  `AccountScreen` for 3a - `NotificationSettingsRepository`. A master toggle only becomes relevant
+  once 3b/3c exist too.
+- [x] Persist a "last notified" cursor per tracked item: `notificationLedger` SQLDelight table,
+  keyed `(id, mediaType, reason)` so a poll never re-notifies for the same reason+cursor value.
+- [ ] **Follow-up, not yet done (requested 2026-08-26): in-context opt-in prompt.** Right now the
+  only way to discover/enable episode notifications is to already know to go dig for the
+  "Episode notifications" toggle in Account settings - nothing surfaces it at the moment it'd
+  actually be relevant. Instead, the first time a user favorites/watchlists a TV show (while the
+  setting is still off), show a small explanatory prompt - what the notification is for ("get
+  notified when this show has a new episode"), not just a bare OS permission dialog - with a
+  clear opt-in action that both flips `NotificationSettingsRepository`'s toggle and requests the
+  OS permission (`rememberNotificationPermissionRequester`), same as the Account row already does.
+  Needs: (a) a "seen this prompt already" flag (`multiplatform-settings`, same store) so it's
+  shown once, not on every favorite; (b) hooking into the favorite/watchlist toggle action -
+  likely `MediaActionButtons`/wherever the heart-icon click is currently handled on detail
+  screens - to trigger it only for TV media, not movies; (c) new string resources for the prompt's
+  copy. Should generalize to 3b/3c once those exist (their own trigger points - favoriting a
+  person/collection - rather than TV-specific).
 
-### 3a. Returning series - new/upcoming episode
+### 3a. Returning series - new/upcoming episode — DONE (2026-08-26)
 **Relevant OAS endpoints**: `GET /3/tv/{series_id}` (`status`, `next_episode_to_air.air_date`) for
 watchlisted/favorited shows; `GET /3/tv/{series_id}/changes` as a cheaper diff signal.
-- [ ] Poll each favorited/watchlisted TV show's `next_episode_to_air`; notify once when a new
-  episode's air date is newly announced, and again on the air date itself.
-- [ ] Skip shows with `status == "Ended"` / `"Canceled"` entirely once known, so they age out of
-  the poll set.
+- [x] Poll each favorited/watchlisted TV show's `next_episode_to_air`; notify once when a new
+  episode's air date is newly announced, and again on the air date itself -
+  `TvEpisodeNotificationPoller`.
+- [x] Skip shows with `status == "Ended"` / `"Canceled"` entirely once known, so they age out of
+  the poll set (zero network calls once `lastKnownStatus` records it).
+- [x] **Group notifications by TV series (Android) - done 2026-08-26.** Both reasons for the same
+  show (`episode_announced` and `episode_airing`, which can both fire in the same poll cycle) now
+  share one `NotificationCompat` group key (`LocalNotifier.kt` androidMain,
+  `AndroidNotificationConstant.GROUP_KEY_PREFIX + tvShowId`), with a summary notification per show
+  so Android actually stacks them instead of showing two separate top-level entries. iOS/Desktop/JS
+  don't group yet - `UNNotificationContent.threadIdentifier` is the iOS equivalent if this is
+  wanted there too, not yet done.
+- [x] **Episode/show poster image on the notification - done 2026-08-26.** `TvEpisodeNotificationPoller`
+  resolves the episode's still image (falling back to the show's poster if no still exists) via
+  `ImageConfigResolver` and passes it through `LocalNotifier.post`'s new `posterUrl` param -
+  `NotificationImageFetcher` (commonMain) does the actual best-effort download, shared by the
+  platforms that render it inline. Android: `NotificationCompat.BigPictureStyle` (decoded via
+  `BitmapFactory`). iOS: `UNNotificationAttachment` (image written to a temp file first, since the
+  API only accepts a file URL, not raw data). JS: passed straight through as the `Notification` Web
+  API's `icon`/`image` options - the browser fetches it itself, no download needed on this side.
+  Desktop: not supported - `java.awt.TrayIcon.displayMessage` has no image parameter at all
+  (AWT/Swing tray balloons are text-only). Any failure at any step (download, decode, temp-file
+  write, attachment construction) silently falls back to the existing text-only notification rather
+  than losing the notification entirely - not yet covered by a dedicated test (the failure path is
+  straightforward but the happy path needs a real device/simulator to see rendered).
+- Verification: `TvEpisodeNotificationPollerTest` (commonTest) covers the dedup/aging/per-show
+  exception-isolation cases. Real-device confirmation not yet done - see `run-app` skill's "Force-
+  firing the episode-notification poll" section for the adb/debug-row steps.
+- [x] **Follow-up: tap-to-episode deep link — DONE (2026-08-26)**. Tapping the notification now
+  opens the TV show's detail screen and then the specific episode. `EpisodeNotificationTarget`
+  (commonMain, `core/notification/NotificationDeepLink.kt`) carries `(tvShowId, seasonNumber,
+  episodeNumber)` through `LocalNotifier.post`'s new `deepLink` param, populated from
+  `TvEpisodeNotificationPoller`'s `detail.nextEpisodeToAir`. `PendingEpisodeNotificationTarget` is
+  the observable holder `App.kt`'s `MainAppScreen` watches to push `TvDetailKey` then
+  `EpisodeDetailKey`. Per-platform tap wiring: Android - `PendingIntent` extras read back in
+  `AppActivity.handleNotificationIntent()` (mirrors `AndroidAuthCallbackHandler`'s intent-handling
+  shape); iOS - `UNNotificationContent.userInfo`, read by `NotificationTapDelegate`
+  (`UNUserNotificationCenterDelegateProtocol`, registered in `Main.kt`'s `MainViewController()`);
+  JS - `Notification.onclick` (works since the app is already running - no cold-launch case);
+  Desktop - `TrayIcon`'s single action listener approximates "most recently posted" (SystemTray has
+  no per-message click callback). Verification: `PendingEpisodeNotificationTargetTest` (commonTest)
+  covers the observable set/consume/re-tap semantics. Real-device confirmation not yet done.
 
 ### 3b. Favorite actor/person - new credit announced
 **Relevant OAS endpoints**: `GET /3/person/{person_id}/combined_credits` (diff against the last

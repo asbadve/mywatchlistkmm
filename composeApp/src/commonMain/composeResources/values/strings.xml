@@ -9,6 +9,14 @@
     <string name="error_unexpected_tv_details">An unexpected error occurred while loading tv show details. Please try again.</string>
     <string name="error_unexpected_seasons">An unexpected error occurred while loading seasons. Please try again.</string>
     <string name="error_unexpected_episodes">An unexpected error occurred while loading episodes. Please try again.</string>
+    <string name="notification_episode_announced_title">New episode announced</string>
+    <string name="notification_episode_announced_body">%1$s has a new episode airing %2$s</string>
+    <string name="notification_episode_airing_title">New episode today</string>
+    <string name="notification_episode_airing_body">A new episode of %1$s airs today</string>
+    <string name="settings_episode_notifications_title">Episode notifications</string>
+    <string name="settings_episode_notifications_description">Get notified when a favorited or watchlisted show announces a new episode</string>
+    <string name="debug_poll_notifications_now_label">Poll episode notifications now</string>
+    <string name="debug_poll_notifications_now_description">Debug builds only - resets the notification state of tracked shows and polls immediately, so this can be re-tapped for a fresh notification anytime</string>
     <string name="error_unexpected_episode">An unexpected error occurred while loading the episode. Please try again.</string>
     <string name="error_unexpected_person">An unexpected error occurred while loading the person. Please try again.</string>
     <string name="error_unexpected_trailers">An unexpected error occurred while loading trailers. Please try again.</string>

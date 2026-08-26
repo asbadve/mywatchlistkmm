@@ -242,6 +242,30 @@ adb logcat -d --pid=$(adb shell pidof com.ajinkyabadve.kmmmywatchlist.androidApp
 - HTTP logging only appears if `initLogging()` ran (debuggable builds only, see
   `core/logging/AppLogging.kt`); grep the tag `HTTP Client`.
 
+### Force-firing the episode-notification poll (checklist item 3a)
+
+`TvEpisodeNotificationPoller` runs on a `WorkManager` `PeriodicWorkRequest` (see
+`core/notification/NotificationScheduler.kt`, androidMain) with a 6h interval and no 15-minute-floor
+override - waiting for it to fire naturally isn't practical for verification. Two ways to force it,
+in order of preference:
+
+1. **Debug-only "Poll episode notifications now" row** on the Account screen (`AccountScreen.kt` -
+   only rendered when `isDebugBuild()` is true, i.e. never in a release build). Tap it to call
+   `TvEpisodeNotificationPoller().poll()` directly, bypassing `WorkManager`/`BGTaskScheduler`
+   entirely. Fast and reliable, but only proves the poller+notifier logic, not the scheduling
+   wiring itself.
+2. **Force-run the actual scheduled job via `adb`** (proves the real `WorkManager` path fires) -
+   toggle "Episode notifications" on in Settings at least once first so the job exists, then:
+
+```bash
+adb shell dumpsys jobscheduler | grep -B2 -A20 "com.ajinkyabadve.kmmmywatchlist.androidApp"
+# find the "JOB #<uid>/<jobId>: ..." line for EpisodeNotificationWorker
+adb shell cmd jobscheduler run -f com.ajinkyabadve.kmmmywatchlist.androidApp <jobId>
+```
+
+Re-run the same trigger a second time and confirm no duplicate notification appears - that's the
+dedup ledger (`notificationLedger` table) doing its job, not a fluke of only firing once.
+
 ## JS (browser)
 
 - `./gradlew :composeApp:jsBrowserDevelopmentRun` exists but is slow; not part of the normal

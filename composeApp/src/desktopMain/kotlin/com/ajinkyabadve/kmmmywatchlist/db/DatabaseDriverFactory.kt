@@ -22,14 +22,19 @@ private const val DATABASE_FILE_NAME = "mywatchlist.db"
 // relaunch after the first) throws "table ... already exists"; there's no schema-version-based
 // migration here yet (see docs/local-storage-plan.html), so a file-existence check is the
 // simplest correct guard until one exists.
+private fun databaseFilePath(): Path = Path.of(System.getProperty("user.home"), APP_DATA_DIR_NAME).resolve(DATABASE_FILE_NAME)
+
 internal actual suspend fun createSqlDriver(schema: SqlSchema<QueryResult.AsyncValue<Unit>>): SqlDriver {
-    val appDataDir = Path.of(System.getProperty("user.home"), APP_DATA_DIR_NAME)
-    Files.createDirectories(appDataDir)
-    val databasePath = appDataDir.resolve(DATABASE_FILE_NAME)
+    val databasePath = databaseFilePath()
+    Files.createDirectories(databasePath.parent)
     val isNewDatabase = !Files.exists(databasePath)
     val driver = JdbcSqliteDriver("jdbc:sqlite:$databasePath")
     if (isNewDatabase) {
         schema.create(driver).await()
     }
     return driver
+}
+
+internal actual fun deleteLocalDatabaseFile() {
+    Files.deleteIfExists(databaseFilePath())
 }

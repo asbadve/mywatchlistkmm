@@ -5,6 +5,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.paging3.QueryPagingSource
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.db.AppDatabaseProvider
@@ -27,6 +28,13 @@ private object TrackedMediaConstant {
     // RemoteMediator fetch lines up with one local Paging window instead of a partial one.
     const val PAGE_SIZE = 20
 }
+
+/** One TV show's poll-relevant state, as read by [TrackedMediaRepository.trackedTvForPolling]. */
+data class TrackedTvPollCandidate(
+    val id: Int,
+    val lastKnownNextEpisodeAirDate: String?,
+    val lastKnownStatus: String?,
+)
 
 /**
  * Local SQLite mirror of a signed-in user's favorites/watchlist (see
@@ -55,6 +63,35 @@ interface TrackedMediaRepository {
         category: AccountMediaCategory,
         nextEpisodeAirDate: String?,
         creditIds: String?,
+    )
+
+    /**
+     * The notification poller's candidate set: every non-deleted tracked TV show, deduplicated
+     * across favorite/watchlist (a show tracked under both is only polled once) - see
+     * `MyDatabase.sq`'s `selectTrackedTvForPolling` kdoc. Empty on the web target, which has no
+     * local table to enumerate - see `NetworkOnlyTrackedMediaRepositoryImpl`'s kdoc.
+     */
+    suspend fun trackedTvForPolling(): List<TrackedTvPollCandidate>
+
+    /** Debug-only: forgets every tracked TV show's last-seen air date, so the next poll treats its
+     *  current next-episode as newly announced again - see AccountScreen's "Poll episode
+     *  notifications now" row and `MyDatabase.sq`'s `resetAllTvPollStateForDebug` kdoc. */
+    suspend fun resetAllTvPollStateForDebug()
+
+    /** Poller-only write: updates every category row for this (id, mediaType) at once - see
+     *  `updatePollStateForMediaType`'s kdoc in `MyDatabase.sq` for why category is deliberately
+     *  not part of this call, unlike [updatePollState]. */
+    suspend fun updatePollStateForMediaType(
+        id: Int,
+        mediaType: String,
+        nextEpisodeAirDate: String?,
+    )
+
+    /** Poller-only write, same category-agnostic reasoning as [updatePollStateForMediaType]. */
+    suspend fun updateLastKnownStatusForMediaType(
+        id: Int,
+        mediaType: String,
+        status: String?,
     )
 
     /**
@@ -170,6 +207,33 @@ internal class SqliteTrackedMediaRepositoryImpl(
             mediaType = mediaType,
             category = category.storageValue,
         )
+    }
+
+    override suspend fun trackedTvForPolling(): List<TrackedTvPollCandidate> =
+        databaseProvider()
+            .myDatabaseQueries
+            .selectTrackedTvForPolling()
+            .awaitAsList()
+            .map { row -> TrackedTvPollCandidate(row.id.toInt(), row.lastKnownNextEpisodeAirDate, row.lastKnownStatus) }
+
+    override suspend fun resetAllTvPollStateForDebug() {
+        databaseProvider().myDatabaseQueries.resetAllTvPollStateForDebug()
+    }
+
+    override suspend fun updatePollStateForMediaType(
+        id: Int,
+        mediaType: String,
+        nextEpisodeAirDate: String?,
+    ) {
+        databaseProvider().myDatabaseQueries.updatePollStateForMediaType(nextEpisodeAirDate, id.toLong(), mediaType)
+    }
+
+    override suspend fun updateLastKnownStatusForMediaType(
+        id: Int,
+        mediaType: String,
+        status: String?,
+    ) {
+        databaseProvider().myDatabaseQueries.updateLastKnownStatusForMediaType(status, id.toLong(), mediaType)
     }
 
     override suspend fun markPendingDelete(

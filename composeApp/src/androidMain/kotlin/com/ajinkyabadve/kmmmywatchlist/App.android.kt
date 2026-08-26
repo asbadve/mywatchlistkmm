@@ -2,9 +2,12 @@ package com.ajinkyabadve.kmmmywatchlist
 
 import android.app.Activity
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,9 +20,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toComposeRect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.core.content.getSystemService
 import androidx.window.layout.WindowMetricsCalculator
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
+import com.ajinkyabadve.kmmmywatchlist.core.notification.AndroidNotificationConstant
+import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingEpisodeNotificationTarget
 
 class AndroidApp : Application() {
     companion object {
@@ -35,6 +42,22 @@ class AndroidApp : Application() {
         if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             initLogging()
         }
+        createEpisodeNotificationChannel()
+    }
+
+    // Must exist before LocalNotifier.post() ever notifies against it - channels are one-time
+    // setup, safe to recreate on every launch (createNotificationChannel is a no-op if unchanged).
+    private fun createEpisodeNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val channel =
+            NotificationChannel(
+                AndroidNotificationConstant.CHANNEL_ID,
+                getString(R.string.notification_channel_episodes_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = getString(R.string.notification_channel_episodes_description)
+            }
+        getSystemService<NotificationManager>()?.createNotificationChannel(channel)
     }
 }
 
@@ -45,6 +68,7 @@ class AppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         com.ajinkyabadve.kmmmywatchlist.core.auth.AndroidAuthCallbackHandler
             .handleIntent(intent)
+        handleNotificationIntent(intent)
         setContent {
             App(calculateWindowSizeClass(this))
         }
@@ -54,6 +78,20 @@ class AppActivity : ComponentActivity() {
         super.onNewIntent(intent)
         com.ajinkyabadve.kmmmywatchlist.core.auth.AndroidAuthCallbackHandler
             .handleIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    // Mirrors AndroidAuthCallbackHandler.handleIntent()'s shape, but for a tapped episode
+    // notification's PendingIntent extras (see LocalNotifier.post, androidMain) instead of an
+    // OAuth deep link - launchMode="singleInstance" means this Activity is reused via onNewIntent
+    // rather than recreated, so both call sites matter (cold launch vs. already-running).
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent == null || !intent.hasExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID)) return
+        val tvShowId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID, -1L)
+        val seasonNumber = intent.getIntExtra(AndroidNotificationConstant.EXTRA_SEASON_NUMBER, -1)
+        val episodeNumber = intent.getIntExtra(AndroidNotificationConstant.EXTRA_EPISODE_NUMBER, -1)
+        if (tvShowId < 0 || seasonNumber < 0 || episodeNumber < 0) return
+        PendingEpisodeNotificationTarget.set(EpisodeNotificationTarget(tvShowId, seasonNumber, episodeNumber))
     }
 
     override fun onResume() {

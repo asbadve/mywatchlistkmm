@@ -64,6 +64,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingEpisodeNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AccountAvatarButton
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
@@ -152,6 +153,18 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
 fun MainAppScreen(windowSize: WindowSize) {
     val topLevelBackStack = remember { TopLevelBackStack(TrendingKey) }
     val currentKey = topLevelBackStack.backStack.lastOrNull()
+
+    // Fires once per genuinely new tap (see PendingEpisodeNotificationTarget's kdoc for why it's a
+    // consumed observable rather than a one-shot callback) - re-fires on a later tap even for the
+    // exact same episode, since consume() nulls it out in between.
+    val pendingNotificationTarget = PendingEpisodeNotificationTarget.current
+    LaunchedEffect(pendingNotificationTarget) {
+        pendingNotificationTarget?.let { target ->
+            topLevelBackStack.add(TvDetailKey(target.tvShowId))
+            topLevelBackStack.add(EpisodeDetailKey(target.tvShowId, target.seasonNumber, target.episodeNumber))
+            PendingEpisodeNotificationTarget.consume()
+        }
+    }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val layoutType =
