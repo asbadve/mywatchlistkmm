@@ -1,6 +1,6 @@
 ---
 name: code-conventions
-description: Coding conventions for this codebase - specific exception types only (never catch/throw bare Exception) and no magic strings (constants for internal strings, compose string resources for user-facing text). Apply to ALL new or modified Kotlin code.
+description: Coding conventions for this codebase - specific exception types only (never catch/throw bare Exception), no magic strings (constants for internal strings, compose string resources for user-facing text), and prefer Kotlin scope functions/modern idioms/enums over closed value sets. Apply to ALL new or modified Kotlin code.
 ---
 
 # Code conventions (user-mandated)
@@ -269,3 +269,57 @@ need it identically). That bridge is its own composable, colocated with the pure
 what it does (`MediaActionButtonsSection`, not `MediaActionButtons`) - it is the one place allowed
 to hold the `AuthScreenModel`/`MediaActionsState` references, collect their state, and turn clicks
 into ViewModel calls. Screens call the *section*, never the pure component, directly.
+
+## 9. Prefer scope functions, modern Kotlin idioms, and enums (agreed 2026-08-26)
+
+Write idiomatic Kotlin, not Java translated line-for-line. Concretely:
+
+**Scope functions** - reach for `let`/`run`/`with`/`apply`/`also` instead of a throwaway local
+variable plus a separate statement, wherever it reads *more* clearly, not just shorter:
+- `?.let { }` to act on a nullable only when non-null, instead of an `if (x != null)` guard that
+  then re-reads `x` inside the block.
+- `apply { }` when configuring/building an object that's then returned as-is (mirrors this
+  codebase's existing `Thread(runnable, "...").apply { isDaemon = true }` in
+  `NotificationScheduler.kt`).
+- `also { }` for a side effect (logging, a debug assertion) in the middle of an expression chain,
+  without breaking that chain into a separate statement.
+- `run { }` / `with(receiver) { }` to scope a block to one receiver and return its result, instead
+  of repeating `receiver.` on every line.
+- Don't force one in where a plain `if`/local `val` already reads clearly - a scope function that
+  exists only to shave one line, at the cost of an extra implicit-receiver `it`/`this` the reader
+  has to resolve, is not an improvement. The bar is readability, not avoiding statements on
+  principle.
+
+**Modern language features** - use what the declared Kotlin version (`gradle/libs.versions.toml`)
+actually provides rather than an older, more verbose equivalent:
+- `when` as an expression (assigned to a `val`, or returned directly) instead of a chain of
+  `if`/`else if` that mutates a `var`.
+- Data classes with `copy()` for state updates (this codebase's `MutableStateFlow<UiState>.update
+  { it.copy(...) }` pattern throughout every `*ScreenModel`/`*State`) instead of manually
+  reconstructing or mutating fields.
+- Trailing lambda syntax, named arguments for anything past two positional params, and
+  destructuring where a `Pair`/`Triple`/data class is being unpacked.
+- `sealed class`/`sealed interface` for a closed set of UI states (`AuthUiState`, `MediaActionsUiState`
+  neighbours) instead of a boolean/nullable-field combination that only some combinations are
+  actually valid for.
+- Scope-function-friendly null handling (`?:`, `?.`, `requireNotNull`) instead of `if (x == null)
+  throw ...` / bare `!!` - `!!` still needs a comment justifying why the null case is truly
+  impossible if used at all.
+
+**Enums over string/int constants** - when a value is a closed, known-in-advance set of options
+(not open-ended data from an API response), model it as an `enum class`, not a group of
+`const val` strings/ints in a `*Constant` object. An enum gets exhaustive `when` checking (the
+compiler flags a missed case), can't hold an unexpected value, and documents the whole set of
+options in one place instead of scattering `"episode_announced"`/`"episode_airing"`-style string
+literals across producer and consumer. Reach for it anywhere a `*Constant` object's members are
+actually mutually-exclusive alternatives, not a table of unrelated values -
+`NotificationLedgerRepository`'s `reason` parameter (`"episode_announced"` / `"episode_airing"`)
+and `AccountMediaCategory` are exactly this shape.
+Two things that are *not* what this rule targets, so don't force an enum onto them:
+- TMDB API values that must serialize to a specific wire string TMDB defines (`MediaTypeConstant`'s
+  `"movie"`/`"tv"`/`"person"`) - keep those as `const val` unless/until they're wrapped in a
+  `@Serializable enum class` with matching `@SerialName`s, which is a bigger change than this rule
+  alone justifies.
+- A genuinely open-ended or growing set (screen keys, feature flags still being added) - an enum
+  makes every new case a change to the enum's own file even when nothing else about the rule
+  changes; a sealed hierarchy or `*Constant` object still fits better there.
