@@ -79,6 +79,8 @@ import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.back_content_description
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_description
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_label
+import mywatchlist.composeapp.generated.resources.debug_reset_episode_alert_prompt_description
+import mywatchlist.composeapp.generated.resources.debug_reset_episode_alert_prompt_label
 import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
 import mywatchlist.composeapp.generated.resources.region_picker_title
 import mywatchlist.composeapp.generated.resources.settings_episode_notifications_description
@@ -222,6 +224,12 @@ fun AccountScreen(
                                 notificationLedgerRepository = notificationLedgerRepository,
                             ).poll()
                         }
+                    },
+                    onDebugResetEpisodeAlertPromptClicked = {
+                        notificationSettingsRepository.setEpisodeNotificationsEnabled(false)
+                        notificationSettingsRepository.resetEpisodeAlertOptInPromptForDebug()
+                        episodeNotificationsEnabled = false
+                        NotificationScheduler.cancel()
                     },
                     onLogoutClicked =
                         if (uiState is AuthUiState.LoggedIn) {
@@ -371,6 +379,7 @@ private fun SettingsList(
     onEpisodeNotificationsChanged: (Boolean) -> Unit,
     showDebugPollNowRow: Boolean,
     onDebugPollNowClicked: () -> Unit,
+    onDebugResetEpisodeAlertPromptClicked: () -> Unit,
     onLogoutClicked: (() -> Unit)?,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -402,6 +411,11 @@ private fun SettingsList(
                 label = stringResource(Res.string.debug_poll_notifications_now_label),
                 description = stringResource(Res.string.debug_poll_notifications_now_description),
                 onClick = onDebugPollNowClicked,
+            )
+            SettingsRow(
+                label = stringResource(Res.string.debug_reset_episode_alert_prompt_label),
+                description = stringResource(Res.string.debug_reset_episode_alert_prompt_description),
+                onClick = onDebugResetEpisodeAlertPromptClicked,
             )
         }
         onLogoutClicked?.let {

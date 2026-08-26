@@ -128,4 +128,22 @@ class NotificationSettingsRepositoryImplTest {
 
         assertFalse(repository.isEpisodeNotificationsEnabled())
     }
+
+    @Test
+    fun testOptInPromptDefaultsToNotSeen() {
+        val repository = NotificationSettingsRepositoryImpl(FakeSettings())
+
+        assertFalse(repository.hasSeenEpisodeAlertOptInPrompt())
+    }
+
+    @Test
+    fun testMarkEpisodeAlertOptInPromptSeenPersists() {
+        val settings = FakeSettings()
+        val repository = NotificationSettingsRepositoryImpl(settings)
+
+        repository.markEpisodeAlertOptInPromptSeen()
+
+        assertTrue(repository.hasSeenEpisodeAlertOptInPrompt())
+        assertEquals(true, settings.getBoolean(NotificationSettingsConstant.KEY_EPISODE_ALERT_OPT_IN_PROMPT_SEEN, false))
+    }
 }

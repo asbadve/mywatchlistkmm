@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
@@ -12,6 +13,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepo
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +24,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 private object MediaActionButtonsUiTestConstant {
     const val MOVIE_ID = 42L
@@ -33,6 +36,14 @@ private object MediaActionButtonsUiTestConstant {
     const val FAVORITE_CONTENT_DESCRIPTION = "Favorite"
     const val WATCHLIST_CONTENT_DESCRIPTION = "Watchlist"
     const val ADD_TO_LIST_CONTENT_DESCRIPTION = "Add to list"
+
+    const val TV_SHOW_NAME = "Severance"
+
+    // Value of Res.string.episode_alert_prompt_title with TV_SHOW_NAME substituted, and
+    // Res.string.episode_alert_prompt_confirm/_dismiss verbatim.
+    const val EPISODE_ALERT_PROMPT_TITLE = "Get notified when $TV_SHOW_NAME returns?"
+    const val EPISODE_ALERT_PROMPT_CONFIRM = "Turn on episode alerts"
+    const val EPISODE_ALERT_PROMPT_DISMISS = "Not now"
 }
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
@@ -200,5 +211,122 @@ class MediaActionButtonsSectionUiTest {
             }
 
             onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).assertDoesNotExist()
+        }
+
+    private fun preloadedTvMediaActionsState(): MediaActionsState {
+        fakeAccountMediaRepository.accountStatesResult = Result.success(AccountStates(favorite = false, watchlist = false))
+        val state =
+            MediaActionsState(
+                MediaTypeConstant.TV,
+                MediaActionButtonsUiTestConstant.MOVIE_ID,
+                CoroutineScope(UnconfinedTestDispatcher()),
+                fakeAccountMediaRepository,
+                FakeTrackedMediaRepository(),
+            )
+        state.load(MediaActionButtonsUiTestConstant.SESSION_ID)
+        return state
+    }
+
+    /** Favoriting a TV show pops the episode-alerts opt-in prompt with its name substituted in. */
+    @Test
+    fun testFavoritingTvShowShowsEpisodeAlertPrompt() =
+        runComposeUiTest {
+            val mediaActionsState = preloadedTvMediaActionsState()
+            setContent {
+                MediaActionButtonsSection(
+                    mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,
+                    colors = colors(),
+                    showAddToList = false,
+                    authRepository = fakeAuthRepository,
+                    mediaActionsState = mediaActionsState,
+                    tvShowName = MediaActionButtonsUiTestConstant.TV_SHOW_NAME,
+                    listsRepository = FakeListsRepository(),
+                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                )
+            }
+
+            onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).performClick()
+
+            onNodeWithText(MediaActionButtonsUiTestConstant.EPISODE_ALERT_PROMPT_TITLE).assertExists()
+        }
+
+    /** No `tvShowName` (the movie case) means the prompt can never show, even after favoriting. */
+    @Test
+    fun testFavoritingMovieNeverShowsEpisodeAlertPrompt() =
+        runComposeUiTest {
+            val mediaActionsState = preloadedMediaActionsState(favorite = false, watchlist = false)
+            setContent {
+                MediaActionButtonsSection(
+                    mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,
+                    colors = colors(),
+                    showAddToList = false,
+                    authRepository = fakeAuthRepository,
+                    mediaActionsState = mediaActionsState,
+                    listsRepository = FakeListsRepository(),
+                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                )
+            }
+
+            onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).performClick()
+
+            onNodeWithText(MediaActionButtonsUiTestConstant.EPISODE_ALERT_PROMPT_CONFIRM).assertDoesNotExist()
+        }
+
+    /** "Not now" records the seen flag and closes the prompt without touching notification settings. */
+    @Test
+    fun testDismissingEpisodeAlertPromptMarksItSeenAndHidesIt() =
+        runComposeUiTest {
+            val mediaActionsState = preloadedTvMediaActionsState()
+            val fakeNotificationSettingsRepository = FakeNotificationSettingsRepository()
+            setContent {
+                MediaActionButtonsSection(
+                    mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,
+                    colors = colors(),
+                    showAddToList = false,
+                    authRepository = fakeAuthRepository,
+                    mediaActionsState = mediaActionsState,
+                    tvShowName = MediaActionButtonsUiTestConstant.TV_SHOW_NAME,
+                    listsRepository = FakeListsRepository(),
+                    notificationSettingsRepository = fakeNotificationSettingsRepository,
+                )
+            }
+            onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).performClick()
+
+            onNodeWithText(MediaActionButtonsUiTestConstant.EPISODE_ALERT_PROMPT_DISMISS).performClick()
+
+            assertTrue(fakeNotificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt())
+            assertEquals(emptyList(), fakeNotificationSettingsRepository.setEpisodeNotificationsEnabledCalls)
+            onNodeWithText(MediaActionButtonsUiTestConstant.EPISODE_ALERT_PROMPT_TITLE).assertDoesNotExist()
+        }
+
+    /** "Turn on episode alerts" records seen and closes the prompt (permission request/schedule
+     *  happen inside a launched coroutine per the desktop test's fake-permission-granted path). */
+    @Test
+    fun testConfirmingEpisodeAlertPromptMarksItSeenAndHidesIt() =
+        runComposeUiTest {
+            val mediaActionsState = preloadedTvMediaActionsState()
+            val fakeNotificationSettingsRepository = FakeNotificationSettingsRepository()
+            setContent {
+                MediaActionButtonsSection(
+                    mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,
+                    colors = colors(),
+                    showAddToList = false,
+                    authRepository = fakeAuthRepository,
+                    mediaActionsState = mediaActionsState,
+                    tvShowName = MediaActionButtonsUiTestConstant.TV_SHOW_NAME,
+                    listsRepository = FakeListsRepository(),
+                    notificationSettingsRepository = fakeNotificationSettingsRepository,
+                )
+            }
+            onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).performClick()
+
+            onNodeWithText(MediaActionButtonsUiTestConstant.EPISODE_ALERT_PROMPT_CONFIRM).performClick()
+            // onConfirm marks "seen" only after the launched coroutine's permission-request +
+            // enable round trip completes - wait for that before asserting, unlike "Not now"
+            // (dismiss) which marks it synchronously on click.
+            waitForIdle()
+
+            assertTrue(fakeNotificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt())
+            onNodeWithText(MediaActionButtonsUiTestConstant.EPISODE_ALERT_PROMPT_TITLE).assertDoesNotExist()
         }
 }

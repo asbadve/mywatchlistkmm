@@ -196,7 +196,7 @@ is meant to hold, instead of re-fetching every favorites/watchlist page from TMD
   `UNUserNotificationCenter` (iOS, authorization request), the `Notification` Web API (JS,
   permission prompt), `SystemTray`/`TrayIcon` (Desktop). Done 2026-08-26 -
   `core/notification/LocalNotifier.kt` + `NotificationPermissionRequester.kt` + per-platform `actual`s.
-  - [ ] **Manual follow-up (iOS, not yet done)**: Xcode's `INFOPLIST_KEY_` synthesis doesn't
+  - [x] **Manual follow-up (iOS) - done 2026-08-27.** Xcode's `INFOPLIST_KEY_` synthesis doesn't
     reliably support custom array keys, so `BGTaskSchedulerPermittedIdentifiers` (needs
     `com.ajinkyabadve.kmmmywatchlist.episodePoll`, matching `IosNotificationSchedulerConstant.TASK_IDENTIFIER`
     in `NotificationScheduler.kt`, iosMain) has to be added by hand under the `iosApp` target's Info
@@ -209,20 +209,27 @@ is meant to hold, instead of re-fetching every favorites/watchlist page from TMD
   once 3b/3c exist too.
 - [x] Persist a "last notified" cursor per tracked item: `notificationLedger` SQLDelight table,
   keyed `(id, mediaType, reason)` so a poll never re-notifies for the same reason+cursor value.
-- [ ] **Follow-up, not yet done (requested 2026-08-26): in-context opt-in prompt.** Right now the
-  only way to discover/enable episode notifications is to already know to go dig for the
-  "Episode notifications" toggle in Account settings - nothing surfaces it at the moment it'd
-  actually be relevant. Instead, the first time a user favorites/watchlists a TV show (while the
-  setting is still off), show a small explanatory prompt - what the notification is for ("get
-  notified when this show has a new episode"), not just a bare OS permission dialog - with a
-  clear opt-in action that both flips `NotificationSettingsRepository`'s toggle and requests the
-  OS permission (`rememberNotificationPermissionRequester`), same as the Account row already does.
-  Needs: (a) a "seen this prompt already" flag (`multiplatform-settings`, same store) so it's
-  shown once, not on every favorite; (b) hooking into the favorite/watchlist toggle action -
-  likely `MediaActionButtons`/wherever the heart-icon click is currently handled on detail
-  screens - to trigger it only for TV media, not movies; (c) new string resources for the prompt's
-  copy. Should generalize to 3b/3c once those exist (their own trigger points - favoriting a
-  person/collection - rather than TV-specific).
+- [x] **In-context opt-in prompt — DONE (2026-08-26).** Designed first as a Claude artifact
+  ("Episode Alerts Prompt", built from the app's real `theme/Color.kt` M3 tokens) before
+  implementation, per the same design-first pass the app icon got. The first time a TV show is
+  favorited or watchlisted while `NotificationSettingsRepository.isEpisodeNotificationsEnabled()`
+  is still false, `MediaActionButtonsSection` shows `EpisodeAlertOptInDialog` (an `AlertDialog`,
+  matching `AddToListDialog`'s existing pattern rather than introducing `ModalBottomSheet`) with
+  the show's name substituted into the copy. `MediaActionsState.shouldPromptForEpisodeAlerts`
+  (a `StateFlow<Boolean>`) is the trigger - set on `toggleFavorite`/`toggleWatchlist` only when
+  the new value is `true` and `mediaType == MediaTypeConstant.TV`, so movies and turning
+  favorite/watchlist *off* never fire it. `NotificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt`/
+  `markEpisodeAlertOptInPromptSeen` (new `multiplatform-settings` key) gate it to once ever,
+  regardless of which action (confirm or "Not now") the user takes. Confirming calls
+  `rememberNotificationPermissionRequester().request()` then `setEpisodeNotificationsEnabled(true)`
+  + `NotificationScheduler.schedule()` - the identical pair the Account row's toggle already
+  calls, just reached from a second entry point. `MediaActionButtonsSection` gates the whole
+  feature on a new `tvShowName: String?` parameter (only ever passed non-null from
+  `TvDetailScreen`, via `TvDetail.title`) so movies structurally can't show it even if the state
+  flow somehow flipped. Unit tests in `MediaActionsStateTest`/`NotificationSettingsRepositoryImplTest`,
+  Compose UI tests in `MediaActionButtonsUiTest` (prompt shows on TV favorite/watchlist, never on
+  movie, both actions mark it seen and close it). Generalizing to 3b/3c can reuse the same
+  `shouldPromptForEpisodeAlerts` shape once those features have their own trigger points.
 
 ### 3a. Returning series - new/upcoming episode — DONE (2026-08-26)
 **Relevant OAS endpoints**: `GET /3/tv/{series_id}` (`status`, `next_episode_to_air.air_date`) for

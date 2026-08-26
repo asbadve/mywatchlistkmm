@@ -278,6 +278,7 @@ private fun CompactTvDetailContent(
                     showAddToList = false,
                     authRepository = authRepository,
                     mediaActionsState = mediaActionsState,
+                    tvShowName = detail.title,
                 )
             }
         }
@@ -369,6 +370,7 @@ private fun ExpandedTvDetailContent(
                         showAddToList = false,
                         authRepository = authRepository,
                         mediaActionsState = mediaActionsState,
+                        tvShowName = detail.title,
                     )
                 }
             }

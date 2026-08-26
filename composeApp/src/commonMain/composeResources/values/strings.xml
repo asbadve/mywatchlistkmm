@@ -17,6 +17,13 @@
     <string name="settings_episode_notifications_description">Get notified when a favorited or watchlisted show announces a new episode</string>
     <string name="debug_poll_notifications_now_label">Poll episode notifications now</string>
     <string name="debug_poll_notifications_now_description">Debug builds only - resets the notification state of tracked shows and polls immediately, so this can be re-tapped for a fresh notification anytime</string>
+    <string name="episode_alert_prompt_title">Get notified when %1$s returns?</string>
+    <string name="episode_alert_prompt_body">We\'ll send one alert when a new episode is announced, and another when it airs — nothing else, and never more than that per episode.</string>
+    <string name="episode_alert_prompt_fineprint">You can turn this off anytime in Account settings.</string>
+    <string name="episode_alert_prompt_confirm">Turn on episode alerts</string>
+    <string name="episode_alert_prompt_dismiss">Not now</string>
+    <string name="debug_reset_episode_alert_prompt_label">Reset episode alert prompt</string>
+    <string name="debug_reset_episode_alert_prompt_description">Debug builds only - turns episode notifications off and clears the "seen" flag, so favoriting/watchlisting a TV show shows the in-context opt-in prompt again</string>
     <string name="error_unexpected_episode">An unexpected error occurred while loading the episode. Please try again.</string>
     <string name="error_unexpected_person">An unexpected error occurred while loading the person. Please try again.</string>
     <string name="error_unexpected_trailers">An unexpected error occurred while loading trailers. Please try again.</string>

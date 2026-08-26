@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +28,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
+import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.design.util.addShimmerLoadingAnimation
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepositoryImpl
@@ -35,6 +38,9 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModelDefaults
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthUiState
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepositoryImpl
+import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_add_to_list
 import mywatchlist.composeapp.generated.resources.favorite_content_description
@@ -120,6 +126,11 @@ internal fun MediaActionButtons(
  * `ViewModel`-owned state holder built by `MovieDetailScreenModel`/`TvDetailScreenModel` (see
  * [MediaActionsState]'s kdoc). [MediaActionButtons] itself never sees [mediaActionsState] or any
  * repository.
+ *
+ * [tvShowName] is only ever passed for TV callers (see `TvDetailScreen`'s two call sites) - it
+ * doubles as the gate for [EpisodeAlertOptInDialog]: `null` for movies means the prompt can never
+ * show there, matching [MediaActionsState.shouldPromptForEpisodeAlerts] only ever going true for
+ * `MediaTypeConstant.TV`.
  */
 @Composable
 internal fun MediaActionButtonsSection(
@@ -129,7 +140,9 @@ internal fun MediaActionButtonsSection(
     authRepository: AuthRepository,
     mediaActionsState: MediaActionsState,
     modifier: Modifier = Modifier,
+    tvShowName: String? = null,
     listsRepository: ListsRepository = ListsRepositoryImpl(),
+    notificationSettingsRepository: NotificationSettingsRepository = NotificationSettingsRepositoryImpl(),
 ) {
     val authScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) }
@@ -158,6 +171,51 @@ internal fun MediaActionButtonsSection(
             listsRepository = listsRepository,
             onDismiss = { showAddToListDialog = false },
         )
+    }
+
+    // `tvShowName != null` is the single gate for this whole block, and is fixed for the entire
+    // life of a given detail screen (movie callers never pass it, TV callers always do) - unlike
+    // shouldPromptForEpisodeAlerts below, which toggles. That's why notificationPermissionRequester/
+    // notificationCoroutineScope are declared at this level rather than inside the inner `if`:
+    // EpisodeAlertOptInDialog's onConfirm calls mediaActionsState.consumeEpisodeAlertPrompt() to
+    // close the dialog, which flips shouldPromptForEpisodeAlerts to false and tears down the inner
+    // `if` on the next recomposition. If the requester/scope lived inside that inner block, the
+    // teardown would cancel the in-flight permission request (and its underlying
+    // ActivityResultLauncher on Android) before the OS's grant/deny callback ever resolves -
+    // exactly the bug where granting the permission never flipped Account's toggle on. Gating this
+    // outer block on tvShowName instead means it never tears itself down mid-request, and a movie
+    // detail screen never registers an unused permission launcher in the first place.
+    if (tvShowName != null) {
+        val shouldPromptForEpisodeAlerts by mediaActionsState.shouldPromptForEpisodeAlerts.collectAsState()
+        val notificationPermissionRequester = rememberNotificationPermissionRequester()
+        val notificationCoroutineScope = rememberCoroutineScope()
+
+        if (shouldPromptForEpisodeAlerts &&
+            !notificationSettingsRepository.isEpisodeNotificationsEnabled() &&
+            !notificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt()
+        ) {
+            EpisodeAlertOptInDialog(
+                tvShowName = tvShowName,
+                onConfirm = {
+                    mediaActionsState.consumeEpisodeAlertPrompt()
+                    notificationCoroutineScope.launch {
+                        // Only marked "seen" once the OS permission is actually granted - an
+                        // outright denial (as opposed to "Not now") leaves nothing enabled, so the
+                        // next TV favorite/watchlist gets another chance to ask instead of being
+                        // permanently silenced by a tap the OS itself rejected.
+                        if (notificationPermissionRequester.request()) {
+                            notificationSettingsRepository.setEpisodeNotificationsEnabled(true)
+                            notificationSettingsRepository.markEpisodeAlertOptInPromptSeen()
+                            NotificationScheduler.schedule()
+                        }
+                    }
+                },
+                onDismiss = {
+                    notificationSettingsRepository.markEpisodeAlertOptInPromptSeen()
+                    mediaActionsState.consumeEpisodeAlertPrompt()
+                },
+            )
+        }
     }
 }
 

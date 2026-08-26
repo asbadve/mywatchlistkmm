@@ -62,6 +62,15 @@ class MediaActionsStateTest {
             fakeTrackedMediaRepository,
         )
 
+    private fun tvState() =
+        MediaActionsState(
+            MediaTypeConstant.TV,
+            MediaActionsStateTestConstant.MOVIE_ID,
+            CoroutineScope(testDispatcher),
+            fakeAccountMediaRepository,
+            fakeTrackedMediaRepository,
+        )
+
     /** Before `load()` is ever called, the icons must show a ghost/shimmer, not a guessed state. */
     @Test
     fun testStartsLoading() {
@@ -154,4 +163,56 @@ class MediaActionsStateTest {
                 fakeTrackedMediaRepository.confirmDeleteCalls,
             )
         }
+
+    /** Favoriting a TV show ON is exactly the moment the episode-alerts opt-in prompt should fire. */
+    @Test
+    fun testFavoritingTvShowOnRequestsEpisodeAlertPrompt() {
+        val mediaActionsState = tvState()
+
+        mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+        assertTrue(mediaActionsState.shouldPromptForEpisodeAlerts.value)
+    }
+
+    /** Watchlisting a TV show ON also qualifies - either action is a valid trigger. */
+    @Test
+    fun testWatchlistingTvShowOnRequestsEpisodeAlertPrompt() {
+        val mediaActionsState = tvState()
+
+        mediaActionsState.toggleWatchlist(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+        assertTrue(mediaActionsState.shouldPromptForEpisodeAlerts.value)
+    }
+
+    /** Movies have no episode concept - favoriting one never requests the prompt. */
+    @Test
+    fun testFavoritingMovieOnNeverRequestsEpisodeAlertPrompt() {
+        val mediaActionsState = state()
+
+        mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+        assertFalse(mediaActionsState.shouldPromptForEpisodeAlerts.value)
+    }
+
+    /** Turning a TV show's favorite OFF is not a trigger - only turning it ON is. */
+    @Test
+    fun testUnfavoritingTvShowDoesNotRequestEpisodeAlertPrompt() {
+        fakeAccountMediaRepository.accountStatesResult = Result.success(AccountStates(favorite = true))
+        val mediaActionsState = tvState()
+        runTest(testDispatcher) { mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID) }
+
+        mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+        assertFalse(mediaActionsState.shouldPromptForEpisodeAlerts.value)
+    }
+
+    @Test
+    fun testConsumeEpisodeAlertPromptResetsTheFlag() {
+        val mediaActionsState = tvState()
+        mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+        mediaActionsState.consumeEpisodeAlertPrompt()
+
+        assertFalse(mediaActionsState.shouldPromptForEpisodeAlerts.value)
+    }
 }
