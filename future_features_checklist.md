@@ -268,7 +268,21 @@ watchlisted/favorited shows; `GET /3/tv/{series_id}/changes` as a cheaper diff s
   JS - `Notification.onclick` (works since the app is already running - no cold-launch case);
   Desktop - `TrayIcon`'s single action listener approximates "most recently posted" (SystemTray has
   no per-message click callback). Verification: `PendingEpisodeNotificationTargetTest` (commonTest)
-  covers the observable set/consume/re-tap semantics. Real-device confirmation not yet done.
+  covers the observable set/consume/re-tap semantics.
+  - [ ] **Known bug (Desktop only, confirmed 2026-08-27): clicking the notification banner itself
+    does not deep-link.** `java.awt.TrayIcon`'s `ActionListener` reliably fires when the *tray icon*
+    in the menu bar is clicked, but does not reliably fire when the transient notification banner
+    is clicked - this is a documented cross-platform AWT limitation, not a bug in this app's code
+    (see [JDK-7029240](https://bugs.java.com/bugdatabase/view_bug?bug_id=7029240) and
+    [JDK-8146537](https://bugs.openjdk.org/browse/JDK-8146537)). Plain AWT has no per-notification
+    click callback at all. Real-device confirmation of Android/iOS/JS tap-to-episode is still not
+    done either.
+  - [ ] **Future: replace `java.awt.TrayIcon` with [ComposeNativeTray](https://github.com/kdroidFilter/ComposeNativeTray)**
+    to fix the bug above - it wraps native tray/notification APIs per OS and exposes a primary-
+    action callback that macOS/Windows actually fire on a notification-banner click, unlike AWT.
+    Also would unlock desktop poster images (`posterUrl` currently unsupported on this platform,
+    see the poster-image item above) if the library's notification API accepts one. Not started -
+    requires adding the dependency and rewriting `desktopMain`'s `LocalNotifier.kt`.
 
 ### 3b. Favorite actor/person - new credit announced
 **Relevant OAS endpoints**: `GET /3/person/{person_id}/combined_credits` (diff against the last

@@ -259,6 +259,14 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "MyWatchList"
             packageVersion = "1.0.0"
+            // jlink's default (jdeps-based) module detection misses java.sql - confirmed
+            // 2026-08-26: a packaged .app (createDistributable/Dmg) crashed with
+            // NoClassDefFoundError: java/sql/DriverManager the first time a screen actually ran a
+            // SQLite query (JdbcSqliteDriver, desktopMain's DatabaseDriverFactory.kt), even though
+            // `./gradlew :composeApp:run` - which uses the full system JDK, not a jlinked runtime -
+            // never showed the problem. jdeps apparently doesn't trace sqlite-jdbc's reflective/
+            // ServiceLoader-based use of java.sql.DriverManager deeply enough to include it.
+            modules("java.sql")
 
             macOS {
                 iconFile.set(project.file("../icons/desktop/icon.icns"))
