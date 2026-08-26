@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.notifications
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeNotificationLedgerRepository
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationReason
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
@@ -17,8 +18,6 @@ private object TvEpisodeNotificationPollerTestConstant {
     const val TV_ID = 501
     const val SHOW_TITLE = "Fake Returning Series"
     const val TODAY = "2026-08-25"
-    const val ANNOUNCED_REASON = "episode_announced"
-    const val AIRING_REASON = "episode_airing"
 }
 
 class TvEpisodeNotificationPollerTest {
@@ -62,7 +61,7 @@ class TvEpisodeNotificationPollerTest {
 
             assertEquals(1, notificationLedgerRepository.recordNotifiedCalls.size)
             assertEquals(
-                TvEpisodeNotificationPollerTestConstant.ANNOUNCED_REASON,
+                NotificationReason.EPISODE_ANNOUNCED,
                 notificationLedgerRepository.recordNotifiedCalls.single().reason,
             )
         }
@@ -129,7 +128,7 @@ class TvEpisodeNotificationPollerTest {
 
             assertEquals(1, notificationLedgerRepository.recordNotifiedCalls.size)
             assertEquals(
-                TvEpisodeNotificationPollerTestConstant.AIRING_REASON,
+                NotificationReason.EPISODE_AIRING,
                 notificationLedgerRepository.recordNotifiedCalls.single().reason,
             )
         }
@@ -175,7 +174,7 @@ class TvEpisodeNotificationPollerTest {
             assertTrue(
                 notificationLedgerRepository.recordNotifiedCalls.all {
                     it.reason ==
-                        TvEpisodeNotificationPollerTestConstant.ANNOUNCED_REASON
+                        NotificationReason.EPISODE_ANNOUNCED
                 },
             )
         }

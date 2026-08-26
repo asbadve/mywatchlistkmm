@@ -5,6 +5,20 @@ import com.ajinkyabadve.kmmmywatchlist.db.AppDatabaseProvider
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 
 /**
+ * The closed set of reasons `TvEpisodeNotificationPoller` can notify for - see its kdoc for what
+ * triggers each. [storageValue] is what's actually written to `notificationLedger.reason` (a
+ * `TEXT` column, see `MyDatabase.sq`): kept as the pre-existing "episode_announced"/"episode_airing"
+ * strings rather than switching to `name` so already-recorded rows keep matching after this type
+ * changed from a bare `String` to this enum (code-conventions §9).
+ */
+enum class NotificationReason(
+    val storageValue: String,
+) {
+    EPISODE_ANNOUNCED("episode_announced"),
+    EPISODE_AIRING("episode_airing"),
+}
+
+/**
  * Local SQLite is the source of truth for "has a notification already been sent for this exact
  * (media, reason, cursor value)" - see `MyDatabase.sq`'s `notificationLedger` table kdoc for why
  * `cursorValue` (not just id/mediaType/reason) is part of the dedup key: it's what lets the same
@@ -16,7 +30,7 @@ interface NotificationLedgerRepository {
     suspend fun alreadyNotified(
         id: Int,
         mediaType: String,
-        reason: String,
+        reason: NotificationReason,
         cursorValue: String,
     ): Boolean
 
@@ -24,7 +38,7 @@ interface NotificationLedgerRepository {
     suspend fun recordNotified(
         id: Int,
         mediaType: String,
-        reason: String,
+        reason: NotificationReason,
         cursorValue: String,
         notifiedAt: Long,
     )
@@ -40,13 +54,13 @@ class NotificationLedgerRepositoryImpl(
     override suspend fun alreadyNotified(
         id: Int,
         mediaType: String,
-        reason: String,
+        reason: NotificationReason,
         cursorValue: String,
     ): Boolean {
         val row =
             databaseProvider()
                 .myDatabaseQueries
-                .selectNotificationLedgerRow(id.toLong(), mediaType, reason)
+                .selectNotificationLedgerRow(id.toLong(), mediaType, reason.storageValue)
                 .awaitAsOneOrNull()
         return row?.cursorValue == cursorValue
     }
@@ -54,14 +68,14 @@ class NotificationLedgerRepositoryImpl(
     override suspend fun recordNotified(
         id: Int,
         mediaType: String,
-        reason: String,
+        reason: NotificationReason,
         cursorValue: String,
         notifiedAt: Long,
     ) {
         databaseProvider().myDatabaseQueries.upsertNotificationLedgerRow(
             id = id.toLong(),
             mediaType = mediaType,
-            reason = reason,
+            reason = reason.storageValue,
             cursorValue = cursorValue,
             notifiedAt = notifiedAt,
         )

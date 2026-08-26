@@ -8,6 +8,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationReason
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -29,8 +30,6 @@ private object TvEpisodeNotificationPollerConstant {
     const val TAG = "TvEpisodeNotificationPoller"
     const val ENDED = "Ended"
     const val CANCELED = "Canceled"
-    const val REASON_ANNOUNCED = "episode_announced"
-    const val REASON_AIRING = "episode_airing"
 
     // No real screen density to reference from a background poll - a fixed target roughly matched
     // to how large a notification's expanded image actually renders is close enough.
@@ -44,11 +43,11 @@ private object TvEpisodeNotificationPollerConstant {
  * composes this, it's driven by `NotificationScheduler`'s platform background job.
  *
  * Two distinct notification reasons per show, per the confirmed dedup rule (one notification per
- * (media id, reason), not one ever per media id): [TvEpisodeNotificationPollerConstant.REASON_ANNOUNCED]
- * fires once when a new episode's air date first becomes known, and
- * [TvEpisodeNotificationPollerConstant.REASON_AIRING] fires once, separately, on the air date
- * itself - [notificationLedgerRepository] is what makes each of those idempotent per exact air
- * date while still letting a later season's new episode notify again.
+ * (media id, reason), not one ever per media id): [NotificationReason.EPISODE_ANNOUNCED] fires
+ * once when a new episode's air date first becomes known, and [NotificationReason.EPISODE_AIRING]
+ * fires once, separately, on the air date itself - [notificationLedgerRepository] is what makes
+ * each of those idempotent per exact air date while still letting a later season's new episode
+ * notify again.
  */
 class TvEpisodeNotificationPoller(
     private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
@@ -102,7 +101,7 @@ class TvEpisodeNotificationPoller(
             if (airDate != null && nextEpisode != null && airDate != lastKnownAirDate) {
                 notifyIfNew(
                     id = id,
-                    reason = TvEpisodeNotificationPollerConstant.REASON_ANNOUNCED,
+                    reason = NotificationReason.EPISODE_ANNOUNCED,
                     cursorValue = airDate,
                     title = getString(Res.string.notification_episode_announced_title),
                     body = getString(Res.string.notification_episode_announced_body, detail.title, airDate),
@@ -114,7 +113,7 @@ class TvEpisodeNotificationPoller(
             if (airDate != null && nextEpisode != null && airDate == today) {
                 notifyIfNew(
                     id = id,
-                    reason = TvEpisodeNotificationPollerConstant.REASON_AIRING,
+                    reason = NotificationReason.EPISODE_AIRING,
                     cursorValue = airDate,
                     title = getString(Res.string.notification_episode_airing_title),
                     body = getString(Res.string.notification_episode_airing_body, detail.title),
@@ -135,7 +134,7 @@ class TvEpisodeNotificationPoller(
 
     private suspend fun notifyIfNew(
         id: Int,
-        reason: String,
+        reason: NotificationReason,
         cursorValue: String,
         title: String,
         body: String,

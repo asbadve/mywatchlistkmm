@@ -6,7 +6,7 @@ class FakeNotificationLedgerRepository : NotificationLedgerRepository {
     private data class Key(
         val id: Int,
         val mediaType: String,
-        val reason: String,
+        val reason: NotificationReason,
     )
 
     private val cursors = mutableMapOf<Key, String>()
@@ -15,21 +15,21 @@ class FakeNotificationLedgerRepository : NotificationLedgerRepository {
     data class Quadruple(
         val id: Int,
         val mediaType: String,
-        val reason: String,
+        val reason: NotificationReason,
         val cursorValue: String,
     )
 
     override suspend fun alreadyNotified(
         id: Int,
         mediaType: String,
-        reason: String,
+        reason: NotificationReason,
         cursorValue: String,
     ): Boolean = cursors[Key(id, mediaType, reason)] == cursorValue
 
     override suspend fun recordNotified(
         id: Int,
         mediaType: String,
-        reason: String,
+        reason: NotificationReason,
         cursorValue: String,
         notifiedAt: Long,
     ) {
