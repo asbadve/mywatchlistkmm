@@ -28,8 +28,11 @@ private class NotificationTapDelegateImpl :
         val tvShowId = (userInfo[IosNotificationUserInfoKeyConstant.TV_SHOW_ID] as? NSNumber)?.longLongValue
         val seasonNumber = (userInfo[IosNotificationUserInfoKeyConstant.SEASON_NUMBER] as? NSNumber)?.intValue
         val episodeNumber = (userInfo[IosNotificationUserInfoKeyConstant.EPISODE_NUMBER] as? NSNumber)?.intValue
+        val personId = (userInfo[IosNotificationUserInfoKeyConstant.PERSON_ID] as? NSNumber)?.longLongValue
         if (tvShowId != null && seasonNumber != null && episodeNumber != null) {
-            PendingEpisodeNotificationTarget.set(EpisodeNotificationTarget(tvShowId, seasonNumber, episodeNumber))
+            PendingNotificationTarget.set(EpisodeNotificationTarget(tvShowId, seasonNumber, episodeNumber))
+        } else if (personId != null) {
+            PendingNotificationTarget.set(PersonNotificationTarget(personId))
         }
         withCompletionHandler()
     }
@@ -49,12 +52,12 @@ private class NotificationTapDelegateImpl :
 }
 
 /**
- * Handles a tap on a delivered notification - reads the `(tvShowId, seasonNumber, episodeNumber)`
+ * Handles a tap on a delivered notification - reads whichever [NotificationTarget] shape
  * [LocalNotifier.post] embedded in the notification's `userInfo` and surfaces it through
- * [PendingEpisodeNotificationTarget], the same observable `App.kt`'s `MainAppScreen` already
- * watches for Android's equivalent `PendingIntent`-extras path. Registered once, in
- * `MainViewController()` (`Main.kt`) - the earliest point in this app's iOS launch sequence, so a
- * cold launch from a notification tap is caught, not just a tap while already running.
+ * [PendingNotificationTarget], the same observable `App.kt`'s `MainAppScreen` already watches for
+ * Android's equivalent `PendingIntent`-extras path. Registered once, in `MainViewController()`
+ * (`Main.kt`) - the earliest point in this app's iOS launch sequence, so a cold launch from a
+ * notification tap is caught, not just a tap while already running.
  */
 object NotificationTapDelegate {
     private val delegate = NotificationTapDelegateImpl()

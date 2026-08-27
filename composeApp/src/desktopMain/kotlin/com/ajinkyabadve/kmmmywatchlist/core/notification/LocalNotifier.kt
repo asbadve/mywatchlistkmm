@@ -23,24 +23,30 @@ private val trayIcon: TrayIcon? by lazy {
     // userInfo) - only one action listener for the icon as a whole, fired on the balloon click or
     // an icon double-click. Approximated here as "open whatever the most recently posted
     // notification was about", which is correct for the common case of one live notification at a
-    // time and only wrong if several stack up before the user clicks.
-    icon.addActionListener { lastPostedDeepLink?.let { PendingEpisodeNotificationTarget.set(it) } }
+    // time and only wrong if several stack up before the user clicks. Only ever acts on an
+    // EpisodeNotificationTarget - PersonNotificationTarget (3b) is deliberately not wired up on
+    // Desktop, same reasoning as this TrayIcon limitation generally (confirmed 2026-08-26).
+    icon.addActionListener {
+        (lastPostedDeepLink as? EpisodeNotificationTarget)?.let { PendingNotificationTarget.set(it) }
+    }
     runCatching { SystemTray.getSystemTray().add(icon) }
         .onFailure { Napier.e(tag = DesktopNotificationConstant.TAG, throwable = it) { "Failed to add tray icon" } }
     icon
 }
 
-private var lastPostedDeepLink: EpisodeNotificationTarget? = null
+private var lastPostedDeepLink: NotificationTarget? = null
 
 actual object LocalNotifier {
     // posterUrl unused: java.awt.TrayIcon.displayMessage has no image parameter at all - AWT/Swing
     // tray balloons are text-only, unlike Android's BigPictureStyle or the browser Notification
-    // API's icon/image options.
+    // API's icon/image options. deepLink already nullable on this platform even before LocalNotifier's
+    // shared signature became nullable too - TrayIcon's single icon-wide ActionListener already
+    // means "no deep link" and "an unfired click" are indistinguishable here regardless.
     actual suspend fun post(
         notificationId: Int,
         title: String,
         body: String,
-        deepLink: EpisodeNotificationTarget,
+        deepLink: NotificationTarget?,
         posterUrl: String?,
     ) {
         lastPostedDeepLink = deepLink

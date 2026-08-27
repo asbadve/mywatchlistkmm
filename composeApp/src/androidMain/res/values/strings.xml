@@ -9,4 +9,7 @@
          see LocalNotifier.kt's postGroupSummary) - never shown standalone, so it doesn't need to
          name the show itself. -->
     <string name="notification_group_summary_title">Episode updates</string>
+    <!-- Same idea as notification_group_summary_title, for a favorited person's new-credit
+         notifications grouped by person id instead of by show. -->
+    <string name="notification_person_group_summary_title">New credits</string>
 </resources>

@@ -61,8 +61,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationReason
+import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
@@ -79,6 +82,8 @@ import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.back_content_description
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_description
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_label
+import mywatchlist.composeapp.generated.resources.debug_poll_person_notifications_now_description
+import mywatchlist.composeapp.generated.resources.debug_poll_person_notifications_now_label
 import mywatchlist.composeapp.generated.resources.debug_reset_episode_alert_prompt_description
 import mywatchlist.composeapp.generated.resources.debug_reset_episode_alert_prompt_label
 import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
@@ -214,15 +219,39 @@ fun AccountScreen(
                             // Debug-only: forces the exact next episode every tracked returning
                             // series currently has to look newly-announced again, so this can be
                             // re-tapped for a fresh notification on demand instead of being blocked
-                            // by whatever a previous real poll already recorded.
+                            // by whatever a previous real poll already recorded. Scoped to episode
+                            // reasons only (clearForReasonForDebug), not the whole ledger, so this
+                            // never disturbs 3b's separate "Poll person notifications now" row below.
                             val trackedMediaRepository = TrackedMediaRepositoryImpl()
                             val notificationLedgerRepository = NotificationLedgerRepositoryImpl()
                             trackedMediaRepository.resetAllTvPollStateForDebug()
-                            notificationLedgerRepository.clearAllForDebug()
+                            notificationLedgerRepository.clearForReasonForDebug(NotificationReason.EPISODE_ANNOUNCED)
+                            notificationLedgerRepository.clearForReasonForDebug(NotificationReason.EPISODE_AIRING)
                             TvEpisodeNotificationPoller(
                                 trackedMediaRepository = trackedMediaRepository,
                                 notificationLedgerRepository = notificationLedgerRepository,
                             ).poll()
+                        }
+                    },
+                    onDebugPollPersonNotificationsNowClicked = {
+                        coroutineScope.launch {
+                            // Same idea as onDebugPollNowClicked above, but for 3b - kept as its own
+                            // row/repository set (requested 2026-08-27) so testing person-credit
+                            // notifications never resets or races with TV episode testing.
+                            // seedOneNewCreditForDebug (not a blanket credit-state reset) holds back
+                            // exactly one of each favorited person's current credits, so the poll()
+                            // below notifies once per person, not once per credit (requested
+                            // 2026-08-27 - a blanket reset floods anyone with a real filmography).
+                            val favoritePersonRepository = FavoritePersonRepositoryImpl()
+                            val notificationLedgerRepository = NotificationLedgerRepositoryImpl()
+                            notificationLedgerRepository.clearForReasonForDebug(NotificationReason.PERSON_NEW_CREDIT)
+                            val poller =
+                                PersonCreditNotificationPoller(
+                                    favoritePersonRepository = favoritePersonRepository,
+                                    notificationLedgerRepository = notificationLedgerRepository,
+                                )
+                            poller.seedOneNewCreditForDebug()
+                            poller.poll()
                         }
                     },
                     onDebugResetEpisodeAlertPromptClicked = {
@@ -379,6 +408,7 @@ private fun SettingsList(
     onEpisodeNotificationsChanged: (Boolean) -> Unit,
     showDebugPollNowRow: Boolean,
     onDebugPollNowClicked: () -> Unit,
+    onDebugPollPersonNotificationsNowClicked: () -> Unit,
     onDebugResetEpisodeAlertPromptClicked: () -> Unit,
     onLogoutClicked: (() -> Unit)?,
 ) {
@@ -411,6 +441,11 @@ private fun SettingsList(
                 label = stringResource(Res.string.debug_poll_notifications_now_label),
                 description = stringResource(Res.string.debug_poll_notifications_now_description),
                 onClick = onDebugPollNowClicked,
+            )
+            SettingsRow(
+                label = stringResource(Res.string.debug_poll_person_notifications_now_label),
+                description = stringResource(Res.string.debug_poll_person_notifications_now_description),
+                onClick = onDebugPollPersonNotificationsNowClicked,
             )
             SettingsRow(
                 label = stringResource(Res.string.debug_reset_episode_alert_prompt_label),

@@ -2,6 +2,7 @@
 
 package com.ajinkyabadve.kmmmywatchlist.core.notification
 
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.runBlocking
@@ -31,8 +32,12 @@ actual object NotificationScheduler {
         scheduledFuture =
             executor.scheduleWithFixedDelay(
                 {
-                    runCatching { runBlocking { TvEpisodeNotificationPoller().poll() } }
-                        .onFailure { Napier.e(tag = DesktopNotificationSchedulerConstant.TAG, throwable = it) { "Poll cycle failed" } }
+                    runCatching {
+                        runBlocking {
+                            TvEpisodeNotificationPoller().poll()
+                            PersonCreditNotificationPoller().poll()
+                        }
+                    }.onFailure { Napier.e(tag = DesktopNotificationSchedulerConstant.TAG, throwable = it) { "Poll cycle failed" } }
                 },
                 0,
                 DesktopNotificationSchedulerConstant.POLL_INTERVAL_HOURS,

@@ -64,7 +64,9 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
-import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingEpisodeNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AccountAvatarButton
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
@@ -154,15 +156,22 @@ fun MainAppScreen(windowSize: WindowSize) {
     val topLevelBackStack = remember { TopLevelBackStack(TrendingKey) }
     val currentKey = topLevelBackStack.backStack.lastOrNull()
 
-    // Fires once per genuinely new tap (see PendingEpisodeNotificationTarget's kdoc for why it's a
+    // Fires once per genuinely new tap (see PendingNotificationTarget's kdoc for why it's a
     // consumed observable rather than a one-shot callback) - re-fires on a later tap even for the
-    // exact same episode, since consume() nulls it out in between.
-    val pendingNotificationTarget = PendingEpisodeNotificationTarget.current
+    // exact same target, since consume() nulls it out in between.
+    val pendingNotificationTarget = PendingNotificationTarget.current
     LaunchedEffect(pendingNotificationTarget) {
-        pendingNotificationTarget?.let { target ->
-            topLevelBackStack.add(TvDetailKey(target.tvShowId))
-            topLevelBackStack.add(EpisodeDetailKey(target.tvShowId, target.seasonNumber, target.episodeNumber))
-            PendingEpisodeNotificationTarget.consume()
+        when (val target = pendingNotificationTarget) {
+            is EpisodeNotificationTarget -> {
+                topLevelBackStack.add(TvDetailKey(target.tvShowId))
+                topLevelBackStack.add(EpisodeDetailKey(target.tvShowId, target.seasonNumber, target.episodeNumber))
+                PendingNotificationTarget.consume()
+            }
+            is PersonNotificationTarget -> {
+                topLevelBackStack.add(PersonDetailKey(target.personId))
+                PendingNotificationTarget.consume()
+            }
+            null -> Unit
         }
     }
 

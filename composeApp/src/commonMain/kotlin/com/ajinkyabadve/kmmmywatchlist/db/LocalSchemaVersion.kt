@@ -15,5 +15,5 @@ package com.ajinkyabadve.kmmmywatchlist.db
  * schema-touching change during development.
  */
 internal object LocalSchemaVersion {
-    const val CURRENT = 1
+    const val CURRENT = 2
 }

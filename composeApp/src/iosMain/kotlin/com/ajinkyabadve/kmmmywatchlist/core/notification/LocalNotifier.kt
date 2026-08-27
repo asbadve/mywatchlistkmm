@@ -27,6 +27,7 @@ internal object IosNotificationUserInfoKeyConstant {
     const val TV_SHOW_ID = "tvShowId"
     const val SEASON_NUMBER = "seasonNumber"
     const val EPISODE_NUMBER = "episodeNumber"
+    const val PERSON_ID = "personId"
 }
 
 private const val LOCAL_NOTIFIER_TAG = "LocalNotifierIos"
@@ -37,7 +38,7 @@ actual object LocalNotifier {
         notificationId: Int,
         title: String,
         body: String,
-        deepLink: EpisodeNotificationTarget,
+        deepLink: NotificationTarget?,
         posterUrl: String?,
     ) {
         val content =
@@ -45,13 +46,21 @@ actual object LocalNotifier {
                 setTitle(title)
                 setBody(body)
                 setSound(UNNotificationSound.defaultSound)
-                setUserInfo(
-                    mapOf(
-                        IosNotificationUserInfoKeyConstant.TV_SHOW_ID to deepLink.tvShowId,
-                        IosNotificationUserInfoKeyConstant.SEASON_NUMBER to deepLink.seasonNumber,
-                        IosNotificationUserInfoKeyConstant.EPISODE_NUMBER to deepLink.episodeNumber,
-                    ),
-                )
+                // No deepLink means no userInfo at all - NotificationTapDelegate simply has
+                // nothing to navigate to.
+                when (deepLink) {
+                    is EpisodeNotificationTarget ->
+                        setUserInfo(
+                            mapOf(
+                                IosNotificationUserInfoKeyConstant.TV_SHOW_ID to deepLink.tvShowId,
+                                IosNotificationUserInfoKeyConstant.SEASON_NUMBER to deepLink.seasonNumber,
+                                IosNotificationUserInfoKeyConstant.EPISODE_NUMBER to deepLink.episodeNumber,
+                            ),
+                        )
+                    is PersonNotificationTarget ->
+                        setUserInfo(mapOf(IosNotificationUserInfoKeyConstant.PERSON_ID to deepLink.personId))
+                    null -> Unit
+                }
                 posterAttachment(posterUrl)?.let { setAttachments(listOf(it)) }
             }
         val request =

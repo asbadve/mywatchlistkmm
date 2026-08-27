@@ -16,6 +16,10 @@ enum class NotificationReason(
 ) {
     EPISODE_ANNOUNCED("episode_announced"),
     EPISODE_AIRING("episode_airing"),
+
+    // future_features_checklist.md item 3b: a favorited person's combined_credits gained a
+    // credit id it didn't have on the previous poll - see PersonCreditNotificationPoller.
+    PERSON_NEW_CREDIT("person_new_credit"),
 }
 
 /**
@@ -43,8 +47,10 @@ interface NotificationLedgerRepository {
         notifiedAt: Long,
     )
 
-    /** Debug-only: wipes every dedup row - see AccountScreen's "Poll episode notifications now" row. */
-    suspend fun clearAllForDebug()
+    /** Debug-only: wipes every dedup row for one [reason] - scoped rather than the whole table so
+     *  AccountScreen's separate "Poll episode notifications now" and "Poll person notifications
+     *  now" debug rows never clobber each other's dedup state. */
+    suspend fun clearForReasonForDebug(reason: NotificationReason)
 }
 
 class NotificationLedgerRepositoryImpl(
@@ -81,7 +87,7 @@ class NotificationLedgerRepositoryImpl(
         )
     }
 
-    override suspend fun clearAllForDebug() {
-        databaseProvider().myDatabaseQueries.clearNotificationLedgerForDebug()
+    override suspend fun clearForReasonForDebug(reason: NotificationReason) {
+        databaseProvider().myDatabaseQueries.clearNotificationLedgerForDebugByReason(reason.storageValue)
     }
 }

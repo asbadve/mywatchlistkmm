@@ -85,6 +85,8 @@ private object PersonHeroConstant {
 fun PersonHeroSection(
     person: PersonDetail,
     onCreditClicked: (PersonCredit) -> Unit,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
 ) {
     val heroCredit = person.heroBackdropCredit()
 
@@ -130,6 +132,11 @@ fun PersonHeroSection(
                 )
             }
 
+            FollowPersonButton(
+                isFollowing = isFollowing,
+                onToggleClick = onFollowClick,
+                modifier = Modifier.padding(top = 12.dp),
+            )
             PersonVitals(person = person, modifier = Modifier.padding(top = 12.dp))
             PersonStatStrip(person = person, modifier = Modifier.padding(top = 16.dp))
         }

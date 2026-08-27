@@ -24,11 +24,15 @@ internal object AndroidNotificationConstant {
     const val EXTRA_TV_SHOW_ID = "notification_tv_show_id"
     const val EXTRA_SEASON_NUMBER = "notification_season_number"
     const val EXTRA_EPISODE_NUMBER = "notification_episode_number"
+    const val EXTRA_PERSON_ID = "notification_person_id"
 
     // Prefix, not just the raw id, so this can never collide with a per-reason notificationId
     // (Triple(id, mediaType, reason).hashCode() in TvEpisodeNotificationPoller) that happens to
-    // equal a tvShowId.
+    // equal a tvShowId. A distinct prefix per NotificationTarget kind (not just one shared prefix)
+    // also stops a person id and a tvShowId that happen to be numerically equal from merging into
+    // the same stack.
     const val GROUP_KEY_PREFIX = "episode_notifications_group_"
+    const val PERSON_GROUP_KEY_PREFIX = "person_notifications_group_"
 }
 
 actual object LocalNotifier {
@@ -36,7 +40,7 @@ actual object LocalNotifier {
         notificationId: Int,
         title: String,
         body: String,
-        deepLink: EpisodeNotificationTarget,
+        deepLink: NotificationTarget?,
         posterUrl: String?,
     ) {
         val context = AndroidApp.instance
@@ -49,9 +53,15 @@ actual object LocalNotifier {
             Intent(context, AppActivity::class.java).apply {
                 action = Intent.ACTION_VIEW
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID, deepLink.tvShowId)
-                putExtra(AndroidNotificationConstant.EXTRA_SEASON_NUMBER, deepLink.seasonNumber)
-                putExtra(AndroidNotificationConstant.EXTRA_EPISODE_NUMBER, deepLink.episodeNumber)
+                when (deepLink) {
+                    is EpisodeNotificationTarget -> {
+                        putExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID, deepLink.tvShowId)
+                        putExtra(AndroidNotificationConstant.EXTRA_SEASON_NUMBER, deepLink.seasonNumber)
+                        putExtra(AndroidNotificationConstant.EXTRA_EPISODE_NUMBER, deepLink.episodeNumber)
+                    }
+                    is PersonNotificationTarget -> putExtra(AndroidNotificationConstant.EXTRA_PERSON_ID, deepLink.personId)
+                    null -> Unit
+                }
             }
         val contentPendingIntent =
             PendingIntent.getActivity(
@@ -60,9 +70,21 @@ actual object LocalNotifier {
                 contentIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-        // One group per show, not one global group - two different returning series notifying at
-        // once should stay as two separate stacks, not merge into one.
-        val groupKey = AndroidNotificationConstant.GROUP_KEY_PREFIX + deepLink.tvShowId
+        // One group per show/person, not one global group - two different returning series (or two
+        // different favorited people) notifying at once should stay as separate stacks, not merge
+        // into one. No deepLink at all has nothing to group by, so it posts standalone.
+        val groupKey =
+            when (deepLink) {
+                is EpisodeNotificationTarget -> AndroidNotificationConstant.GROUP_KEY_PREFIX + deepLink.tvShowId
+                is PersonNotificationTarget -> AndroidNotificationConstant.PERSON_GROUP_KEY_PREFIX + deepLink.personId
+                null -> null
+            }
+        val groupSummaryTitleRes =
+            if (deepLink is PersonNotificationTarget) {
+                R.string.notification_person_group_summary_title
+            } else {
+                R.string.notification_group_summary_title
+            }
         val posterBitmap = posterUrl?.let { url -> decodePosterBitmap(url) }
         val notification =
             NotificationCompat
@@ -79,10 +101,10 @@ actual object LocalNotifier {
                     }
                 }.setAutoCancel(true)
                 .setContentIntent(contentPendingIntent)
-                .setGroup(groupKey)
+                .apply { if (groupKey != null) setGroup(groupKey) }
                 .build()
         NotificationManagerCompat.from(context).notify(notificationId, notification)
-        postGroupSummary(context, groupKey, deepLink.tvShowId)
+        if (groupKey != null) postGroupSummary(context, groupKey, groupSummaryTitleRes)
     }
 
     // Best-effort: a download/decode failure returns null so the caller falls back to a text-only
@@ -97,17 +119,17 @@ actual object LocalNotifier {
     // NotificationCompat) - a bare setGroup() on the individual notifications isn't enough on its
     // own to make the system actually stack them, there must also be one summary notification
     // sharing the same group key. Re-posting this on every call is harmless: same notification id
-    // per show (derived from groupKey, not from the per-reason notificationId) just updates it.
+    // per show/person (derived from groupKey, not from the per-reason notificationId) just updates it.
     private fun postGroupSummary(
         context: Context,
         groupKey: String,
-        tvShowId: Long,
+        titleRes: Int,
     ) {
         val summary =
             NotificationCompat
                 .Builder(context, AndroidNotificationConstant.CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(context.getString(R.string.notification_group_summary_title))
+                .setContentTitle(context.getString(titleRes))
                 .setGroup(groupKey)
                 .setGroupSummary(true)
                 .setAutoCancel(true)

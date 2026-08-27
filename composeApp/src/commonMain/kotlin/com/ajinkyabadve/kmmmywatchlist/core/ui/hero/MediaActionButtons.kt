@@ -43,6 +43,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.Notification
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_add_to_list
+import mywatchlist.composeapp.generated.resources.episode_alert_prompt_body
+import mywatchlist.composeapp.generated.resources.episode_alert_prompt_title
 import mywatchlist.composeapp.generated.resources.favorite_content_description
 import mywatchlist.composeapp.generated.resources.watchlist_content_description
 import org.jetbrains.compose.resources.stringResource
@@ -194,8 +196,9 @@ internal fun MediaActionButtonsSection(
             !notificationSettingsRepository.isEpisodeNotificationsEnabled() &&
             !notificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt()
         ) {
-            EpisodeAlertOptInDialog(
-                tvShowName = tvShowName,
+            NotificationOptInDialog(
+                title = stringResource(Res.string.episode_alert_prompt_title, tvShowName),
+                body = stringResource(Res.string.episode_alert_prompt_body),
                 onConfirm = {
                     mediaActionsState.consumeEpisodeAlertPrompt()
                     notificationCoroutineScope.launch {

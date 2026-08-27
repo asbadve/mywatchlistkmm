@@ -81,8 +81,8 @@ WHERE mediaType = 'tv' AND isDeleted = 0;
 -- Debug-only ("Poll episode notifications now" row, AccountScreen - see isDebugBuild()): forgets
 -- every tracked TV show's last-seen air date so the next poll treats its current
 -- next_episode_to_air as newly announced again, regardless of what a previous real poll already
--- recorded. Paired with clearNotificationLedgerForDebug so the dedup ledger doesn't then suppress
--- the very notification this exists to force - never called from the real poll path.
+-- recorded. Paired with clearNotificationLedgerForDebugByReason so the dedup ledger doesn't then
+-- suppress the very notification this exists to force - never called from the real poll path.
 resetAllTvPollStateForDebug:
 UPDATE trackedMedia SET lastKnownNextEpisodeAirDate = NULL WHERE mediaType = 'tv';
 
@@ -328,7 +328,52 @@ SELECT * FROM notificationLedger WHERE id = ? AND mediaType = ? AND reason = ?;
 upsertNotificationLedgerRow:
 INSERT OR REPLACE INTO notificationLedger (id, mediaType, reason, cursorValue, notifiedAt) VALUES (?, ?, ?, ?, ?);
 
--- Debug-only companion to resetAllTvPollStateForDebug above - wipes every dedup row so a forced
--- test poll isn't suppressed by whatever a previous real poll already recorded.
-clearNotificationLedgerForDebug:
-DELETE FROM notificationLedger;
+-- Debug-only companion to resetAllTvPollStateForDebug above - wipes every dedup row for one
+-- reason, so a forced test poll for that reason isn't suppressed by whatever a previous real poll
+-- already recorded. Scoped to a single reason (not the whole table) so testing TV episode
+-- notifications and testing 3b's person-credit notifications never clobber each other's dedup
+-- state (confirmed needed 2026-08-27 - AccountScreen's debug rows are separate per reason).
+clearNotificationLedgerForDebugByReason:
+DELETE FROM notificationLedger WHERE reason = ?;
+
+-- future_features_checklist.md item 3b: favorited people, local-only (TMDB has no account-level
+-- favorite/follow API for people - only movies and TV, confirmed 2026-08-26 against the live
+-- OpenAPI docs), so this table is the sole source of truth for "who is favorited," not a cache of
+-- anything TMDB returns. Deliberately its own table rather than a trackedMedia row: a person isn't
+-- media (no mediaType, no favorite/watchlist category split), and nothing here syncs from a GET
+-- the way trackedMedia's columns mirror SearchResultItem.
+--
+-- lastKnownCreditIds is the same idea as trackedMedia.lastKnownCreditIds (comma-separated
+-- PersonCredit.creditId set as of the last poll) but that pre-existing column doesn't fit 3b's
+-- actual shape - a favorited person has no trackedMedia row at all - so this is its real home.
+-- NULL vs '' is a real distinction, not interchangeable (confirmed 2026-08-27): NULL means "never
+-- polled yet" - PersonCreditNotificationPoller treats that poll as baselining only, notifying for
+-- nothing, so following someone with a long filmography doesn't flood the user with one
+-- notification per past credit. Debug testing (AccountScreen's "Poll person notifications now"
+-- row) uses this same column via updateFavoritePersonCreditIds - see
+-- PersonCreditNotificationPoller.seedOneNewCreditForDebug's kdoc for how it holds back exactly one
+-- current credit id so the forced poll notifies once per person, not once per credit.
+CREATE TABLE favoritePerson (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    profilePath TEXT,
+    addedAt INTEGER NOT NULL,
+    lastKnownCreditIds TEXT
+);
+
+-- Most-recently-followed first - the natural order for a person listing (unlike the poller, which
+-- doesn't care about order at all).
+selectAllFavoritePeople:
+SELECT * FROM favoritePerson ORDER BY addedAt DESC;
+
+selectFavoritePersonById:
+SELECT * FROM favoritePerson WHERE id = ?;
+
+insertFavoritePerson:
+INSERT OR REPLACE INTO favoritePerson (id, name, profilePath, addedAt) VALUES (?, ?, ?, ?);
+
+deleteFavoritePerson:
+DELETE FROM favoritePerson WHERE id = ?;
+
+updateFavoritePersonCreditIds:
+UPDATE favoritePerson SET lastKnownCreditIds = ? WHERE id = ?;

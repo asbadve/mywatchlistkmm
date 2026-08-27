@@ -11,7 +11,7 @@ actual object LocalNotifier {
         notificationId: Int,
         title: String,
         body: String,
-        deepLink: EpisodeNotificationTarget,
+        deepLink: NotificationTarget?,
         posterUrl: String?,
     ) {
         if (Notification.permission != NotificationPermission.GRANTED) return
@@ -25,10 +25,12 @@ actual object LocalNotifier {
         // Unlike Android's PendingIntent/iOS's userInfo, this only works while the tab that posted
         // it is still open - the app is already running in both cases, so there's no separate
         // "cold launch from notification" path to handle here, just bring the tab to front and let
-        // PendingEpisodeNotificationTarget's existing observer (App.kt) do the rest.
+        // PendingNotificationTarget's existing observer (App.kt) do the rest. Only ever acts on an
+        // EpisodeNotificationTarget - PersonNotificationTarget (3b) is deliberately not wired up on
+        // JS (confirmed 2026-08-26); either way the tab still focuses on click.
         notification.onclick = {
             window.focus()
-            PendingEpisodeNotificationTarget.set(deepLink)
+            (deepLink as? EpisodeNotificationTarget)?.let { PendingNotificationTarget.set(it) }
         }
     }
 }

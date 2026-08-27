@@ -37,7 +37,7 @@ class FakeNotificationLedgerRepository : NotificationLedgerRepository {
         recordNotifiedCalls.add(Quadruple(id, mediaType, reason, cursorValue))
     }
 
-    override suspend fun clearAllForDebug() {
-        cursors.clear()
+    override suspend fun clearForReasonForDebug(reason: NotificationReason) {
+        cursors.keys.filter { it.reason == reason }.forEach { cursors.remove(it) }
     }
 }

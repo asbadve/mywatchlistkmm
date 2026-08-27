@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.core.notification
 
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
 import kotlinx.browser.window
 import kotlinx.coroutines.CoroutineScope
@@ -19,7 +20,10 @@ actual object NotificationScheduler {
         intervalId?.let { window.clearInterval(it) }
         intervalId =
             window.setInterval({
-                CoroutineScope(Dispatchers.Default).launch { TvEpisodeNotificationPoller().poll() }
+                CoroutineScope(Dispatchers.Default).launch {
+                    TvEpisodeNotificationPoller().poll()
+                    PersonCreditNotificationPoller().poll()
+                }
             }, JsNotificationSchedulerConstant.POLL_INTERVAL_MILLIS)
     }
 

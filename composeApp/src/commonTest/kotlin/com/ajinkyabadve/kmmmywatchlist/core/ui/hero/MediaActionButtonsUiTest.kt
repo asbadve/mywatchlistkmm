@@ -42,7 +42,10 @@ private object MediaActionButtonsUiTestConstant {
     // Value of Res.string.episode_alert_prompt_title with TV_SHOW_NAME substituted, and
     // Res.string.episode_alert_prompt_confirm/_dismiss verbatim.
     const val EPISODE_ALERT_PROMPT_TITLE = "Get notified when $TV_SHOW_NAME returns?"
-    const val EPISODE_ALERT_PROMPT_CONFIRM = "Turn on episode alerts"
+
+    // Values of Res.string.notification_opt_in_confirm/_dismiss - shared by both the episode and
+    // person opt-in prompts, see NotificationOptInDialog.
+    const val EPISODE_ALERT_PROMPT_CONFIRM = "Turn on notifications"
     const val EPISODE_ALERT_PROMPT_DISMISS = "Not now"
 }
 

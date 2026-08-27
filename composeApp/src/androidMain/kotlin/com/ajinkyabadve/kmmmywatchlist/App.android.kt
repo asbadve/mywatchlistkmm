@@ -26,7 +26,8 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
 import com.ajinkyabadve.kmmmywatchlist.core.notification.AndroidNotificationConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
-import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingEpisodeNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
 
 class AndroidApp : Application() {
     companion object {
@@ -81,17 +82,23 @@ class AppActivity : ComponentActivity() {
         handleNotificationIntent(intent)
     }
 
-    // Mirrors AndroidAuthCallbackHandler.handleIntent()'s shape, but for a tapped episode
-    // notification's PendingIntent extras (see LocalNotifier.post, androidMain) instead of an
-    // OAuth deep link - launchMode="singleInstance" means this Activity is reused via onNewIntent
-    // rather than recreated, so both call sites matter (cold launch vs. already-running).
+    // Mirrors AndroidAuthCallbackHandler.handleIntent()'s shape, but for a tapped notification's
+    // PendingIntent extras (see LocalNotifier.post, androidMain) instead of an OAuth deep link -
+    // launchMode="singleInstance" means this Activity is reused via onNewIntent rather than
+    // recreated, so both call sites matter (cold launch vs. already-running).
     private fun handleNotificationIntent(intent: Intent?) {
-        if (intent == null || !intent.hasExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID)) return
-        val tvShowId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID, -1L)
-        val seasonNumber = intent.getIntExtra(AndroidNotificationConstant.EXTRA_SEASON_NUMBER, -1)
-        val episodeNumber = intent.getIntExtra(AndroidNotificationConstant.EXTRA_EPISODE_NUMBER, -1)
-        if (tvShowId < 0 || seasonNumber < 0 || episodeNumber < 0) return
-        PendingEpisodeNotificationTarget.set(EpisodeNotificationTarget(tvShowId, seasonNumber, episodeNumber))
+        if (intent == null) return
+        if (intent.hasExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID)) {
+            val tvShowId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_TV_SHOW_ID, -1L)
+            val seasonNumber = intent.getIntExtra(AndroidNotificationConstant.EXTRA_SEASON_NUMBER, -1)
+            val episodeNumber = intent.getIntExtra(AndroidNotificationConstant.EXTRA_EPISODE_NUMBER, -1)
+            if (tvShowId < 0 || seasonNumber < 0 || episodeNumber < 0) return
+            PendingNotificationTarget.set(EpisodeNotificationTarget(tvShowId, seasonNumber, episodeNumber))
+        } else if (intent.hasExtra(AndroidNotificationConstant.EXTRA_PERSON_ID)) {
+            val personId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_PERSON_ID, -1L)
+            if (personId < 0) return
+            PendingNotificationTarget.set(PersonNotificationTarget(personId))
+        }
     }
 
     override fun onResume() {

@@ -18,33 +18,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import mywatchlist.composeapp.generated.resources.Res
-import mywatchlist.composeapp.generated.resources.episode_alert_prompt_body
-import mywatchlist.composeapp.generated.resources.episode_alert_prompt_confirm
-import mywatchlist.composeapp.generated.resources.episode_alert_prompt_dismiss
-import mywatchlist.composeapp.generated.resources.episode_alert_prompt_fineprint
-import mywatchlist.composeapp.generated.resources.episode_alert_prompt_title
+import mywatchlist.composeapp.generated.resources.notification_opt_in_confirm
+import mywatchlist.composeapp.generated.resources.notification_opt_in_dismiss
+import mywatchlist.composeapp.generated.resources.notification_opt_in_fineprint
 import org.jetbrains.compose.resources.stringResource
 
-private object EpisodeAlertOptInDialogConstant {
+private object NotificationOptInDialogConstant {
     val ICON_BADGE_SIZE = 44.dp
     val ICON_BADGE_CORNER_RADIUS = 13.dp
     val ICON_SIZE = 22.dp
 }
 
 /**
- * The in-context "turn on episode alerts?" prompt shown the first time a TV show is favorited or
- * watchlisted while notifications are off - see `future_features_checklist.md` item 3a's follow-up
- * and the design artifact it was built from ("Episode Alerts Prompt"). [MediaActionButtonsSection]
- * decides *when* to show this (its [MediaActionsState.shouldPromptForEpisodeAlerts] gate, TV-only,
- * once-ever via [NotificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt]) - this composable
- * only renders the ask and reports which button was tapped, per code-conventions §7.
+ * The in-context "turn on notifications?" prompt - shared shell for both notification kinds this
+ * app asks about: the first time a TV show is favorited/watchlisted while notifications are off
+ * (see `MediaActionButtonsSection`, [title]/[body] from `episode_alert_prompt_*`), and the first
+ * time a person is followed while notifications are off (see `PersonDetailScreen`, [title]/[body]
+ * from `person_alert_prompt_*`) - see `future_features_checklist.md` item 3a/3b and the design
+ * artifact this was originally built from ("Episode Alerts Prompt"). The caller decides *when* to
+ * show this and *what* [onConfirm]/[onDismiss] do (both callers request the OS permission then
+ * flip the same shared `NotificationSettingsRepository` setting/`NotificationScheduler` job) - this
+ * composable only renders the ask and reports which button was tapped, per code-conventions §7/§8.
  *
  * Uses [AlertDialog], the dialog primitive already established by `AddToListDialog` elsewhere in
  * this codebase, rather than introducing `ModalBottomSheet` as a new one just for this prompt.
  */
 @Composable
-internal fun EpisodeAlertOptInDialog(
-    tvShowName: String,
+internal fun NotificationOptInDialog(
+    title: String,
+    body: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -54,24 +56,24 @@ internal fun EpisodeAlertOptInDialog(
             Box(
                 modifier =
                     Modifier
-                        .size(EpisodeAlertOptInDialogConstant.ICON_BADGE_SIZE)
-                        .clip(RoundedCornerShape(EpisodeAlertOptInDialogConstant.ICON_BADGE_CORNER_RADIUS)),
+                        .size(NotificationOptInDialogConstant.ICON_BADGE_SIZE)
+                        .clip(RoundedCornerShape(NotificationOptInDialogConstant.ICON_BADGE_CORNER_RADIUS)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Filled.Notifications,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(EpisodeAlertOptInDialogConstant.ICON_SIZE),
+                    modifier = Modifier.size(NotificationOptInDialogConstant.ICON_SIZE),
                 )
             }
         },
-        title = { Text(stringResource(Res.string.episode_alert_prompt_title, tvShowName)) },
+        title = { Text(title) },
         text = {
             Column {
-                Text(stringResource(Res.string.episode_alert_prompt_body))
+                Text(body)
                 Text(
-                    text = stringResource(Res.string.episode_alert_prompt_fineprint),
+                    text = stringResource(Res.string.notification_opt_in_fineprint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
@@ -80,12 +82,12 @@ internal fun EpisodeAlertOptInDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(Res.string.episode_alert_prompt_confirm))
+                Text(stringResource(Res.string.notification_opt_in_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.episode_alert_prompt_dismiss))
+                Text(stringResource(Res.string.notification_opt_in_dismiss))
             }
         },
     )

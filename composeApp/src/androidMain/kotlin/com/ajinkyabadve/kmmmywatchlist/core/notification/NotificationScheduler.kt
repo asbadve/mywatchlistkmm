@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.ajinkyabadve.kmmmywatchlist.AndroidApp
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.toJavaDuration
@@ -27,6 +28,10 @@ class EpisodeNotificationWorker(
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         TvEpisodeNotificationPoller().poll()
+        // Same "episode_notifications_enabled" schedule covers 3b too - one periodic job, not a
+        // second one, since it's the same underlying permission/preference (see
+        // PersonCreditNotificationPoller's kdoc).
+        PersonCreditNotificationPoller().poll()
         return Result.success()
     }
 }

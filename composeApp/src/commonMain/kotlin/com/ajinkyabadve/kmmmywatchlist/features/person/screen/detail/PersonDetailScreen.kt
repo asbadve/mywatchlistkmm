@@ -43,6 +43,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,8 +64,11 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
+import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.NotificationOptInDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
@@ -72,8 +76,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.filmographySections
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.knownForCredits
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.openUrl
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
+import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_read_less
 import mywatchlist.composeapp.generated.resources.action_read_more
@@ -86,6 +93,8 @@ import mywatchlist.composeapp.generated.resources.filter_label_media_type
 import mywatchlist.composeapp.generated.resources.filter_movies
 import mywatchlist.composeapp.generated.resources.filter_tv_shows
 import mywatchlist.composeapp.generated.resources.no_filmography_matches
+import mywatchlist.composeapp.generated.resources.person_alert_prompt_body
+import mywatchlist.composeapp.generated.resources.person_alert_prompt_title
 import mywatchlist.composeapp.generated.resources.section_biography
 import mywatchlist.composeapp.generated.resources.section_filmography
 import mywatchlist.composeapp.generated.resources.section_known_for
@@ -110,10 +119,19 @@ fun PersonDetailScreen(
     onTvShowClicked: (Long) -> Unit,
     viewModel: PersonDetailScreenModel =
         viewModel(key = "PersonDetailScreenModel:$personId") { PersonDetailScreenModel(personId) },
+    notificationSettingsRepository: NotificationSettingsRepository = NotificationSettingsRepositoryImpl(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var galleryImages by remember { mutableStateOf<List<String>?>(null) }
     var galleryInitialIndex by remember { mutableStateOf(0) }
+
+    // Hoisted here, not inside the opt-in dialog's own `if` block below - same reasoning as
+    // MediaActionButtonsSection's identical hoist: onConfirm calls
+    // viewModel.consumeNotificationOptInPrompt(), which tears down that `if` block on the next
+    // recomposition, and a requester/scope living inside it would have the in-flight permission
+    // request cancelled before the OS's grant/deny callback ever resolves.
+    val notificationPermissionRequester = rememberNotificationPermissionRequester()
+    val notificationCoroutineScope = rememberCoroutineScope()
 
     // Same hero treatment as the movie and TV detail screens: the bar floats transparently over the
     // banner and only goes solid once the list has scrolled past it. That means it cannot live in
@@ -169,12 +187,28 @@ fun PersonDetailScreen(
                         galleryImages = images
                         galleryInitialIndex = index
                     }
+                    val isFollowing by viewModel.isFollowingPerson.collectAsState(initial = false)
+                    var showNotificationOptInPrompt by remember { mutableStateOf(false) }
+                    val onFollowClick = {
+                        val justFollowed = viewModel.toggleFollowPerson(state.person, isFollowing)
+                        // Only offer the prompt on the click that actually turns following ON, and
+                        // only if there's something to ask about - see toggleFollowPerson's kdoc
+                        // for why this is decided right here rather than via a ViewModel flag.
+                        if (justFollowed &&
+                            !notificationSettingsRepository.isEpisodeNotificationsEnabled() &&
+                            !notificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt()
+                        ) {
+                            showNotificationOptInPrompt = true
+                        }
+                    }
                     if (windowSize.isCompact()) {
                         CompactPersonDetailContent(
                             person = state.person,
                             lazyListState = lazyListState,
                             onCreditClicked = onCreditClicked,
                             onShowGallery = onShowGallery,
+                            isFollowing = isFollowing,
+                            onFollowClick = onFollowClick,
                         )
                     } else {
                         ExpandedPersonDetailContent(
@@ -182,6 +216,31 @@ fun PersonDetailScreen(
                             leftLazyListState = leftLazyListState,
                             onCreditClicked = onCreditClicked,
                             onShowGallery = onShowGallery,
+                            isFollowing = isFollowing,
+                            onFollowClick = onFollowClick,
+                        )
+                    }
+
+                    if (showNotificationOptInPrompt) {
+                        NotificationOptInDialog(
+                            title = stringResource(Res.string.person_alert_prompt_title, state.person.name),
+                            body = stringResource(Res.string.person_alert_prompt_body, state.person.name),
+                            onConfirm = {
+                                showNotificationOptInPrompt = false
+                                notificationCoroutineScope.launch {
+                                    // Only marked "seen" once the OS permission is actually granted -
+                                    // see MediaActionButtonsSection's identical reasoning.
+                                    if (notificationPermissionRequester.request()) {
+                                        notificationSettingsRepository.setEpisodeNotificationsEnabled(true)
+                                        notificationSettingsRepository.markEpisodeAlertOptInPromptSeen()
+                                        NotificationScheduler.schedule()
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                notificationSettingsRepository.markEpisodeAlertOptInPromptSeen()
+                                showNotificationOptInPrompt = false
+                            },
                         )
                     }
                 }
@@ -212,13 +271,22 @@ private fun CompactPersonDetailContent(
     lazyListState: LazyListState,
     onCreditClicked: (PersonCredit) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
 ) {
     LazyColumn(
         state = lazyListState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
-        item { PersonHeroSection(person = person, onCreditClicked = onCreditClicked) }
+        item {
+            PersonHeroSection(
+                person = person,
+                onCreditClicked = onCreditClicked,
+                isFollowing = isFollowing,
+                onFollowClick = onFollowClick,
+            )
+        }
         item { PersonLinksRow(person = person) }
         item { BiographySection(biography = person.biography) }
         item { KnownForRow(person = person, onCreditClicked = onCreditClicked) }
@@ -242,6 +310,8 @@ private fun ExpandedPersonDetailContent(
     leftLazyListState: LazyListState,
     onCreditClicked: (PersonCredit) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxSize(),
@@ -252,7 +322,14 @@ private fun ExpandedPersonDetailContent(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
-            item { PersonHeroSection(person = person, onCreditClicked = onCreditClicked) }
+            item {
+                PersonHeroSection(
+                    person = person,
+                    onCreditClicked = onCreditClicked,
+                    isFollowing = isFollowing,
+                    onFollowClick = onFollowClick,
+                )
+            }
             item { PersonLinksRow(person = person) }
             item { BiographySection(biography = person.biography) }
             item {

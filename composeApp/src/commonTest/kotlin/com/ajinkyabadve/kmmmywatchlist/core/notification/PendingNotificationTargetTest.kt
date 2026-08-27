@@ -5,64 +5,66 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-private object PendingEpisodeNotificationTargetTestConstant {
+private object PendingNotificationTargetTestConstant {
     const val TV_SHOW_ID = 108978L
     const val SEASON_NUMBER = 4
     const val EPISODE_NUMBER = 5
+    const val PERSON_ID = 500L
 }
 
-class PendingEpisodeNotificationTargetTest {
+class PendingNotificationTargetTest {
     @AfterTest
     fun tearDown() {
         // Reset the shared singleton so a target set by one test can't leak into the next.
-        PendingEpisodeNotificationTarget.consume()
+        PendingNotificationTarget.consume()
+    }
+
+    private fun episodeTarget() =
+        EpisodeNotificationTarget(
+            PendingNotificationTargetTestConstant.TV_SHOW_ID,
+            PendingNotificationTargetTestConstant.SEASON_NUMBER,
+            PendingNotificationTargetTestConstant.EPISODE_NUMBER,
+        )
+
+    @Test
+    fun testSetMakesTheEpisodeTargetCurrent() {
+        val target = episodeTarget()
+
+        PendingNotificationTarget.set(target)
+
+        assertEquals(target, PendingNotificationTarget.current)
     }
 
     @Test
-    fun testSetMakesTheTargetCurrent() {
-        val target =
-            EpisodeNotificationTarget(
-                PendingEpisodeNotificationTargetTestConstant.TV_SHOW_ID,
-                PendingEpisodeNotificationTargetTestConstant.SEASON_NUMBER,
-                PendingEpisodeNotificationTargetTestConstant.EPISODE_NUMBER,
-            )
+    fun testSetMakesThePersonTargetCurrent() {
+        val target = PersonNotificationTarget(PendingNotificationTargetTestConstant.PERSON_ID)
 
-        PendingEpisodeNotificationTarget.set(target)
+        PendingNotificationTarget.set(target)
 
-        assertEquals(target, PendingEpisodeNotificationTarget.current)
+        assertEquals(target, PendingNotificationTarget.current)
     }
 
     @Test
     fun testConsumeClearsCurrentWithoutReturningIt() {
-        val target =
-            EpisodeNotificationTarget(
-                PendingEpisodeNotificationTargetTestConstant.TV_SHOW_ID,
-                PendingEpisodeNotificationTargetTestConstant.SEASON_NUMBER,
-                PendingEpisodeNotificationTargetTestConstant.EPISODE_NUMBER,
-            )
-        PendingEpisodeNotificationTarget.set(target)
+        val target = episodeTarget()
+        PendingNotificationTarget.set(target)
 
-        PendingEpisodeNotificationTarget.consume()
+        PendingNotificationTarget.consume()
 
-        assertNull(PendingEpisodeNotificationTarget.current)
+        assertNull(PendingNotificationTarget.current)
     }
 
     @Test
     fun testSettingTheSameTargetAgainAfterConsumeIsObservableAsANewChange() {
-        val target =
-            EpisodeNotificationTarget(
-                PendingEpisodeNotificationTargetTestConstant.TV_SHOW_ID,
-                PendingEpisodeNotificationTargetTestConstant.SEASON_NUMBER,
-                PendingEpisodeNotificationTargetTestConstant.EPISODE_NUMBER,
-            )
-        PendingEpisodeNotificationTarget.set(target)
-        PendingEpisodeNotificationTarget.consume()
+        val target = episodeTarget()
+        PendingNotificationTarget.set(target)
+        PendingNotificationTarget.consume()
 
-        PendingEpisodeNotificationTarget.set(target)
+        PendingNotificationTarget.set(target)
 
         // Equal by value to the first target, but this is the point: App.kt's LaunchedEffect keys
         // on this transition from null (post-consume) to non-null again, not on object identity or
         // value inequality - a second tap of the exact same notification must still navigate.
-        assertEquals(target, PendingEpisodeNotificationTarget.current)
+        assertEquals(target, PendingNotificationTarget.current)
     }
 }

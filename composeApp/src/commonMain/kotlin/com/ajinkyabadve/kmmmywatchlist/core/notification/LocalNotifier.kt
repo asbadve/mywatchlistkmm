@@ -17,7 +17,15 @@ expect object LocalNotifier {
      * already prevents an exact repeat from getting this far). Silently no-ops if permission was
      * never granted - callers don't need to check first. [deepLink] is what a tap should open -
      * carried through the platform notification itself (extras/`userInfo`) so it survives the app
-     * not even running yet, then surfaces via [PendingEpisodeNotificationTarget] once it does.
+     * not even running yet, then surfaces via [PendingNotificationTarget] once it does. `null`
+     * posts a plain notification with no tap-to-navigate target at all.
+     *
+     * [PersonNotificationTarget] is deliberately only acted on by the Android and iOS actuals -
+     * Desktop's actual only ever wires up [EpisodeNotificationTarget] clicks (same reasoning as
+     * its pre-existing TrayIcon click limitation: a single icon-wide `ActionListener`, not a
+     * per-notification callback), and JS's `Notification.onclick` likewise only branches on
+     * [EpisodeNotificationTarget] - both a deliberate scope decision (confirmed 2026-08-26), not
+     * a capability gap; every platform still *receives* the notification either way.
      * [posterUrl] (episode still, falling back to the show poster - see `TvEpisodeNotificationPoller`)
      * is best-effort: a download/decode failure silently falls back to a text-only notification
      * rather than losing the notification entirely, so this never throws on a bad/unreachable URL.
@@ -28,7 +36,7 @@ expect object LocalNotifier {
         notificationId: Int,
         title: String,
         body: String,
-        deepLink: EpisodeNotificationTarget,
+        deepLink: NotificationTarget?,
         posterUrl: String?,
     )
 }

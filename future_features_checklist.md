@@ -266,7 +266,7 @@ watchlisted/favorited shows; `GET /3/tv/{series_id}/changes` as a cheaper diff s
   opens the TV show's detail screen and then the specific episode. `EpisodeNotificationTarget`
   (commonMain, `core/notification/NotificationDeepLink.kt`) carries `(tvShowId, seasonNumber,
   episodeNumber)` through `LocalNotifier.post`'s new `deepLink` param, populated from
-  `TvEpisodeNotificationPoller`'s `detail.nextEpisodeToAir`. `PendingEpisodeNotificationTarget` is
+  `TvEpisodeNotificationPoller`'s `detail.nextEpisodeToAir`. `PendingNotificationTarget` is
   the observable holder `App.kt`'s `MainAppScreen` watches to push `TvDetailKey` then
   `EpisodeDetailKey`. Per-platform tap wiring: Android - `PendingIntent` extras read back in
   `AppActivity.handleNotificationIntent()` (mirrors `AndroidAuthCallbackHandler`'s intent-handling
@@ -274,7 +274,7 @@ watchlisted/favorited shows; `GET /3/tv/{series_id}/changes` as a cheaper diff s
   (`UNUserNotificationCenterDelegateProtocol`, registered in `Main.kt`'s `MainViewController()`);
   JS - `Notification.onclick` (works since the app is already running - no cold-launch case);
   Desktop - `TrayIcon`'s single action listener approximates "most recently posted" (SystemTray has
-  no per-message click callback). Verification: `PendingEpisodeNotificationTargetTest` (commonTest)
+  no per-message click callback). Verification: `PendingNotificationTargetTest` (commonTest)
   covers the observable set/consume/re-tap semantics.
   - [ ] **Known bug (Desktop only, confirmed 2026-08-27): clicking the notification banner itself
     does not deep-link.** `java.awt.TrayIcon`'s `ActionListener` reliably fires when the *tray icon*
@@ -291,12 +291,127 @@ watchlisted/favorited shows; `GET /3/tv/{series_id}/changes` as a cheaper diff s
     see the poster-image item above) if the library's notification API accepts one. Not started -
     requires adding the dependency and rewriting `desktopMain`'s `LocalNotifier.kt`.
 
-### 3b. Favorite actor/person - new credit announced
+### 3b. Favorite actor/person - new credit announced — DONE (2026-08-26)
 **Relevant OAS endpoints**: `GET /3/person/{person_id}/combined_credits` (diff against the last
 poll's credit ID set); `GET /3/person/{person_id}/changes`.
-- [ ] Needs "favorite person" to exist as a concept first (see the dependency note above).
-- [ ] Poll each favorited person's combined credits; notify on any new movie/TV credit id not seen
-  on the previous poll, deep-linking the notification to that title's detail screen.
+
+**TMDB API check, ground-truthed against the live OpenAPI docs before building anything**: TMDB has
+**no account-level favorite/follow API for people** - `POST /3/account/{account_id}/favorite`'s own
+spec says "mark a movie or TV show as a favourite," and the endpoint index lists only Favorite
+Movies/Favorite TV (same for ratings: Rated Movies/TV/TV Episodes, no Rated People). So favoriting
+a person is **local-only, does not sync across devices** - a new `favoritePerson` SQLDelight table
+(`MyDatabase.sq`), not a `trackedMedia` row (people aren't media, nothing to sync from a GET).
+- [x] "Favorite person" concept: `FavoritePersonRepository` (local SQLite, `observeIsFavorite`
+  Flow-backed) + `FollowPersonButton` on `PersonHeroSection` (pure composable, no repository -
+  `PersonDetailScreenModel` owns the repository, per code-conventions §6/§7/§8).
+- [x] `PersonCreditNotificationPoller` polls each favorited person's `combined_credits`
+  (`PersonRepository.getPersonDetails` already appends it) and notifies on any credit id not seen
+  on the previous poll, via the same `NotificationLedgerRepository`/`NotificationScheduler`/
+  `LocalNotifier` infrastructure 3a built (`NotificationReason.PERSON_NEW_CREDIT`) - one shared
+  periodic job/permission/setting covers both 3a and 3b, not a second toggle.
+- [x] In-context notification opt-in prompt for following a person too (requested 2026-08-26,
+  mirrors 3a's own follow-up): `NotificationOptInDialog` (renamed/generalized from
+  `EpisodeAlertOptInDialog`, now a shared shell taking plain `title`/`body` strings) shows on the
+  first person followed while notifications are off, same `NotificationSettingsRepository`
+  seen-flag/permission-request/`NotificationScheduler.schedule()` sequence as the TV prompt.
+  `AccountScreen`'s "Poll episode notifications now" debug row already resets/polls both 3a and 3b
+  together (shared `notificationLedger`), and the debug "reset opt-in prompt" row now covers both
+  the TV and person prompts too (one shared seen-flag).
+  **Revised 2026-08-27** after it was observed firing on screen *load* instead of on the Follow
+  click: the trigger was originally a ViewModel-owned `StateFlow`
+  (`PersonDetailScreenModel.shouldPromptForNotificationOptIn`, mirroring
+  `MediaActionsState.shouldPromptForEpisodeAlerts`), but `viewModel(key = "PersonDetailScreenModel:
+  $personId")` can outlive a single screen visit - this app's `NavDisplay` has no per-entry
+  `ViewModelStore` scoping, unlike a plain class such as `MediaActionsState` that's rebuilt fresh
+  by its owning ScreenModel each time. A flag living on that ViewModel risked surfacing on a later,
+  click-free revisit. Fixed by making `toggleFollowPerson` return whether the call just turned
+  following ON, and deciding whether to show the dialog directly at the click site in
+  `PersonDetailScreen` (a local `remember { mutableStateOf(false) }`), never via a persisted flag -
+  see `toggleFollowPerson`'s kdoc. The permission-requester/coroutine-scope hoisting fix TV's prompt
+  needed (see `MediaActionButtonsSection`'s kdoc) still applies here at `PersonDetailScreen`'s top
+  level, same reasoning.
+- [x] Local-only-storage caveat (requested 2026-08-27): since following a person is never synced to
+  TMDB (unlike movie/TV favorites), the user needs to be told so explicitly, not just left to
+  discover it - `FollowPersonButton` shows a small caption once followed
+  ("Saved on this device only..."), and the new Favorites sub-tab below shows the same caveat
+  unconditionally. The Follow button itself was never gated behind a signed-in session to begin
+  with (nothing here needs `AccountId`/`sessionId`), so it already showed the same regardless of
+  login state - this only adds the explanation, not a behavior change.
+- [x] "Favorites" sub-tab on the Person destination (requested 2026-08-26), alongside the existing
+  "Popular" sub-tab: `PersonScreenTab` now renders a `PillTabRow` (the same tab chrome
+  `MovieScreenTabs`/`MyFavTabs` use) with both. `FavoritePersonRepository.observeFavoritePeople()`
+  (new, reactive, most-recently-followed first) feeds `PersonFavoritesTab`, which reuses the exact
+  same `mediaPersonRow` grid item the Popular sub-tab already renders with - deliberately not a new
+  icon/card style, so both grids are visually identical (the consistency this was explicitly asked
+  for). Empty state uses the same heart-outline icon language as `FollowPersonButton`.
+  **Also surfaced (2026-08-27) while building this**: JetBrains' Compose Multiplatform string
+  resource compiler does not unescape `\'` the way Android's `aapt` does - it renders the literal
+  backslash. Every `strings.xml` apostrophe added across this session's work used that escape and
+  was silently wrong until a Compose UI test asserted the exact string; fixed by writing apostrophes
+  bare (valid XML element content, no escaping needed there at all) and documented in
+  code-conventions §2 so it isn't reintroduced.
+- [x] **Fixed 2026-08-27: first poll after following someone notified once per existing credit.**
+  `lastKnownCreditIds` starts `null` (never polled); the diff was against an empty set on that
+  first poll, so every credit a person already had - their whole filmography, for anyone prolific -
+  counted as "new" and notified. `PersonCreditNotificationPoller.pollOne` now treats a `null`
+  baseline as seed-only: it records the current credit set and returns without notifying for any
+  of it. Only credits that appear on a *later* poll, after that baseline exists, ever notify - the
+  intended "let me know when they book something new" behavior, not "list everything they've ever
+  done." `PersonCreditNotificationPollerTest` covers this explicitly
+  (`testFirstPollAfterFollowingSeedsBaselineWithoutNotifying`).
+- [x] **Split the debug testing rows 2026-08-27** (requested, so TV and person notification
+  testing don't interfere): `AccountScreen`'s single combined "Poll episode notifications now" row
+  is back to TV-only, unchanged from before 3b touched it. A new, separate "Poll person
+  notifications now" row does the 3b equivalent. Needed a real fix underneath, not just a UI split:
+  `NotificationLedgerRepository.clearAllForDebug()` (whole-table wipe) became
+  `clearForReasonForDebug(reason)` so each row only ever clears its own reason's dedup rows, never
+  the other's. And `FavoritePersonRepository.resetAllCreditStateForDebug()` had to stop resetting
+  to `NULL` - under the first-poll-seeds-only fix above, a `NULL` reset would make the debug row
+  silently re-baseline instead of forcing a notification, defeating its purpose - it resets to `""`
+  instead (a real but empty baseline, so every current credit counts as new on the next poll). See
+  `MyDatabase.sq`'s `favoritePerson` table kdoc for the `NULL`-vs-`""` distinction this now depends on.
+- [x] **Group notifications by person id, Android, 2026-08-27** (requested - same behavior 3a's
+  episode notifications already had per show, just missing for 3b): `LocalNotifier`'s Android
+  actual now computes a group key for `PersonNotificationTarget` too
+  (`PERSON_GROUP_KEY_PREFIX + personId`, a distinct prefix from TV's so a person id and a tvShowId
+  that happen to be numerically equal can never merge into one stack), with its own group-summary
+  title ("New credits" vs. TV's "Episode updates"). Several new credits for the same favorited
+  person now collapse into one expandable stack instead of flooding the notification shade one row
+  each. iOS has no grouping mechanism at all yet for *either* notification kind (no
+  `UNNotificationContent.threadIdentifier` set) - a pre-existing gap, not something this pass
+  introduced or was asked to close.
+- [x] **Fixed 2026-08-27: the person debug-test row itself was the "too many notifications" cause
+  the grouping work above didn't fully explain.** Real-world traffic was already minimal (0 or 1
+  new credit per person per ~6h poll, thanks to the first-poll-seeds-only fix above) - but
+  `resetAllCreditStateForDebug()` reset every favorited person's baseline to `""` (empty, not
+  `null`), which makes *every current credit* look new at once on the next poll - by design, back
+  when a person's dedup state only had two values worth distinguishing. For someone with a real
+  filmography that's still dozens of notifications per tap. Replaced with
+  `PersonCreditNotificationPoller.seedOneNewCreditForDebug()`: it fetches each favorited person's
+  actual current credits and holds back exactly one, so the debug row's forced poll notifies once
+  per person - never once per credit - matching the one-notification-per-tap shape
+  `resetAllTvPollStateForDebug` already gives TV (which never had this problem since a show only
+  ever has one next episode at a time). `resetAllCreditStateForDebug()` and its SQL query
+  (`clearAllFavoritePersonCreditIdsForDebug`) were removed as dead code, not just deprecated.
+- [x] Tap-to-navigate deep link, Android + iOS (confirmed 2026-08-26 not to include Desktop/JS):
+  `NotificationTarget` is now a `sealed interface` (`EpisodeNotificationTarget`/
+  `PersonNotificationTarget`, `NotificationDeepLink.kt`) - a 3b notification carries
+  `PersonNotificationTarget(personId)` and a tap opens that person's detail screen
+  (`PersonDetailKey`, `App.kt`'s `MainAppScreen`). Desktop's `TrayIcon` and JS's
+  `Notification.onclick` actuals only ever act on `EpisodeNotificationTarget` - a deliberate scope
+  decision (Desktop already had this limitation for 3a; JS matched it to stay consistent), not a
+  capability gap - both platforms still show the notification either way.
+- [ ] **Deferred, separate pass: optional cross-device sync.** TMDB can't carry this, so syncing a
+  favorited-person list across a user's devices needs this app's own small backend keyed by their
+  TMDB `account_id`. Evaluated cheap/open-source options (2026-08-26): **Supabase** (open-source,
+  Postgres + plain-HTTP REST reachable from every KMM target with no native SDK; free tier is 500MB
+  DB/50k MAU, but auto-pauses a project after 7 days with no traffic) vs. **PocketBase**
+  (single-binary, fully open-source, self-hosted - $0 indefinitely on Fly.io's free 1GB-volume tier
+  or Oracle Cloud's Always-Free tier, no auto-pause, but you own uptime/backups/TLS yourself;
+  Render's free tier does *not* work for it, no persistent storage). Recommendation if/when built:
+  PocketBase on Fly.io - the sync payload (a handful of person ids per user) doesn't need Supabase's
+  managed-Postgres muscle, and $0-with-no-pause suits a personal project better than a managed DB
+  that needs to stay warm.
 
 ### 3c. New movie added to a favorited collection
 **Relevant OAS endpoints**: `GET /3/collection/{collection_id}` (`parts[]`, diffed by id).
@@ -587,3 +702,55 @@ user-adjustable.
     `RegionScreenModel`. Each region row shows a flag emoji
     (`core/format/RegionFlag.kt`'s `toRegionFlagEmoji()`, built from Unicode Regional Indicator
     Symbols - no bundled flag images).
+
+## 12. Animated Splash Screen — NOT STARTED, spec captured (requested 2026-08-27)
+**Design source**: the MyWatchList Logo design file -
+https://claude.ai/design/p/64719451-d56e-493e-b87e-c7dfc863c6cc?file=MyWatchList+Logo.dc.html&via=share
+(see [[design-artefact-links]] memory) - read in full via the `claude_design` MCP
+(`DesignSync`/`get_file` on `MyWatchList Logo.dc.html`, projectId `64719451-d56e-493e-b87e-c7dfc863c6cc`,
+type `PROJECT_TYPE_PROJECT`) after a plain `WebFetch` 403'd on the auth-gated `claude.ai/design/...`
+URL. Explicitly deferred - not to be implemented in this pass.
+
+**The "3b" animation ("Reel spin-up")**, exact spec pulled from the file's `<style>`/markup - this
+is authoritative, no need to re-open the design file at implementation time:
+- **Icon** (the mint rounded-square M-monogram glyph, 76×76 in a 100×100 viewBox, `rx=18`, fill
+  `#5BFFA1`, glyph path fill `#0d0e12`): animates in via `mwlB-reel`, 0.85s
+  `cubic-bezier(.2,.9,.2,1)`, `from { opacity:0; transform:rotate(-14deg) scale(.8) }` through a
+  60%-keyframe overshoot `{ opacity:1; transform:rotate(4deg) scale(1.04) }` settling to
+  `{ opacity:1; transform:rotate(0) scale(1) }`.
+- **Sprocket holes** (two vertical cutout strips at x=18/x=74, each a column of seven rounded-rect
+  "holes", `#0d0e12` at opacity `.22`, clipped to `x=18/74,y=20,w=8,h=60,rx=3`): continuously roll
+  the whole time via `mwl-roll` (`translateY(0)` → `translateY(-24px)`), 0.3s linear infinite - left
+  strip plays forward, right strip plays the same keyframes in `reverse`.
+- **Wordmark "MyWatch"** (Sora 800, `-.02em` letter-spacing at rest, color inherits page text
+  `#e8eaf0`): `mwlB-fade`, 0.7s `ease-out`, delay 0.5s - `from { opacity:0; letter-spacing:.18em }`
+  to `{ opacity:1; letter-spacing:-.02em }` (starts wide-tracked and tightens as it fades in).
+- **Wordmark "List"** (same face/weight, color `#5BFFA1`): `mwlB-drop`, 0.7s
+  `cubic-bezier(.2,.9,.2,1)`, delay 0.85s - drops from `translateY(-38px)` opacity 0, overshoots
+  slightly past rest at the 70% keyframe (`translateY(4px)` opacity 1), settles to `translateY(0)`.
+- **Total sequence**: icon settles ~0.85s in; "MyWatch" fade completes ~1.2s; "List" drop completes
+  ~1.55s - call it a ~1.6s hero beat before whatever gates the splash's dismissal (see below).
+  Background in the design file is `radial-gradient(circle at 50% 42%, #15211a, #0d0e12)` on
+  near-black `#0d0e12` - matches this app's actual dark M3 tokens closely
+  (`md_theme_dark_background = #191C19`, `md_theme_dark_surface = #111411`) but isn't identical;
+  reconcile against the real tokens (`theme/Color.kt`) rather than hardcoding the design file's
+  literal hex values, same as every other design-artifact-to-app pass in this project.
+- Compare/contrast in the source file for context (not being requested): "3a" (Feed & settle - both
+  icon halves slide in from opposite sides) and "3c" (Projector wipe - horizontal lockup revealed by
+  a clip-path mask plus a full-bleed mint flash) sit alongside 3b as the other two options shown;
+  3b is the one explicitly chosen.
+
+**Remaining implementation work** (unstarted):
+- [ ] Build a splash screen composable reproducing the above (Compose `Animatable`/`animate*AsState`
+  sequence, not literal CSS) - check each platform's actual splash mechanism first: Android 12+ has
+  a real `SplashScreen` API (`core-splashscreen`), where a custom Compose animation typically plays
+  *after* the OS-drawn icon frame rather than replacing it; iOS/Desktop/JS have no OS-level splash
+  API at all, so those need an in-app splash composable shown before `MainAppScreen`'s first real
+  content - the four platforms will not implement this identically.
+- [ ] Decide how long the splash shows / what it waits on (fixed ~1.6s duration matching the
+  animation's own runtime vs. gated on first data load, e.g. the trending screen's first successful
+  fetch) - not yet discussed with the user.
+- [ ] Respect `prefers-reduced-motion`-equivalent (Android's "Remove animations" accessibility
+  setting, `androidx.compose.ui.platform.LocalAccessibilityManager` or the system animator-duration
+  scale) - skip straight to the settled end-state for a user who's turned system animations off,
+  per this project's own `artifact-design` skill guidance on respecting reduced motion.
