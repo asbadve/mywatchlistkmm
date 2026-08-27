@@ -40,6 +40,15 @@ into new code.
 Strings built from data (e.g. `"Directed by $names"`) should keep the template in the
 resource file where practical (`%1$s` placeholders via `stringResource(res, arg)`).
 
+**Apostrophes: write them bare, never `\'` (found 2026-08-27).** Android's `aapt` string format
+unescapes `\'` to a plain apostrophe, but JetBrains' Compose Multiplatform resource compiler does
+not - it renders the literal backslash character, silently. A raw `'` inside `<string>` element
+text is already valid XML (no escaping is needed there at all; that rule is only for quoted
+*attribute* values), so just type the apostrophe directly: `Res.string` string values are XML
+*element content*, not attributes. Caught because a Compose UI test asserted the exact string via
+`onNodeWithText` and it didn't match; a string only ever read with `substring = true`, or never
+asserted at all, would hide this indefinitely.
+
 ## 2b. No magic numbers either - and where each constant belongs
 
 Same rule as strings, applied to numbers that carry meaning. **Scope (agreed 2026-08-06):
