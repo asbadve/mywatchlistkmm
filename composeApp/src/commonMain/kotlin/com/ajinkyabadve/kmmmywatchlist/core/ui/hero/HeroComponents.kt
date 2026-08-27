@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
+import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.WatchProvider
 
 private object HeroComponentConstant {
@@ -45,6 +46,34 @@ private object HeroComponentConstant {
     const val WASH_STEPS = 6
     const val PROVIDER_LOGO_TARGET_WIDTH_DP = 48
     const val CHIP_TEXT_ALPHA = 0.9f
+    const val REGION_LABEL_FONT_SIZE_SP = 11
+    const val REGION_LABEL_TEXT_ALPHA = 0.5f
+}
+
+/**
+ * Which region's watch-provider list is actually being shown, e.g. "🇬🇧 GB" - checklist item
+ * 13.1: without this, a user whose selected region has no TMDB watch-provider data had no way to
+ * tell the "Where to watch" list they're seeing is the fallback region's, not their own, short of
+ * opening Account settings and comparing manually.
+ *
+ * Deliberately code-only, not the full region name ("United Kingdom") - that would need
+ * [com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository.getAvailableRegions],
+ * a suspend/cached network call neither `MovieDetailScreenModel` nor `TvDetailScreenModel`
+ * otherwise depends on; wiring that through was judged out of scope for this as a quick win.
+ */
+@Composable
+fun ResolvedRegionLabel(
+    regionCode: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = "${regionCode.toRegionFlagEmoji()} $regionCode".trim(),
+        fontSize = HeroComponentConstant.REGION_LABEL_FONT_SIZE_SP.sp,
+        fontWeight = FontWeight.Medium,
+        color = color.copy(alpha = HeroComponentConstant.REGION_LABEL_TEXT_ALPHA),
+        modifier = modifier,
+    )
 }
 
 /**

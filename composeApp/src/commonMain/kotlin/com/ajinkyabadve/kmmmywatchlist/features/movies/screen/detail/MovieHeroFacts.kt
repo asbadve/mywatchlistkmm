@@ -48,6 +48,24 @@ fun WatchProvidersResponse?.resolveRegion(
     return regions[regionCode] ?: regions[fallbackRegionCode] ?: regions.values.firstOrNull()
 }
 
+/**
+ * The region code [resolveRegion] actually matched - same priority order (selected, then
+ * fallback, then any region with data), exposed on its own so the UI can show which one it was
+ * (checklist item 13.1: users with an empty-looking provider list couldn't otherwise tell whether
+ * their selected region simply has no data and the fallback kicked in).
+ */
+fun WatchProvidersResponse?.resolveRegionCode(
+    regionCode: String,
+    fallbackRegionCode: String,
+): String? {
+    val regions = this?.results.orEmpty()
+    return when {
+        regions.containsKey(regionCode) -> regionCode
+        regions.containsKey(fallbackRegionCode) -> fallbackRegionCode
+        else -> regions.keys.firstOrNull()
+    }
+}
+
 /** Shared by the movie and TV heroes, which resolve "where does this stream" identically. */
 fun WatchProvidersResponse?.heroWatchOption(
     regionCode: String,

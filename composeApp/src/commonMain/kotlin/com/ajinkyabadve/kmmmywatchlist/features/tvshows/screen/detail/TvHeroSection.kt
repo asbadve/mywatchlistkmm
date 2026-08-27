@@ -40,12 +40,14 @@ import com.ajinkyabadve.kmmmywatchlist.core.format.toOneDecimalString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroConstant
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroProviderChip
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.ResolvedRegionLabel
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroScrimBrush
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.rememberHeroContentMeasurement
 import com.ajinkyabadve.kmmmywatchlist.core.usecase.FindYoutubeTrailerUseCase
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.HeroWatchOption
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.heroWatchOption
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.resolveRegionCode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.openUrl
 import mywatchlist.composeapp.generated.resources.Res
@@ -101,6 +103,7 @@ internal fun TvHeroSection(
             density = density,
         )
     val watchOption = detail.watchProviders.heroWatchOption(regionCode, fallbackRegionCode)
+    val resolvedRegionCode = detail.watchProviders.resolveRegionCode(regionCode, fallbackRegionCode)
 
     Box(
         modifier =
@@ -156,6 +159,13 @@ internal fun TvHeroSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     option.allProviders.take(HeroConstant.MAX_PROVIDER_CHIPS).forEach { HeroProviderChip(provider = it) }
+                }
+                resolvedRegionCode?.let { code ->
+                    ResolvedRegionLabel(
+                        regionCode = code,
+                        color = colors.onHero,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
             TvActionRow(
