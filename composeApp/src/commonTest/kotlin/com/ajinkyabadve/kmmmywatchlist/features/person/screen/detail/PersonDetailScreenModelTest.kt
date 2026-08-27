@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCombinedCredits
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonDetail
+import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FakeFavoritePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.FakePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -11,6 +12,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -122,4 +124,59 @@ class PersonDetailScreenModelTest {
             val state = assertIs<PersonDetailState.Success>(viewModel.uiState.value)
             assertEquals(person, state.person)
         }
+
+    @Test
+    fun testIsFollowingPersonStartsFalseThenTogglesOn() =
+        runTest(testDispatcher) {
+            val person = PersonDetail(id = 500, name = "Tom Cruise")
+            fakeRepository.getPersonDetailsResult = Result.success(person)
+            val favoritePersonRepository = FakeFavoritePersonRepository()
+            val viewModel = PersonDetailScreenModel(500, fakeRepository, favoritePersonRepository)
+
+            assertEquals(false, viewModel.isFollowingPerson.first())
+
+            viewModel.toggleFollowPerson(person, currentlyFollowing = false)
+
+            assertEquals(true, viewModel.isFollowingPerson.first())
+            assertEquals(listOf(500L to true), favoritePersonRepository.setFavoriteCalls)
+        }
+
+    @Test
+    fun testTogglingOffRemovesTheFavorite() =
+        runTest(testDispatcher) {
+            val person = PersonDetail(id = 500, name = "Tom Cruise")
+            fakeRepository.getPersonDetailsResult = Result.success(person)
+            val favoritePersonRepository = FakeFavoritePersonRepository()
+            favoritePersonRepository.seedFavorite(500)
+            val viewModel = PersonDetailScreenModel(500, fakeRepository, favoritePersonRepository)
+
+            viewModel.toggleFollowPerson(person, currentlyFollowing = true)
+
+            assertEquals(false, viewModel.isFollowingPerson.first())
+        }
+
+    /** The return value is what `PersonDetailScreen` uses, at the click site, to decide whether to
+     *  offer the notification opt-in prompt - see [PersonDetailScreenModel.toggleFollowPerson]'s
+     *  kdoc for why that decision isn't a ViewModel-owned flag. */
+    @Test
+    fun testTogglingFollowOnReturnsTrue() {
+        val person = PersonDetail(id = 500, name = "Tom Cruise")
+        val viewModel = PersonDetailScreenModel(500, fakeRepository, FakeFavoritePersonRepository())
+
+        val justFollowed = viewModel.toggleFollowPerson(person, currentlyFollowing = false)
+
+        assertEquals(true, justFollowed)
+    }
+
+    @Test
+    fun testTogglingFollowOffReturnsFalse() {
+        val person = PersonDetail(id = 500, name = "Tom Cruise")
+        val favoritePersonRepository = FakeFavoritePersonRepository()
+        favoritePersonRepository.seedFavorite(500)
+        val viewModel = PersonDetailScreenModel(500, fakeRepository, favoritePersonRepository)
+
+        val justFollowed = viewModel.toggleFollowPerson(person, currentlyFollowing = true)
+
+        assertEquals(false, justFollowed)
+    }
 }

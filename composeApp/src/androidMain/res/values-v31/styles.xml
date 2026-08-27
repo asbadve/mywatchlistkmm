@@ -1,0 +1,10 @@
+<resources>
+    <!-- API 31+ override: adds the "MyWatch"/"List" wordmark via the real platform
+         android:windowSplashScreenBrandingImage attribute (see the base style's kdoc in
+         values/styles.xml for why this can't live there - core-splashscreen's compat theme
+         doesn't expose this attribute at all, so devices below API 31 fall back to the base
+         style's icon-only splash rather than silently failing to resolve it). -->
+    <style name="Theme.MyWatchList.Splash" parent="Theme.MyWatchList.SplashBase">
+        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_branding</item>
+    </style>
+</resources>

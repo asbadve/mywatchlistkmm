@@ -15,7 +15,9 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCombinedCredits
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonDetail
+import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FakeFavoritePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.FakePersonRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -280,6 +282,65 @@ class PersonDetailScreenUiTest {
 
             onNodeWithContentDescription("Back").performClick()
             assertEquals(true, backClicked)
+        }
+
+    /** Following a person while notifications are off shows the same opt-in prompt shape TV
+     *  favorites/watchlist already get (see NotificationOptInDialog). */
+    @Test
+    fun testPersonDetailScreen_followClick_showsNotificationOptInPrompt() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakePersonRepository().apply {
+                    getPersonDetailsResult = Result.success(successfulPersonDetail())
+                }
+            val viewModel = PersonDetailScreenModel(1, fakeRepository, FakeFavoritePersonRepository())
+
+            setContent {
+                PersonDetailScreen(
+                    personId = 1,
+                    windowSize = WindowSize.COMPACT,
+                    onBackClicked = {},
+                    onMovieClicked = {},
+                    onTvShowClicked = {},
+                    viewModel = viewModel,
+                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                )
+            }
+
+            onNodeWithText("Follow").performClick()
+
+            onNodeWithText("Get notified when Fake Person has a new credit?").assertExists()
+        }
+
+    /** "Not now" marks the prompt seen (so it never shows again) without touching the
+     *  notification setting. */
+    @Test
+    fun testPersonDetailScreen_dismissingNotificationOptInPrompt_marksItSeen() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakePersonRepository().apply {
+                    getPersonDetailsResult = Result.success(successfulPersonDetail())
+                }
+            val viewModel = PersonDetailScreenModel(1, fakeRepository, FakeFavoritePersonRepository())
+            val fakeNotificationSettingsRepository = FakeNotificationSettingsRepository()
+
+            setContent {
+                PersonDetailScreen(
+                    personId = 1,
+                    windowSize = WindowSize.COMPACT,
+                    onBackClicked = {},
+                    onMovieClicked = {},
+                    onTvShowClicked = {},
+                    viewModel = viewModel,
+                    notificationSettingsRepository = fakeNotificationSettingsRepository,
+                )
+            }
+            onNodeWithText("Follow").performClick()
+
+            onNodeWithText("Not now").performClick()
+
+            assertEquals(true, fakeNotificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt())
+            onNodeWithText("Get notified when Fake Person has a new credit?").assertDoesNotExist()
         }
 
     private companion object {

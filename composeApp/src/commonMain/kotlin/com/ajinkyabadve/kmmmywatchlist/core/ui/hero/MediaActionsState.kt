@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
@@ -62,6 +63,17 @@ class MediaActionsState(
     private val _uiState = MutableStateFlow(MediaActionsUiState())
     val uiState: StateFlow<MediaActionsUiState> = _uiState.asStateFlow()
 
+    // One-shot event, not part of MediaActionsUiState: turns true the instant a TV show is
+    // favorited/watchlisted ON, so MediaActionButtonsSection can offer the episode-alerts opt-in
+    // prompt right there - see EpisodeAlertOptInDialog's kdoc for the full flow. consumeEpisodeAlertPrompt
+    // resets it so the same toggle doesn't re-trigger it on recomposition.
+    private val _shouldPromptForEpisodeAlerts = MutableStateFlow(false)
+    val shouldPromptForEpisodeAlerts: StateFlow<Boolean> = _shouldPromptForEpisodeAlerts.asStateFlow()
+
+    fun consumeEpisodeAlertPrompt() {
+        _shouldPromptForEpisodeAlerts.update { false }
+    }
+
     fun load(sessionId: String) {
         coroutineScope.launch {
             runCatchingApiCall("loading account states for $mediaType/$mediaId") {
@@ -80,6 +92,7 @@ class MediaActionsState(
     ) {
         val newValue = !_uiState.value.isFavorite
         _uiState.update { it.copy(isFavorite = newValue) }
+        if (newValue && mediaType == MediaTypeConstant.TV) _shouldPromptForEpisodeAlerts.update { true }
         coroutineScope.launch {
             if (!newValue) {
                 // Hide it locally right away, regardless of whether the call below succeeds - see
@@ -114,6 +127,7 @@ class MediaActionsState(
     ) {
         val newValue = !_uiState.value.isInWatchlist
         _uiState.update { it.copy(isInWatchlist = newValue) }
+        if (newValue && mediaType == MediaTypeConstant.TV) _shouldPromptForEpisodeAlerts.update { true }
         coroutineScope.launch {
             if (!newValue) {
                 trackedMediaRepository.markPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)

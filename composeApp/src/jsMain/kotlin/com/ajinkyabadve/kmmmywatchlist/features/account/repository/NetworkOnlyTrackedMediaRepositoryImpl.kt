@@ -53,6 +53,23 @@ internal class NetworkOnlyTrackedMediaRepositoryImpl(
         creditIds: String?,
     ) = Unit
 
+    // No local table to enumerate on web - the notification poller simply has nothing to poll here.
+    override suspend fun trackedTvForPolling(): List<TrackedTvPollCandidate> = emptyList()
+
+    override suspend fun resetAllTvPollStateForDebug() = Unit
+
+    override suspend fun updatePollStateForMediaType(
+        id: Int,
+        mediaType: String,
+        nextEpisodeAirDate: String?,
+    ) = Unit
+
+    override suspend fun updateLastKnownStatusForMediaType(
+        id: Int,
+        mediaType: String,
+        status: String?,
+    ) = Unit
+
     override suspend fun markPendingDelete(
         id: Int,
         mediaType: String,

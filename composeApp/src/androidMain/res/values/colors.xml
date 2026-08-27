@@ -1,3 +1,7 @@
 <resources>
     <color name="ic_launcher_background">#5BFFA1</color>
+    <!-- Matches theme/Color.kt's md_theme_dark_background - this plain resource is a native
+         Android splash theme attribute (styles.xml's Theme.MyWatchList.Splash), which can't
+         reference a Kotlin Compose Color value directly, so the hex is duplicated here on purpose. -->
+    <color name="splash_background">#191C19</color>
 </resources>

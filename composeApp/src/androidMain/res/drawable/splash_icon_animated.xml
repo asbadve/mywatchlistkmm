@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native windowSplashScreenAnimatedIcon (styles.xml's Theme.MyWatchList.Splash) - the "3b" (Reel
+     spin-up) icon motion running as a real AnimatedVectorDrawable instead of Compose, so Android
+     shows exactly one splash (native, animated) rather than a static native frame handing off to a
+     second animated Compose one. Timings/easing match SplashScreen.kt's (commonMain, still used on
+     iOS/Desktop/JS) ICON_ROTATION_DEGREES/ICON_SCALE keyframes - 850ms sits under the platform's
+     1000ms windowSplashScreenAnimationDuration cap (also set to 850 in styles.xml).
+     No wordmark here: the native splash API has no text-animation surface, only an icon - the
+     "MyWatch"/"List" reveal stays Compose-only, on the platforms that still show it.
+     Sprocket pull is one-shot (not the Compose splash's looping roll) - runs once alongside the
+     icon, per mwl_splash_icon_288_layered.svg's own conversion notes (holes are exactly one 12-unit
+     pitch, scaled to the 288 canvas as 23.04). -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:drawable="@drawable/splash_icon">
+
+    <target android:name="artwork">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="850">
+                <propertyValuesHolder android:propertyName="rotation">
+                    <keyframe android:fraction="0" android:value="-14" />
+                    <keyframe
+                        android:fraction="0.6"
+                        android:value="4"
+                        android:interpolator="@interpolator/reel_easing" />
+                    <keyframe
+                        android:fraction="1"
+                        android:value="0"
+                        android:interpolator="@interpolator/reel_easing" />
+                </propertyValuesHolder>
+                <propertyValuesHolder android:propertyName="scaleX">
+                    <keyframe android:fraction="0" android:value="0.8" />
+                    <keyframe
+                        android:fraction="0.6"
+                        android:value="1.04"
+                        android:interpolator="@interpolator/reel_easing" />
+                    <keyframe
+                        android:fraction="1"
+                        android:value="1"
+                        android:interpolator="@interpolator/reel_easing" />
+                </propertyValuesHolder>
+                <propertyValuesHolder android:propertyName="scaleY">
+                    <keyframe android:fraction="0" android:value="0.8" />
+                    <keyframe
+                        android:fraction="0.6"
+                        android:value="1.04"
+                        android:interpolator="@interpolator/reel_easing" />
+                    <keyframe
+                        android:fraction="1"
+                        android:value="1"
+                        android:interpolator="@interpolator/reel_easing" />
+                </propertyValuesHolder>
+            </objectAnimator>
+        </aapt:attr>
+    </target>
+
+    <target android:name="sprocket_left_holes">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="translateY"
+                android:duration="850"
+                android:valueFrom="0"
+                android:valueTo="-23.04"
+                android:valueType="floatType"
+                android:interpolator="@interpolator/reel_easing" />
+        </aapt:attr>
+    </target>
+
+    <target android:name="sprocket_right_holes">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="translateY"
+                android:duration="850"
+                android:valueFrom="0"
+                android:valueTo="23.04"
+                android:valueType="floatType"
+                android:interpolator="@interpolator/reel_easing" />
+        </aapt:attr>
+    </target>
+
+</animated-vector>

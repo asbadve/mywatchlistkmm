@@ -20,6 +20,13 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
     val clearPendingDeleteCalls = mutableListOf<Triple<Int, String, AccountMediaCategory>>()
     val confirmDeleteCalls = mutableListOf<Triple<Int, String, AccountMediaCategory>>()
 
+    private val trackedTv = mutableMapOf<Int, TrackedTvPollCandidate>()
+
+    /** Seeds a show [TvEpisodeNotificationPollerTest] can poll - see [trackedTvForPolling]. */
+    fun seedTrackedTv(candidate: TrackedTvPollCandidate) {
+        trackedTv[candidate.id] = candidate
+    }
+
     private val pagedFlows = mutableMapOf<Pair<AccountMediaCategory, SearchMediaType>, MutableStateFlow<List<SearchResultItem>>>()
 
     /** Seeds what [pagedFlow] emits for (category, mediaType) - dumb, no RemoteMediator/network
@@ -66,6 +73,30 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
     ) {
         // Not needed by any current screen model test - the poll-state contract itself is covered
         // against a real database in TrackedMediaRepositoryImplTest.
+    }
+
+    override suspend fun trackedTvForPolling(): List<TrackedTvPollCandidate> = trackedTv.values.toList()
+
+    override suspend fun resetAllTvPollStateForDebug() {
+        trackedTv.keys.toList().forEach { id ->
+            trackedTv[id]?.let { trackedTv[id] = it.copy(lastKnownNextEpisodeAirDate = null) }
+        }
+    }
+
+    override suspend fun updatePollStateForMediaType(
+        id: Int,
+        mediaType: String,
+        nextEpisodeAirDate: String?,
+    ) {
+        trackedTv[id]?.let { trackedTv[id] = it.copy(lastKnownNextEpisodeAirDate = nextEpisodeAirDate) }
+    }
+
+    override suspend fun updateLastKnownStatusForMediaType(
+        id: Int,
+        mediaType: String,
+        status: String?,
+    ) {
+        trackedTv[id]?.let { trackedTv[id] = it.copy(lastKnownStatus = status) }
     }
 
     override suspend fun markPendingDelete(

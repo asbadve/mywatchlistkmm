@@ -20,3 +20,8 @@ internal actual suspend fun createSqlDriver(schema: SqlSchema<QueryResult.AsyncV
     schema.create(driver).await()
     return driver
 }
+
+// No-op: this driver is in-memory only per page load (see the kdoc above) - there's never a stale
+// on-disk file to delete on this platform in the first place.
+internal actual fun deleteLocalDatabaseFile() {
+}

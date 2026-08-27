@@ -16,3 +16,7 @@ private const val DATABASE_FILE_NAME = "mywatchlist.db"
 // blocking form this driver expects, and the driver auto-creates the schema on construction.
 internal actual suspend fun createSqlDriver(schema: SqlSchema<QueryResult.AsyncValue<Unit>>): SqlDriver =
     AndroidSqliteDriver(schema.synchronous(), AndroidApp.instance, DATABASE_FILE_NAME)
+
+internal actual fun deleteLocalDatabaseFile() {
+    AndroidApp.instance.deleteDatabase(DATABASE_FILE_NAME)
+}

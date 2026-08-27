@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- android.app.NotificationManager needs a plain Android resource, not a Compose
+         Resources one - the channel is created once in Application.onCreate(), outside any
+         composition, before Compose Resources' asset loader is guaranteed ready. -->
+    <string name="notification_channel_episodes_name">Episode notifications</string>
+    <string name="notification_channel_episodes_description">Alerts when a favorited or watchlisted show has a new episode</string>
+    <!-- Summary shown only when a show's individual notifications collapse into one group (API 24+,
+         see LocalNotifier.kt's postGroupSummary) - never shown standalone, so it doesn't need to
+         name the show itself. -->
+    <string name="notification_group_summary_title">Episode updates</string>
+    <!-- Same idea as notification_group_summary_title, for a favorited person's new-credit
+         notifications grouped by person id instead of by show. -->
+    <string name="notification_person_group_summary_title">New credits</string>
+</resources>

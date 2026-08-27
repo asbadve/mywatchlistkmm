@@ -132,31 +132,64 @@ confuses the next one.
 ## Desktop (JVM) — fastest way to see the app
 
 ```bash
-./gradlew :composeApp:run   # run in background; window appears in ~30-60s
+./gradlew :composeApp:run   # run in background; window appears in ~30-60s (Gradle daemon +
+                              # compile overhead - NOT representative of a real launch, see below)
 ```
 
-- The window is owned by process `MainKt`, titled `MyWatchList`.
-- **Find the window's real position before screenshotting or clicking** — it may be on a
-  second display (x > 1920). Query CGWindowList (needs no accessibility permission) with a
-  tiny Swift script:
+- The window is owned by process `MainKt` when launched via `:composeApp:run` — but owned by
+  process `MyWatchList` when launched as the real packaged app (below). Match on **both** names
+  or you'll silently find nothing:
 
 ```swift
 import CoreGraphics
 import Foundation
 let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as! [[String: Any]]
 for w in list where (w[kCGWindowLayer as String] as? Int ?? 0) == 0 {
-    let b = w[kCGWindowBounds as String] as! [String: Any]
-    print("\(w[kCGWindowOwnerName as String] ?? "?") | \(w[kCGWindowName as String] ?? "") | \(b)")
+    let owner = w[kCGWindowOwnerName as String] as? String ?? "?"
+    if owner.contains("MyWatchList") || owner.contains("MainKt") {
+        let b = w[kCGWindowBounds as String] as! [String: Any]
+        print("\(w[kCGWindowNumber as String] ?? -1) | \(owner) | \(w[kCGWindowName as String] ?? "") | \(b)")
+    }
 }
 ```
 
+- Query needs no accessibility permission. **Find the window's real position before
+  screenshotting or clicking** — it may be on a second display (x > 1920).
 - Screenshot a region: `screencapture -x -R<x>,<y>,<w>,<h> out.png` (screen recording permission
-  is granted; works across displays).
-- Clicking: `cliclick c:<x>,<y>` exists but **requires macOS Accessibility permission for the
-  terminal app — currently NOT granted**, and osascript System Events is blocked for the same
-  reason. Windows list order from CGWindowList is front-to-back; verify nothing overlaps the
-  target point before clicking, and use global coordinates (second display starts at x=1920).
-- Stop the app with `pkill -f MainKt` before relaunching a new build (old instance keeps running).
+  is granted; works across displays) - but a region capture grabs *whatever's on screen at those
+  pixels*, including another window that's since moved on top (confirmed 2026-08-27: a terminal
+  window overlapping the same coordinates got captured instead of the app). Prefer capturing by
+  window id instead, which captures that window's actual buffer regardless of what's stacked on
+  top of it on screen: `screencapture -x -o -l<windowID> out.png` (window id from the CGWindowList
+  script above).
+- **Real, packaged launch is much faster than `:composeApp:run`** (confirmed 2026-08-27): building
+  and opening the actual `.app` (`./gradlew :composeApp:createDistributable`, then
+  `open composeApp/build/compose/binaries/main/app/MyWatchList.app`) shows a window in **~10s**,
+  vs. `:composeApp:run`'s ~30-60s Gradle/daemon overhead. Use the packaged app, not `run`, for
+  anything timing-sensitive (splash duration, cold-start feel) - `run`'s number isn't a real launch
+  time and will make things look slower/faster than they actually are.
+- **The Compose splash (`core/ui/splash/SplashScreen.kt`) is effectively never visible on desktop
+  in practice** (confirmed 2026-08-27, both via `:composeApp:run` and the real packaged app): the
+  AWT/Skiko window isn't created/shown until Compose has real content ready to paint - there's no
+  OS-level placeholder shown at process start the way Android/iOS show one immediately. Since even
+  the packaged app's ~10s launch is far longer than the splash's own ~1.8s timer, the entire splash
+  sequence completes *before* the window ever becomes visible; the first frame a user actually sees
+  is already the fully-loaded main screen. Not a bug in the splash code - just means it has no
+  practical effect on desktop, worth knowing before spending time trying to screenshot it there.
+- Clicking/dragging: `cliclick c:<x>,<y>` and `osascript ... tell application "System Events"`
+  need macOS Accessibility permission for the terminal app - **granted as of 2026-08-27** (earlier
+  session notes calling this blocked are stale). Windows list order from CGWindowList is
+  front-to-back; verify nothing overlaps the target point before clicking, and use global
+  coordinates (second display starts at x=1920).
+- **Resizing via System Events**:
+  `osascript -e 'tell application "System Events" to tell process "MyWatchList" to set size of window 1 to {W, H}'`
+  (read current with `get size of window 1`). Confirmed 2026-08-27: the window clamps to a
+  **minimum width of ~650px** - requesting narrower (e.g. 350) silently no-ops and leaves it at
+  650. Layout reflows correctly at both the clamped-minimum width (NavigationRail, single-ish
+  column grid) and a wide window (NavigationRail, many-column grid) - no glitches at either extreme.
+- Stop the app with `pkill -f MainKt` (after `:composeApp:run`) or
+  `pkill -f "MyWatchList.app/Contents/MacOS/MyWatchList"` (after the packaged app) before
+  relaunching a new build - old instances keep running otherwise.
 
 ## iOS Simulator — works without any special permissions
 
@@ -241,6 +274,30 @@ adb logcat -d --pid=$(adb shell pidof com.ajinkyabadve.kmmmywatchlist.androidApp
 - Logcat is flooded with `I/View  setRequestedFrameRate` spam - always grep for what you want.
 - HTTP logging only appears if `initLogging()` ran (debuggable builds only, see
   `core/logging/AppLogging.kt`); grep the tag `HTTP Client`.
+
+### Force-firing the episode-notification poll (checklist item 3a)
+
+`TvEpisodeNotificationPoller` runs on a `WorkManager` `PeriodicWorkRequest` (see
+`core/notification/NotificationScheduler.kt`, androidMain) with a 6h interval and no 15-minute-floor
+override - waiting for it to fire naturally isn't practical for verification. Two ways to force it,
+in order of preference:
+
+1. **Debug-only "Poll episode notifications now" row** on the Account screen (`AccountScreen.kt` -
+   only rendered when `isDebugBuild()` is true, i.e. never in a release build). Tap it to call
+   `TvEpisodeNotificationPoller().poll()` directly, bypassing `WorkManager`/`BGTaskScheduler`
+   entirely. Fast and reliable, but only proves the poller+notifier logic, not the scheduling
+   wiring itself.
+2. **Force-run the actual scheduled job via `adb`** (proves the real `WorkManager` path fires) -
+   toggle "Episode notifications" on in Settings at least once first so the job exists, then:
+
+```bash
+adb shell dumpsys jobscheduler | grep -B2 -A20 "com.ajinkyabadve.kmmmywatchlist.androidApp"
+# find the "JOB #<uid>/<jobId>: ..." line for EpisodeNotificationWorker
+adb shell cmd jobscheduler run -f com.ajinkyabadve.kmmmywatchlist.androidApp <jobId>
+```
+
+Re-run the same trigger a second time and confirm no duplicate notification appears - that's the
+dedup ledger (`notificationLedger` table) doing its job, not a fluke of only firing once.
 
 ## JS (browser)
 

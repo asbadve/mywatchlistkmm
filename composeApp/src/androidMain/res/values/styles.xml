@@ -3,4 +3,28 @@
         <item name="android:statusBarColor" >@android:color/transparent</item>
         <item name="android:navigationBarColor" >@android:color/transparent</item>
     </style>
+
+    <!-- Shown by the system from process start until Compose's first draw dismisses it
+         (core-splashscreen's own default timing - AppActivity.onCreate() does not hold it open
+         artificially, after that caused a blank splash on some fast force-kill-then-relaunch
+         cycles). This is the ONLY splash Android shows - the "3b" (Reel spin-up) icon motion runs
+         natively here via splash_icon_animated.xml, not as a second Compose overlay
+         (SplashScreen.kt, commonMain, stays in use on iOS/Desktop/JS only, which have no
+         equivalent native animated-icon API). windowSplashScreenAnimationDuration is still 850 so
+         the icon plays at its intended pace on a device where first draw lands after that point;
+         it may still get cut short on a faster one, but that is a better trade-off than the hold.
+         The wordmark ("MyWatch"/"List" branding image) is added in values-v31/styles.xml, not
+         here - windowSplashScreenBrandingImage is a real API-31+ platform SplashScreen attribute
+         that androidx.core:core-splashscreen's compat theme does not expose at all below that
+         level (confirmed against the library's own attrs - it only ships Background/AnimatedIcon/
+         AnimationDuration/IconBackgroundColor), so this base style covers minSdk 24-30 with
+         icon-only, same as before. -->
+    <style name="Theme.MyWatchList.SplashBase" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_animated</item>
+        <item name="windowSplashScreenAnimationDuration">850</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+    </style>
+
+    <style name="Theme.MyWatchList.Splash" parent="Theme.MyWatchList.SplashBase" />
 </resources>

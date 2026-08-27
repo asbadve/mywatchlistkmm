@@ -45,6 +45,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -64,10 +65,14 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
+import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AccountAvatarButton
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
+import com.ajinkyabadve.kmmmywatchlist.core.ui.splash.SplashScreen
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.ListDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
@@ -142,8 +147,20 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
         }
     CompositionLocalProvider(LocalViewModelStoreOwner provides appViewModelStoreOwner) {
         AppTheme {
-            val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
-            MainAppScreen(windowSize)
+            // Shown once per process launch, ahead of everything else - see SplashScreen's kdoc for
+            // the animation this reproduces. Skipped on Android: usesNativeAnimatedSplash() is only
+            // true there, where the native splash theme (styles.xml, splash_icon_animated.xml)
+            // already played the same "3b" icon reveal itself before this composition even starts -
+            // showing this too would be a second, redundant splash back-to-back with the first.
+            // false, not disposed/removed, once finished: there is deliberately no way back to it
+            // without a fresh process launch.
+            var showSplash by remember { mutableStateOf(!usesNativeAnimatedSplash()) }
+            if (showSplash) {
+                SplashScreen(onFinished = { showSplash = false })
+            } else {
+                val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
+                MainAppScreen(windowSize)
+            }
         }
     }
 }
@@ -152,6 +169,25 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
 fun MainAppScreen(windowSize: WindowSize) {
     val topLevelBackStack = remember { TopLevelBackStack(TrendingKey) }
     val currentKey = topLevelBackStack.backStack.lastOrNull()
+
+    // Fires once per genuinely new tap (see PendingNotificationTarget's kdoc for why it's a
+    // consumed observable rather than a one-shot callback) - re-fires on a later tap even for the
+    // exact same target, since consume() nulls it out in between.
+    val pendingNotificationTarget = PendingNotificationTarget.current
+    LaunchedEffect(pendingNotificationTarget) {
+        when (val target = pendingNotificationTarget) {
+            is EpisodeNotificationTarget -> {
+                topLevelBackStack.add(TvDetailKey(target.tvShowId))
+                topLevelBackStack.add(EpisodeDetailKey(target.tvShowId, target.seasonNumber, target.episodeNumber))
+                PendingNotificationTarget.consume()
+            }
+            is PersonNotificationTarget -> {
+                topLevelBackStack.add(PersonDetailKey(target.personId))
+                PendingNotificationTarget.consume()
+            }
+            null -> Unit
+        }
+    }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val layoutType =

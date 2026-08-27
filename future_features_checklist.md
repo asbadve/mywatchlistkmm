@@ -187,33 +187,231 @@ poll set and per-item "last known state" this item needs is exactly what item 2'
 is meant to hold, instead of re-fetching every favorites/watchlist page from TMDB on each poll.
 
 ### Shared infrastructure checklist:
-- [ ] Platform-specific background scheduler (`expect`/`actual`, mirroring the `WebAuthLauncher`
+- [x] Platform-specific background scheduler (`expect`/`actual`, mirroring the `WebAuthLauncher`
   pattern): WorkManager periodic work (Android), `BGTaskScheduler` (iOS), a JVM scheduled executor
-  (Desktop), skip or best-effort `setInterval` while the tab is open (JS - no background execution
-  there).
-- [ ] Platform-specific local notification poster (`expect`/`actual`): `NotificationManager`
-  (Android, needs a channel + `POST_NOTIFICATIONS` runtime permission on API 33+),
-  `UNUserNotificationCenter` (iOS, needs authorization request), the `Notification` Web API (JS,
-  needs permission prompt), a tray notification or no-op (Desktop).
-- [ ] A "notifications" settings section (ties into item 10 for the permission/settings UI shape)
-  with a master toggle plus one toggle per sub-feature below.
-- [ ] Persist a "last notified" cursor per tracked item (`multiplatform-settings`, same store the
-  auth session already uses) so a poll never re-notifies for something already surfaced.
+  (Desktop), best-effort `setInterval` while the tab is open (JS). Done 2026-08-26 -
+  `core/notification/NotificationScheduler.kt` + per-platform `actual`s.
+- [x] Platform-specific local notification poster (`expect`/`actual`): `NotificationManager`
+  (Android, channel + `POST_NOTIFICATIONS` runtime permission on API 33+),
+  `UNUserNotificationCenter` (iOS, authorization request), the `Notification` Web API (JS,
+  permission prompt), `SystemTray`/`TrayIcon` (Desktop). Done 2026-08-26 -
+  `core/notification/LocalNotifier.kt` + `NotificationPermissionRequester.kt` + per-platform `actual`s.
+  - [x] **Manual follow-up (iOS) - done 2026-08-27.** Xcode's `INFOPLIST_KEY_` synthesis doesn't
+    reliably support custom array keys, so `BGTaskSchedulerPermittedIdentifiers` (needs
+    `com.ajinkyabadve.kmmmywatchlist.episodePoll`, matching `IosNotificationSchedulerConstant.TASK_IDENTIFIER`
+    in `NotificationScheduler.kt`, iosMain) has to be added by hand under the `iosApp` target's Info
+    tab in Xcode. `UIBackgroundModes` (fetch/processing) was added via pbxproj and doesn't need this.
+    Without this, `BGTaskScheduler.sharedScheduler().submitTaskRequest(...)` will fail silently and
+    the poll will only ever run via the debug-only "Poll episode notifications now" row, never in
+    the background.
+- [x] A "notifications" settings section: one toggle ("Episode notifications", off by default) on
+  `AccountScreen` for 3a - `NotificationSettingsRepository`. A master toggle only becomes relevant
+  once 3b/3c exist too.
+- [x] Persist a "last notified" cursor per tracked item: `notificationLedger` SQLDelight table,
+  keyed `(id, mediaType, reason)` so a poll never re-notifies for the same reason+cursor value.
+- [x] **In-context opt-in prompt — DONE (2026-08-26).** Designed first as a Claude artifact
+  ("Episode Alerts Prompt", built from the app's real `theme/Color.kt` M3 tokens) before
+  implementation, per the same design-first pass the app icon got. The first time a TV show is
+  favorited or watchlisted while `NotificationSettingsRepository.isEpisodeNotificationsEnabled()`
+  is still false, `MediaActionButtonsSection` shows `EpisodeAlertOptInDialog` (an `AlertDialog`,
+  matching `AddToListDialog`'s existing pattern rather than introducing `ModalBottomSheet`) with
+  the show's name substituted into the copy. `MediaActionsState.shouldPromptForEpisodeAlerts`
+  (a `StateFlow<Boolean>`) is the trigger - set on `toggleFavorite`/`toggleWatchlist` only when
+  the new value is `true` and `mediaType == MediaTypeConstant.TV`, so movies and turning
+  favorite/watchlist *off* never fire it. `NotificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt`/
+  `markEpisodeAlertOptInPromptSeen` (new `multiplatform-settings` key) gate it to once ever,
+  regardless of which action (confirm or "Not now") the user takes. Confirming calls
+  `rememberNotificationPermissionRequester().request()` then `setEpisodeNotificationsEnabled(true)`
+  + `NotificationScheduler.schedule()` - the identical pair the Account row's toggle already
+  calls, just reached from a second entry point. `MediaActionButtonsSection` gates the whole
+  feature on a new `tvShowName: String?` parameter (only ever passed non-null from
+  `TvDetailScreen`, via `TvDetail.title`) so movies structurally can't show it even if the state
+  flow somehow flipped. Unit tests in `MediaActionsStateTest`/`NotificationSettingsRepositoryImplTest`,
+  Compose UI tests in `MediaActionButtonsUiTest` (prompt shows on TV favorite/watchlist, never on
+  movie, both actions mark it seen and close it). Generalizing to 3b/3c can reuse the same
+  `shouldPromptForEpisodeAlerts` shape once those features have their own trigger points.
 
-### 3a. Returning series - new/upcoming episode
+### 3a. Returning series - new/upcoming episode — DONE (2026-08-26)
 **Relevant OAS endpoints**: `GET /3/tv/{series_id}` (`status`, `next_episode_to_air.air_date`) for
 watchlisted/favorited shows; `GET /3/tv/{series_id}/changes` as a cheaper diff signal.
-- [ ] Poll each favorited/watchlisted TV show's `next_episode_to_air`; notify once when a new
-  episode's air date is newly announced, and again on the air date itself.
-- [ ] Skip shows with `status == "Ended"` / `"Canceled"` entirely once known, so they age out of
-  the poll set.
+- [x] Poll each favorited/watchlisted TV show's `next_episode_to_air`; notify once when a new
+  episode's air date is newly announced, and again on the air date itself -
+  `TvEpisodeNotificationPoller`.
+- [x] Skip shows with `status == "Ended"` / `"Canceled"` entirely once known, so they age out of
+  the poll set (zero network calls once `lastKnownStatus` records it).
+- [x] **Group notifications by TV series (Android) - done 2026-08-26.** Both reasons for the same
+  show (`episode_announced` and `episode_airing`, which can both fire in the same poll cycle) now
+  share one `NotificationCompat` group key (`LocalNotifier.kt` androidMain,
+  `AndroidNotificationConstant.GROUP_KEY_PREFIX + tvShowId`), with a summary notification per show
+  so Android actually stacks them instead of showing two separate top-level entries. iOS/Desktop/JS
+  don't group yet - `UNNotificationContent.threadIdentifier` is the iOS equivalent if this is
+  wanted there too, not yet done.
+- [x] **Episode/show poster image on the notification - done 2026-08-26.** `TvEpisodeNotificationPoller`
+  resolves the episode's still image (falling back to the show's poster if no still exists) via
+  `ImageConfigResolver` and passes it through `LocalNotifier.post`'s new `posterUrl` param -
+  `NotificationImageFetcher` (commonMain) does the actual best-effort download, shared by the
+  platforms that render it inline. Android: `NotificationCompat.BigPictureStyle` (decoded via
+  `BitmapFactory`). iOS: `UNNotificationAttachment` (image written to a temp file first, since the
+  API only accepts a file URL, not raw data). JS: passed straight through as the `Notification` Web
+  API's `icon`/`image` options - the browser fetches it itself, no download needed on this side.
+  Desktop: not supported - `java.awt.TrayIcon.displayMessage` has no image parameter at all
+  (AWT/Swing tray balloons are text-only). Any failure at any step (download, decode, temp-file
+  write, attachment construction) silently falls back to the existing text-only notification rather
+  than losing the notification entirely - not yet covered by a dedicated test (the failure path is
+  straightforward but the happy path needs a real device/simulator to see rendered).
+- Verification: `TvEpisodeNotificationPollerTest` (commonTest) covers the dedup/aging/per-show
+  exception-isolation cases. Real-device confirmation not yet done - see `run-app` skill's "Force-
+  firing the episode-notification poll" section for the adb/debug-row steps.
+- [x] **Follow-up: tap-to-episode deep link — DONE (2026-08-26)**. Tapping the notification now
+  opens the TV show's detail screen and then the specific episode. `EpisodeNotificationTarget`
+  (commonMain, `core/notification/NotificationDeepLink.kt`) carries `(tvShowId, seasonNumber,
+  episodeNumber)` through `LocalNotifier.post`'s new `deepLink` param, populated from
+  `TvEpisodeNotificationPoller`'s `detail.nextEpisodeToAir`. `PendingNotificationTarget` is
+  the observable holder `App.kt`'s `MainAppScreen` watches to push `TvDetailKey` then
+  `EpisodeDetailKey`. Per-platform tap wiring: Android - `PendingIntent` extras read back in
+  `AppActivity.handleNotificationIntent()` (mirrors `AndroidAuthCallbackHandler`'s intent-handling
+  shape); iOS - `UNNotificationContent.userInfo`, read by `NotificationTapDelegate`
+  (`UNUserNotificationCenterDelegateProtocol`, registered in `Main.kt`'s `MainViewController()`);
+  JS - `Notification.onclick` (works since the app is already running - no cold-launch case);
+  Desktop - `TrayIcon`'s single action listener approximates "most recently posted" (SystemTray has
+  no per-message click callback). Verification: `PendingNotificationTargetTest` (commonTest)
+  covers the observable set/consume/re-tap semantics.
+  - [ ] **Known bug (Desktop only, confirmed 2026-08-27): clicking the notification banner itself
+    does not deep-link.** `java.awt.TrayIcon`'s `ActionListener` reliably fires when the *tray icon*
+    in the menu bar is clicked, but does not reliably fire when the transient notification banner
+    is clicked - this is a documented cross-platform AWT limitation, not a bug in this app's code
+    (see [JDK-7029240](https://bugs.java.com/bugdatabase/view_bug?bug_id=7029240) and
+    [JDK-8146537](https://bugs.openjdk.org/browse/JDK-8146537)). Plain AWT has no per-notification
+    click callback at all. Real-device confirmation of Android/iOS/JS tap-to-episode is still not
+    done either.
+  - [ ] **Future: replace `java.awt.TrayIcon` with [ComposeNativeTray](https://github.com/kdroidFilter/ComposeNativeTray)**
+    to fix the bug above - it wraps native tray/notification APIs per OS and exposes a primary-
+    action callback that macOS/Windows actually fire on a notification-banner click, unlike AWT.
+    Also would unlock desktop poster images (`posterUrl` currently unsupported on this platform,
+    see the poster-image item above) if the library's notification API accepts one. Not started -
+    requires adding the dependency and rewriting `desktopMain`'s `LocalNotifier.kt`.
 
-### 3b. Favorite actor/person - new credit announced
+### 3b. Favorite actor/person - new credit announced — DONE (2026-08-26)
 **Relevant OAS endpoints**: `GET /3/person/{person_id}/combined_credits` (diff against the last
 poll's credit ID set); `GET /3/person/{person_id}/changes`.
-- [ ] Needs "favorite person" to exist as a concept first (see the dependency note above).
-- [ ] Poll each favorited person's combined credits; notify on any new movie/TV credit id not seen
-  on the previous poll, deep-linking the notification to that title's detail screen.
+
+**TMDB API check, ground-truthed against the live OpenAPI docs before building anything**: TMDB has
+**no account-level favorite/follow API for people** - `POST /3/account/{account_id}/favorite`'s own
+spec says "mark a movie or TV show as a favourite," and the endpoint index lists only Favorite
+Movies/Favorite TV (same for ratings: Rated Movies/TV/TV Episodes, no Rated People). So favoriting
+a person is **local-only, does not sync across devices** - a new `favoritePerson` SQLDelight table
+(`MyDatabase.sq`), not a `trackedMedia` row (people aren't media, nothing to sync from a GET).
+- [x] "Favorite person" concept: `FavoritePersonRepository` (local SQLite, `observeIsFavorite`
+  Flow-backed) + `FollowPersonButton` on `PersonHeroSection` (pure composable, no repository -
+  `PersonDetailScreenModel` owns the repository, per code-conventions §6/§7/§8).
+- [x] `PersonCreditNotificationPoller` polls each favorited person's `combined_credits`
+  (`PersonRepository.getPersonDetails` already appends it) and notifies on any credit id not seen
+  on the previous poll, via the same `NotificationLedgerRepository`/`NotificationScheduler`/
+  `LocalNotifier` infrastructure 3a built (`NotificationReason.PERSON_NEW_CREDIT`) - one shared
+  periodic job/permission/setting covers both 3a and 3b, not a second toggle.
+- [x] In-context notification opt-in prompt for following a person too (requested 2026-08-26,
+  mirrors 3a's own follow-up): `NotificationOptInDialog` (renamed/generalized from
+  `EpisodeAlertOptInDialog`, now a shared shell taking plain `title`/`body` strings) shows on the
+  first person followed while notifications are off, same `NotificationSettingsRepository`
+  seen-flag/permission-request/`NotificationScheduler.schedule()` sequence as the TV prompt.
+  `AccountScreen`'s "Poll episode notifications now" debug row already resets/polls both 3a and 3b
+  together (shared `notificationLedger`), and the debug "reset opt-in prompt" row now covers both
+  the TV and person prompts too (one shared seen-flag).
+  **Revised 2026-08-27** after it was observed firing on screen *load* instead of on the Follow
+  click: the trigger was originally a ViewModel-owned `StateFlow`
+  (`PersonDetailScreenModel.shouldPromptForNotificationOptIn`, mirroring
+  `MediaActionsState.shouldPromptForEpisodeAlerts`), but `viewModel(key = "PersonDetailScreenModel:
+  $personId")` can outlive a single screen visit - this app's `NavDisplay` has no per-entry
+  `ViewModelStore` scoping, unlike a plain class such as `MediaActionsState` that's rebuilt fresh
+  by its owning ScreenModel each time. A flag living on that ViewModel risked surfacing on a later,
+  click-free revisit. Fixed by making `toggleFollowPerson` return whether the call just turned
+  following ON, and deciding whether to show the dialog directly at the click site in
+  `PersonDetailScreen` (a local `remember { mutableStateOf(false) }`), never via a persisted flag -
+  see `toggleFollowPerson`'s kdoc. The permission-requester/coroutine-scope hoisting fix TV's prompt
+  needed (see `MediaActionButtonsSection`'s kdoc) still applies here at `PersonDetailScreen`'s top
+  level, same reasoning.
+- [x] Local-only-storage caveat (requested 2026-08-27): since following a person is never synced to
+  TMDB (unlike movie/TV favorites), the user needs to be told so explicitly, not just left to
+  discover it - `FollowPersonButton` shows a small caption once followed
+  ("Saved on this device only..."), and the new Favorites sub-tab below shows the same caveat
+  unconditionally. The Follow button itself was never gated behind a signed-in session to begin
+  with (nothing here needs `AccountId`/`sessionId`), so it already showed the same regardless of
+  login state - this only adds the explanation, not a behavior change.
+- [x] "Favorites" sub-tab on the Person destination (requested 2026-08-26), alongside the existing
+  "Popular" sub-tab: `PersonScreenTab` now renders a `PillTabRow` (the same tab chrome
+  `MovieScreenTabs`/`MyFavTabs` use) with both. `FavoritePersonRepository.observeFavoritePeople()`
+  (new, reactive, most-recently-followed first) feeds `PersonFavoritesTab`, which reuses the exact
+  same `mediaPersonRow` grid item the Popular sub-tab already renders with - deliberately not a new
+  icon/card style, so both grids are visually identical (the consistency this was explicitly asked
+  for). Empty state uses the same heart-outline icon language as `FollowPersonButton`.
+  **Also surfaced (2026-08-27) while building this**: JetBrains' Compose Multiplatform string
+  resource compiler does not unescape `\'` the way Android's `aapt` does - it renders the literal
+  backslash. Every `strings.xml` apostrophe added across this session's work used that escape and
+  was silently wrong until a Compose UI test asserted the exact string; fixed by writing apostrophes
+  bare (valid XML element content, no escaping needed there at all) and documented in
+  code-conventions §2 so it isn't reintroduced.
+- [x] **Fixed 2026-08-27: first poll after following someone notified once per existing credit.**
+  `lastKnownCreditIds` starts `null` (never polled); the diff was against an empty set on that
+  first poll, so every credit a person already had - their whole filmography, for anyone prolific -
+  counted as "new" and notified. `PersonCreditNotificationPoller.pollOne` now treats a `null`
+  baseline as seed-only: it records the current credit set and returns without notifying for any
+  of it. Only credits that appear on a *later* poll, after that baseline exists, ever notify - the
+  intended "let me know when they book something new" behavior, not "list everything they've ever
+  done." `PersonCreditNotificationPollerTest` covers this explicitly
+  (`testFirstPollAfterFollowingSeedsBaselineWithoutNotifying`).
+- [x] **Split the debug testing rows 2026-08-27** (requested, so TV and person notification
+  testing don't interfere): `AccountScreen`'s single combined "Poll episode notifications now" row
+  is back to TV-only, unchanged from before 3b touched it. A new, separate "Poll person
+  notifications now" row does the 3b equivalent. Needed a real fix underneath, not just a UI split:
+  `NotificationLedgerRepository.clearAllForDebug()` (whole-table wipe) became
+  `clearForReasonForDebug(reason)` so each row only ever clears its own reason's dedup rows, never
+  the other's. And `FavoritePersonRepository.resetAllCreditStateForDebug()` had to stop resetting
+  to `NULL` - under the first-poll-seeds-only fix above, a `NULL` reset would make the debug row
+  silently re-baseline instead of forcing a notification, defeating its purpose - it resets to `""`
+  instead (a real but empty baseline, so every current credit counts as new on the next poll). See
+  `MyDatabase.sq`'s `favoritePerson` table kdoc for the `NULL`-vs-`""` distinction this now depends on.
+- [x] **Group notifications by person id, Android, 2026-08-27** (requested - same behavior 3a's
+  episode notifications already had per show, just missing for 3b): `LocalNotifier`'s Android
+  actual now computes a group key for `PersonNotificationTarget` too
+  (`PERSON_GROUP_KEY_PREFIX + personId`, a distinct prefix from TV's so a person id and a tvShowId
+  that happen to be numerically equal can never merge into one stack), with its own group-summary
+  title ("New credits" vs. TV's "Episode updates"). Several new credits for the same favorited
+  person now collapse into one expandable stack instead of flooding the notification shade one row
+  each. iOS has no grouping mechanism at all yet for *either* notification kind (no
+  `UNNotificationContent.threadIdentifier` set) - a pre-existing gap, not something this pass
+  introduced or was asked to close.
+- [x] **Fixed 2026-08-27: the person debug-test row itself was the "too many notifications" cause
+  the grouping work above didn't fully explain.** Real-world traffic was already minimal (0 or 1
+  new credit per person per ~6h poll, thanks to the first-poll-seeds-only fix above) - but
+  `resetAllCreditStateForDebug()` reset every favorited person's baseline to `""` (empty, not
+  `null`), which makes *every current credit* look new at once on the next poll - by design, back
+  when a person's dedup state only had two values worth distinguishing. For someone with a real
+  filmography that's still dozens of notifications per tap. Replaced with
+  `PersonCreditNotificationPoller.seedOneNewCreditForDebug()`: it fetches each favorited person's
+  actual current credits and holds back exactly one, so the debug row's forced poll notifies once
+  per person - never once per credit - matching the one-notification-per-tap shape
+  `resetAllTvPollStateForDebug` already gives TV (which never had this problem since a show only
+  ever has one next episode at a time). `resetAllCreditStateForDebug()` and its SQL query
+  (`clearAllFavoritePersonCreditIdsForDebug`) were removed as dead code, not just deprecated.
+- [x] Tap-to-navigate deep link, Android + iOS (confirmed 2026-08-26 not to include Desktop/JS):
+  `NotificationTarget` is now a `sealed interface` (`EpisodeNotificationTarget`/
+  `PersonNotificationTarget`, `NotificationDeepLink.kt`) - a 3b notification carries
+  `PersonNotificationTarget(personId)` and a tap opens that person's detail screen
+  (`PersonDetailKey`, `App.kt`'s `MainAppScreen`). Desktop's `TrayIcon` and JS's
+  `Notification.onclick` actuals only ever act on `EpisodeNotificationTarget` - a deliberate scope
+  decision (Desktop already had this limitation for 3a; JS matched it to stay consistent), not a
+  capability gap - both platforms still show the notification either way.
+- [ ] **Deferred, separate pass: optional cross-device sync.** TMDB can't carry this, so syncing a
+  favorited-person list across a user's devices needs this app's own small backend keyed by their
+  TMDB `account_id`. Evaluated cheap/open-source options (2026-08-26): **Supabase** (open-source,
+  Postgres + plain-HTTP REST reachable from every KMM target with no native SDK; free tier is 500MB
+  DB/50k MAU, but auto-pauses a project after 7 days with no traffic) vs. **PocketBase**
+  (single-binary, fully open-source, self-hosted - $0 indefinitely on Fly.io's free 1GB-volume tier
+  or Oracle Cloud's Always-Free tier, no auto-pause, but you own uptime/backups/TLS yourself;
+  Render's free tier does *not* work for it, no persistent storage). Recommendation if/when built:
+  PocketBase on Fly.io - the sync payload (a handful of person ids per user) doesn't need Supabase's
+  managed-Postgres muscle, and $0-with-no-pause suits a personal project better than a managed DB
+  that needs to stay warm.
 
 ### 3c. New movie added to a favorited collection
 **Relevant OAS endpoints**: `GET /3/collection/{collection_id}` (`parts[]`, diffed by id).
@@ -504,3 +702,155 @@ user-adjustable.
     `RegionScreenModel`. Each region row shows a flag emoji
     (`core/format/RegionFlag.kt`'s `toRegionFlagEmoji()`, built from Unicode Regional Indicator
     Symbols - no bundled flag images).
+
+## 12. Animated Splash Screen — DONE (2026-08-27)
+**Design source**: the MyWatchList Logo design file -
+https://claude.ai/design/p/64719451-d56e-493e-b87e-c7dfc863c6cc?file=MyWatchList+Logo.dc.html&via=share
+(see [[design-artefact-links]] memory) - read in full via the `claude_design` MCP
+(`DesignSync`/`get_file` on `MyWatchList Logo.dc.html`, projectId `64719451-d56e-493e-b87e-c7dfc863c6cc`,
+type `PROJECT_TYPE_PROJECT`) after a plain `WebFetch` 403'd on the auth-gated `claude.ai/design/...`
+URL.
+
+**The "3b" animation ("Reel spin-up")**, exact spec pulled from the file's `<style>`/markup - this
+is authoritative, no need to re-open the design file at implementation time:
+- **Icon** (the mint rounded-square M-monogram glyph, 76×76 in a 100×100 viewBox, `rx=18`, fill
+  `#5BFFA1`, glyph path fill `#0d0e12`): animates in via `mwlB-reel`, 0.85s
+  `cubic-bezier(.2,.9,.2,1)`, `from { opacity:0; transform:rotate(-14deg) scale(.8) }` through a
+  60%-keyframe overshoot `{ opacity:1; transform:rotate(4deg) scale(1.04) }` settling to
+  `{ opacity:1; transform:rotate(0) scale(1) }`.
+- **Sprocket holes** (two vertical cutout strips at x=18/x=74, each a column of seven rounded-rect
+  "holes", `#0d0e12` at opacity `.22`, clipped to `x=18/74,y=20,w=8,h=60,rx=3`): continuously roll
+  the whole time via `mwl-roll` (`translateY(0)` → `translateY(-24px)`), 0.3s linear infinite - left
+  strip plays forward, right strip plays the same keyframes in `reverse`.
+- **Wordmark "MyWatch"** (Sora 800, `-.02em` letter-spacing at rest, color inherits page text
+  `#e8eaf0`): `mwlB-fade`, 0.7s `ease-out`, delay 0.5s - `from { opacity:0; letter-spacing:.18em }`
+  to `{ opacity:1; letter-spacing:-.02em }` (starts wide-tracked and tightens as it fades in).
+- **Wordmark "List"** (same face/weight, color `#5BFFA1`): `mwlB-drop`, 0.7s
+  `cubic-bezier(.2,.9,.2,1)`, delay 0.85s - drops from `translateY(-38px)` opacity 0, overshoots
+  slightly past rest at the 70% keyframe (`translateY(4px)` opacity 1), settles to `translateY(0)`.
+- **Total sequence**: icon settles ~0.85s in; "MyWatch" fade completes ~1.2s; "List" drop completes
+  ~1.55s - call it a ~1.6s hero beat before whatever gates the splash's dismissal (see below).
+  Background in the design file is `radial-gradient(circle at 50% 42%, #15211a, #0d0e12)` on
+  near-black `#0d0e12` - matches this app's actual dark M3 tokens closely
+  (`md_theme_dark_background = #191C19`, `md_theme_dark_surface = #111411`) but isn't identical;
+  reconcile against the real tokens (`theme/Color.kt`) rather than hardcoding the design file's
+  literal hex values, same as every other design-artifact-to-app pass in this project.
+- Compare/contrast in the source file for context (not being requested): "3a" (Feed & settle - both
+  icon halves slide in from opposite sides) and "3c" (Projector wipe - horizontal lockup revealed by
+  a clip-path mask plus a full-bleed mint flash) sit alongside 3b as the other two options shown;
+  3b is the one explicitly chosen.
+
+**Implementation** (confirmed with the user: fixed ~1.8s dismiss, not gated on data load; native
+pre-launch frame where a platform genuinely has one, shared Compose splash everywhere):
+- [x] `core/ui/splash/SplashScreen.kt` (commonMain) - Compose `Animatable`/`tween` sequence
+  reproducing the icon rotate/scale/opacity reveal (`CubicBezierEasing(0.2f,0.9f,0.2f,1f)` matching
+  the design file's own curve) and the two-part wordmark reveal, via a small `keyframeValue()`
+  helper that linearly interpolates between the design file's percentage-keyframe stops once
+  `progress` itself has been eased - the same two-step model a browser uses to resolve a CSS
+  keyframe animation. Colors from `theme/Color.kt`'s real dark tokens, not the design file's literal
+  hex; typography is the app's own `FontFamily.Default`, not the design file's Sora (not bundled
+  anywhere else in this app). **Simplification, not yet built**: the moving sprocket-hole strips -
+  they're baked as static cutouts into the reused `app_icon` drawable already, and an animated
+  overlay in exact registration with that baked-in artwork isn't something buildable with confidence
+  without an on-device visual check this environment can't do; the icon's own reveal and the
+  wordmark drop are 3b's primary identity and are reproduced in full. `isReducedMotionEnabled()`
+  (new `expect`/`actual` in `PlatformUtil.kt`, mirrors `isDebugBuild()`'s shape) skips straight to
+  the settled end-state - real on Android (`ANIMATOR_DURATION_SCALE`), iOS
+  (`UIAccessibilityIsReduceMotionEnabled`), and JS (`prefers-reduced-motion` media query); `false`
+  on desktop, no JVM-wide equivalent exists. Wired into `App()` (`App.kt`) ahead of `MainAppScreen`.
+- [x] **Android native pre-splash, superseded (2026-08-27) by a native-*animated* splash**: the
+  original pass (`androidx.core:core-splashscreen` + `Theme.MyWatchList.Splash` +
+  `installSplashScreen()`) showed a static icon natively, then handed off to the Compose
+  `SplashScreen` above for the animation - visually two splashes back-to-back, confusing on-device.
+  Fixed by moving the "3b" icon reveal (rotate/scale, plus a one-shot sprocket-hole pull) into the
+  native splash itself, as a real `AnimatedVectorDrawable`
+  (`res/drawable/splash_icon_animated.xml`, targeting `res/drawable/splash_icon.xml` - hand-converted
+  from the design team's layered SVG export, `mwl_splash_icon_288_layered.svg`, since AVD requires
+  vector path data, not the PNG `app_icon`), set as `windowSplashScreenAnimatedIcon` with
+  `windowSplashScreenAnimationDuration=850` (`values/styles.xml`). `App()` (`App.kt`) skips the
+  Compose `SplashScreen` entirely on Android (`usesNativeAnimatedSplash()`, new `expect`/`actual`,
+  true only on Android) - Android now shows exactly one splash. iOS/Desktop/JS are unaffected (no
+  native animated-icon API to hand off to on any of them) and keep the Compose splash, wordmark
+  included, since the native icon-only API has no surface for text (see below, though - Android
+  gets a static version of it another way). The native AVD has no looping sprocket roll (one-shot
+  only, per the SVG export's own conversion notes) and no icon fade-in (`<group>` has no alpha
+  property in VectorDrawable) - both stay Compose-only polish on the other three platforms.
+  - `AppActivity.onCreate()` originally held the native splash on screen via
+    `setKeepOnScreenCondition` for the full 850ms so the animation couldn't get cut short by an
+    early Compose first-draw - **reverted (2026-08-27)**: this caused a blank splash on some fast
+    force-kill-then-relaunch cycles (confirmed on the `sdk_gphone16k_arm64` emulator specifically,
+    not the Galaxy S24 physical device - see the `SurfaceView`-based icon rendering note below).
+    `installSplashScreen()` now dismisses at Compose's default first-draw timing again; the icon
+    may occasionally get cut short on a very fast device, a smaller cost than a blank launch.
+  - **Wordmark ("MyWatch"/"List")**: added via `windowSplashScreenBrandingImage`
+    (`res/values-v31/styles.xml`) - this is a real platform-only SplashScreen attribute
+    (`android:windowSplashScreenBrandingImage`, API 31+) that `androidx.core:core-splashscreen`'s
+    compat theme does not expose at all below that level (confirmed against the library's own
+    `attrs.xml` - only `Background`/`AnimatedIcon`/`AnimationDuration`/`IconBackgroundColor`
+    exist there), so it lives in a `values-v31` override rather than the base
+    `Theme.MyWatchList.SplashBase`, and devices on API 24-30 fall back to icon-only, same as
+    before. `res/drawable-xhdpi/splash_branding_asset.png` is a rasterized PNG (not a vector -
+    there's no text-layout primitive in `<vector>`/AVD path data), rendered with
+    `java.awt.Graphics2D` (`SansSerif` Bold, the app's own
+    `md_theme_dark_onBackground`/`onPrimaryContainer` colors, not a design-file asset) since no
+    image-editing tool was available in the dev environment. Static only, like the icon - no
+    fade/drop animation, unlike the Compose splash's wordmark reveal.
+    - `windowSplashScreenBrandingImage` stretches whatever drawable it's pointed at to fill the
+      slot's full width by default - fixed by wrapping the PNG in `res/drawable/splash_branding.xml`
+      (a `<bitmap>` with `android:gravity="center"`, referencing the PNG renamed to
+      `splash_branding_asset`) so the platform draws it at intrinsic size instead. That alone just
+      traded stretching for cropping, though (a `<bitmap>` has no fit-to-bounds scaling, only
+      positioning) - the actual fix was shrinking the source PNG itself (fontSize 96 to 48, ~358px
+      wide at xhdpi = ~179dp) to fit inside the branding slot's real width (~200dp) at intrinsic
+      size with no scaling needed either way.
+  - **Known emulator-only flakiness**: `windowSplashScreenAnimatedIcon` renders through a
+    dedicated `SurfaceView` (confirmed in logcat: `Creating surface for consumer ... SurfaceView
+    [Splash Screen ...]`), which has documented blank-frame timing quirks on software-rendered
+    emulator GPU paths. Reproduced intermittently on `sdk_gphone16k_arm64` (force-kill via Settings
+    "App info" then reopen); could **not** be reproduced across 10+ consecutive kill/relaunch
+    cycles on a real Galaxy S24 (SM-S921B, API 36). Left as-is - real devices are unaffected.
+- [x] **iOS native pre-launch screen** (was missing entirely - no `UILaunchScreen`/
+  `UILaunchStoryboardName` key existed in `Info.plist` before this): added a `UILaunchScreen`
+  Info.plist dict (the modern, storyboard-free mechanism) pointing at new `LaunchIcon`/
+  `LaunchBackground` asset-catalog entries (`Assets.xcassets`) - static only, since Apple doesn't
+  allow custom animation during the traditional launch screen. Confirmed working end-to-end on the
+  iPhone 15 Pro Max simulator (2026-08-27): native launch screen -> Compose `SplashScreen` (icon +
+  wordmark reveal) -> `MainAppScreen`, no gaps.
+  - **Fixed (2026-08-27)**: `LaunchIcon` initially rendered stretched full-bleed across the whole
+    screen instead of small and centered - `LaunchIcon.png` had been copied straight from
+    `AppIcon.appiconset/AppIcon-1024.png` (1024x1024px) with no `scale` in its `Contents.json`.
+    Two things were needed: (1) the source PNG itself had to be resized down to its actual intended
+    display size (180x180px, via `sips -Z 180`) - `UIImageName` renders at literal pixel-size-as-
+    points with no retina-aware scale lookup the way normal `UIImage(named:)` loading does, so a
+    1024px source is 1024pt on screen regardless of any declared `scale` metadata (confirmed by
+    testing `scale:3x` in isolation first - zero visual effect); and (2) after resizing the file,
+    the simulator kept showing the *old* stretched render even through a clean `xcodebuild` +
+    uninstall/reinstall cycle - iOS caches the compiled launch-screen render at the system
+    (SpringBoard) level per bundle ID and does not reliably invalidate it on reinstall alone; a full
+    `xcrun simctl shutdown` + `boot` of the simulator was required to see the fix take effect. Worth
+    remembering for any future launch-screen asset change: reinstalling is not enough to verify one
+    on a simulator that already ran an earlier build.
+- [x] **Desktop/JS**: no native pre-load mechanism wired up - Compose Desktop's `nativeDistributions`
+  DSL has no clean hook for the JVM's `SplashScreen`-image mechanism, and Wasm/JS has no true browser
+  splash API (just the `index.html`-static-loader convention). Both get the shared Compose
+  `SplashScreen` as their first rendered content and nothing more; a JVM splash image or a static
+  web loader remain possible, separate future enhancements, not built here.
+- [x] Test: `SplashScreenUiTest` (Compose UI test) - wordmark renders; `onFinished` fires after a
+  short injected `durationMillis`.
+
+## 13. Small Increments (Quick Wins)
+Backlog for small, self-contained polish items - each one scoped small enough not to need its own
+full OAS-endpoints/implementation-checklist writeup ahead of time; add detail once one is actually
+picked up.
+
+### 13.1. Show the resolved region on the detail screen's "Where to watch" section
+**Goal**: [[feature-region-selector-done]] added a user-selectable region (`AccountScreen`'s
+"Region"/"Default fallback region" rows, `RegionRepository`) that drives which watch-provider list
+`MovieHeroSection`/`TvHeroSection`'s "Where to watch" resolves against
+(`WatchProvidersResponse?.resolveRegion()`, `MovieHeroFacts.kt`) - but the detail screen never shows
+*which* region that list came from. A user with an unfamiliar/empty-looking provider list (e.g. the
+fallback region kicked in, not their selected one) has no way to tell why without opening Account
+settings and checking. Small addition: surface the resolved region (flag emoji +
+name/code, matching `RegionPickerDialog`'s row style) next to/above the "Where to watch" row on both
+Movie and TV detail screens, using the same `resolveRegion()` call already made there - showing
+which of the two configured regions (selected vs. fallback) actually matched, not just the code.
