@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.ResolvedRegionLabel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.WatchProvider
 import com.ajinkyabadve.kmmmywatchlist.openUrl
@@ -418,6 +419,7 @@ private fun WhereToWatchSection(
     fallbackRegionCode: String,
 ) {
     val region = detail.watchProviders.resolveRegion(regionCode, fallbackRegionCode) ?: return
+    val resolvedRegionCode = detail.watchProviders.resolveRegionCode(regionCode, fallbackRegionCode)
     val groups =
         listOf(
             "Stream" to region.flatrate,
@@ -429,12 +431,21 @@ private fun WhereToWatchSection(
     if (groups.isEmpty()) return
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Text(
-            text = stringResource(Res.string.section_where_to_watch),
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.section_where_to_watch),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            )
+            resolvedRegionCode?.let { code ->
+                ResolvedRegionLabel(regionCode = code, color = MaterialTheme.colorScheme.onBackground)
+            }
+        }
         groups.forEach { (label, providers) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,

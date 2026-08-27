@@ -843,14 +843,29 @@ Backlog for small, self-contained polish items - each one scoped small enough no
 full OAS-endpoints/implementation-checklist writeup ahead of time; add detail once one is actually
 picked up.
 
-### 13.1. Show the resolved region on the detail screen's "Where to watch" section
+### 13.1. Show the resolved region on the detail screen's "Where to watch" section — DONE (2026-08-27)
 **Goal**: [[feature-region-selector-done]] added a user-selectable region (`AccountScreen`'s
 "Region"/"Default fallback region" rows, `RegionRepository`) that drives which watch-provider list
 `MovieHeroSection`/`TvHeroSection`'s "Where to watch" resolves against
 (`WatchProvidersResponse?.resolveRegion()`, `MovieHeroFacts.kt`) - but the detail screen never shows
 *which* region that list came from. A user with an unfamiliar/empty-looking provider list (e.g. the
 fallback region kicked in, not their selected one) has no way to tell why without opening Account
-settings and checking. Small addition: surface the resolved region (flag emoji +
-name/code, matching `RegionPickerDialog`'s row style) next to/above the "Where to watch" row on both
-Movie and TV detail screens, using the same `resolveRegion()` call already made there - showing
-which of the two configured regions (selected vs. fallback) actually matched, not just the code.
+settings and checking.
+
+**Implementation**:
+- [x] `WatchProvidersResponse?.resolveRegionCode()` (`MovieHeroFacts.kt`) - a sibling to the
+  existing `resolveRegion()`, same selected-then-fallback-then-any priority, but returning just the
+  region code that won so the UI can label it.
+- [x] `ResolvedRegionLabel(regionCode, color)` (`core/ui/hero/HeroComponents.kt`, shared since both
+  Movie and TV detail screens need it) - renders `"🇺🇸 US"` via the existing
+  `toRegionFlagEmoji()`. **Simplified from the original plan**: code + flag only, not the full
+  region name ("United States") or an explicit "(fallback)" label - a full name would need
+  `RegionRepository.getAvailableRegions()`, a suspend/cached call neither `MovieDetailScreenModel`
+  nor `TvDetailScreenModel` otherwise depends on, judged out of scope for a quick win.
+- [x] Wired into `MovieMetaSection.kt`'s `WhereToWatchSection` (trailing label next to the "Where to
+  watch" header) and `TvHeroSection.kt` (below the hero's provider-chip row, since TV has no
+  separate "Where to watch" section the way Movie does - just the inline hero chips).
+- [x] Verified on the desktop build: Movie (`Under Siege`, 1992) shows "🇺🇸 US" next to the header;
+  TV (`Reacher`) shows "🇮🇳 IN" under the chips. Confirmed the label correctly stays hidden when a
+  title has no watch-provider data at all (e.g. an unreleased movie) - same as the section itself
+  already did before this change.
