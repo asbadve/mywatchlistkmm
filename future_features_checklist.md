@@ -703,13 +703,13 @@ user-adjustable.
     (`core/format/RegionFlag.kt`'s `toRegionFlagEmoji()`, built from Unicode Regional Indicator
     Symbols - no bundled flag images).
 
-## 12. Animated Splash Screen — NOT STARTED, spec captured (requested 2026-08-27)
+## 12. Animated Splash Screen — DONE (2026-08-27)
 **Design source**: the MyWatchList Logo design file -
 https://claude.ai/design/p/64719451-d56e-493e-b87e-c7dfc863c6cc?file=MyWatchList+Logo.dc.html&via=share
 (see [[design-artefact-links]] memory) - read in full via the `claude_design` MCP
 (`DesignSync`/`get_file` on `MyWatchList Logo.dc.html`, projectId `64719451-d56e-493e-b87e-c7dfc863c6cc`,
 type `PROJECT_TYPE_PROJECT`) after a plain `WebFetch` 403'd on the auth-gated `claude.ai/design/...`
-URL. Explicitly deferred - not to be implemented in this pass.
+URL.
 
 **The "3b" animation ("Reel spin-up")**, exact spec pulled from the file's `<style>`/markup - this
 is authoritative, no need to re-open the design file at implementation time:
@@ -740,17 +740,117 @@ is authoritative, no need to re-open the design file at implementation time:
   a clip-path mask plus a full-bleed mint flash) sit alongside 3b as the other two options shown;
   3b is the one explicitly chosen.
 
-**Remaining implementation work** (unstarted):
-- [ ] Build a splash screen composable reproducing the above (Compose `Animatable`/`animate*AsState`
-  sequence, not literal CSS) - check each platform's actual splash mechanism first: Android 12+ has
-  a real `SplashScreen` API (`core-splashscreen`), where a custom Compose animation typically plays
-  *after* the OS-drawn icon frame rather than replacing it; iOS/Desktop/JS have no OS-level splash
-  API at all, so those need an in-app splash composable shown before `MainAppScreen`'s first real
-  content - the four platforms will not implement this identically.
-- [ ] Decide how long the splash shows / what it waits on (fixed ~1.6s duration matching the
-  animation's own runtime vs. gated on first data load, e.g. the trending screen's first successful
-  fetch) - not yet discussed with the user.
-- [ ] Respect `prefers-reduced-motion`-equivalent (Android's "Remove animations" accessibility
-  setting, `androidx.compose.ui.platform.LocalAccessibilityManager` or the system animator-duration
-  scale) - skip straight to the settled end-state for a user who's turned system animations off,
-  per this project's own `artifact-design` skill guidance on respecting reduced motion.
+**Implementation** (confirmed with the user: fixed ~1.8s dismiss, not gated on data load; native
+pre-launch frame where a platform genuinely has one, shared Compose splash everywhere):
+- [x] `core/ui/splash/SplashScreen.kt` (commonMain) - Compose `Animatable`/`tween` sequence
+  reproducing the icon rotate/scale/opacity reveal (`CubicBezierEasing(0.2f,0.9f,0.2f,1f)` matching
+  the design file's own curve) and the two-part wordmark reveal, via a small `keyframeValue()`
+  helper that linearly interpolates between the design file's percentage-keyframe stops once
+  `progress` itself has been eased - the same two-step model a browser uses to resolve a CSS
+  keyframe animation. Colors from `theme/Color.kt`'s real dark tokens, not the design file's literal
+  hex; typography is the app's own `FontFamily.Default`, not the design file's Sora (not bundled
+  anywhere else in this app). **Simplification, not yet built**: the moving sprocket-hole strips -
+  they're baked as static cutouts into the reused `app_icon` drawable already, and an animated
+  overlay in exact registration with that baked-in artwork isn't something buildable with confidence
+  without an on-device visual check this environment can't do; the icon's own reveal and the
+  wordmark drop are 3b's primary identity and are reproduced in full. `isReducedMotionEnabled()`
+  (new `expect`/`actual` in `PlatformUtil.kt`, mirrors `isDebugBuild()`'s shape) skips straight to
+  the settled end-state - real on Android (`ANIMATOR_DURATION_SCALE`), iOS
+  (`UIAccessibilityIsReduceMotionEnabled`), and JS (`prefers-reduced-motion` media query); `false`
+  on desktop, no JVM-wide equivalent exists. Wired into `App()` (`App.kt`) ahead of `MainAppScreen`.
+- [x] **Android native pre-splash, superseded (2026-08-27) by a native-*animated* splash**: the
+  original pass (`androidx.core:core-splashscreen` + `Theme.MyWatchList.Splash` +
+  `installSplashScreen()`) showed a static icon natively, then handed off to the Compose
+  `SplashScreen` above for the animation - visually two splashes back-to-back, confusing on-device.
+  Fixed by moving the "3b" icon reveal (rotate/scale, plus a one-shot sprocket-hole pull) into the
+  native splash itself, as a real `AnimatedVectorDrawable`
+  (`res/drawable/splash_icon_animated.xml`, targeting `res/drawable/splash_icon.xml` - hand-converted
+  from the design team's layered SVG export, `mwl_splash_icon_288_layered.svg`, since AVD requires
+  vector path data, not the PNG `app_icon`), set as `windowSplashScreenAnimatedIcon` with
+  `windowSplashScreenAnimationDuration=850` (`values/styles.xml`). `App()` (`App.kt`) skips the
+  Compose `SplashScreen` entirely on Android (`usesNativeAnimatedSplash()`, new `expect`/`actual`,
+  true only on Android) - Android now shows exactly one splash. iOS/Desktop/JS are unaffected (no
+  native animated-icon API to hand off to on any of them) and keep the Compose splash, wordmark
+  included, since the native icon-only API has no surface for text (see below, though - Android
+  gets a static version of it another way). The native AVD has no looping sprocket roll (one-shot
+  only, per the SVG export's own conversion notes) and no icon fade-in (`<group>` has no alpha
+  property in VectorDrawable) - both stay Compose-only polish on the other three platforms.
+  - `AppActivity.onCreate()` originally held the native splash on screen via
+    `setKeepOnScreenCondition` for the full 850ms so the animation couldn't get cut short by an
+    early Compose first-draw - **reverted (2026-08-27)**: this caused a blank splash on some fast
+    force-kill-then-relaunch cycles (confirmed on the `sdk_gphone16k_arm64` emulator specifically,
+    not the Galaxy S24 physical device - see the `SurfaceView`-based icon rendering note below).
+    `installSplashScreen()` now dismisses at Compose's default first-draw timing again; the icon
+    may occasionally get cut short on a very fast device, a smaller cost than a blank launch.
+  - **Wordmark ("MyWatch"/"List")**: added via `windowSplashScreenBrandingImage`
+    (`res/values-v31/styles.xml`) - this is a real platform-only SplashScreen attribute
+    (`android:windowSplashScreenBrandingImage`, API 31+) that `androidx.core:core-splashscreen`'s
+    compat theme does not expose at all below that level (confirmed against the library's own
+    `attrs.xml` - only `Background`/`AnimatedIcon`/`AnimationDuration`/`IconBackgroundColor`
+    exist there), so it lives in a `values-v31` override rather than the base
+    `Theme.MyWatchList.SplashBase`, and devices on API 24-30 fall back to icon-only, same as
+    before. `res/drawable-xhdpi/splash_branding_asset.png` is a rasterized PNG (not a vector -
+    there's no text-layout primitive in `<vector>`/AVD path data), rendered with
+    `java.awt.Graphics2D` (`SansSerif` Bold, the app's own
+    `md_theme_dark_onBackground`/`onPrimaryContainer` colors, not a design-file asset) since no
+    image-editing tool was available in the dev environment. Static only, like the icon - no
+    fade/drop animation, unlike the Compose splash's wordmark reveal.
+    - `windowSplashScreenBrandingImage` stretches whatever drawable it's pointed at to fill the
+      slot's full width by default - fixed by wrapping the PNG in `res/drawable/splash_branding.xml`
+      (a `<bitmap>` with `android:gravity="center"`, referencing the PNG renamed to
+      `splash_branding_asset`) so the platform draws it at intrinsic size instead. That alone just
+      traded stretching for cropping, though (a `<bitmap>` has no fit-to-bounds scaling, only
+      positioning) - the actual fix was shrinking the source PNG itself (fontSize 96 to 48, ~358px
+      wide at xhdpi = ~179dp) to fit inside the branding slot's real width (~200dp) at intrinsic
+      size with no scaling needed either way.
+  - **Known emulator-only flakiness**: `windowSplashScreenAnimatedIcon` renders through a
+    dedicated `SurfaceView` (confirmed in logcat: `Creating surface for consumer ... SurfaceView
+    [Splash Screen ...]`), which has documented blank-frame timing quirks on software-rendered
+    emulator GPU paths. Reproduced intermittently on `sdk_gphone16k_arm64` (force-kill via Settings
+    "App info" then reopen); could **not** be reproduced across 10+ consecutive kill/relaunch
+    cycles on a real Galaxy S24 (SM-S921B, API 36). Left as-is - real devices are unaffected.
+- [x] **iOS native pre-launch screen** (was missing entirely - no `UILaunchScreen`/
+  `UILaunchStoryboardName` key existed in `Info.plist` before this): added a `UILaunchScreen`
+  Info.plist dict (the modern, storyboard-free mechanism) pointing at new `LaunchIcon`/
+  `LaunchBackground` asset-catalog entries (`Assets.xcassets`) - static only, since Apple doesn't
+  allow custom animation during the traditional launch screen. Confirmed working end-to-end on the
+  iPhone 15 Pro Max simulator (2026-08-27): native launch screen -> Compose `SplashScreen` (icon +
+  wordmark reveal) -> `MainAppScreen`, no gaps.
+  - **Fixed (2026-08-27)**: `LaunchIcon` initially rendered stretched full-bleed across the whole
+    screen instead of small and centered - `LaunchIcon.png` had been copied straight from
+    `AppIcon.appiconset/AppIcon-1024.png` (1024x1024px) with no `scale` in its `Contents.json`.
+    Two things were needed: (1) the source PNG itself had to be resized down to its actual intended
+    display size (180x180px, via `sips -Z 180`) - `UIImageName` renders at literal pixel-size-as-
+    points with no retina-aware scale lookup the way normal `UIImage(named:)` loading does, so a
+    1024px source is 1024pt on screen regardless of any declared `scale` metadata (confirmed by
+    testing `scale:3x` in isolation first - zero visual effect); and (2) after resizing the file,
+    the simulator kept showing the *old* stretched render even through a clean `xcodebuild` +
+    uninstall/reinstall cycle - iOS caches the compiled launch-screen render at the system
+    (SpringBoard) level per bundle ID and does not reliably invalidate it on reinstall alone; a full
+    `xcrun simctl shutdown` + `boot` of the simulator was required to see the fix take effect. Worth
+    remembering for any future launch-screen asset change: reinstalling is not enough to verify one
+    on a simulator that already ran an earlier build.
+- [x] **Desktop/JS**: no native pre-load mechanism wired up - Compose Desktop's `nativeDistributions`
+  DSL has no clean hook for the JVM's `SplashScreen`-image mechanism, and Wasm/JS has no true browser
+  splash API (just the `index.html`-static-loader convention). Both get the shared Compose
+  `SplashScreen` as their first rendered content and nothing more; a JVM splash image or a static
+  web loader remain possible, separate future enhancements, not built here.
+- [x] Test: `SplashScreenUiTest` (Compose UI test) - wordmark renders; `onFinished` fires after a
+  short injected `durationMillis`.
+
+## 13. Small Increments (Quick Wins)
+Backlog for small, self-contained polish items - each one scoped small enough not to need its own
+full OAS-endpoints/implementation-checklist writeup ahead of time; add detail once one is actually
+picked up.
+
+### 13.1. Show the resolved region on the detail screen's "Where to watch" section
+**Goal**: [[feature-region-selector-done]] added a user-selectable region (`AccountScreen`'s
+"Region"/"Default fallback region" rows, `RegionRepository`) that drives which watch-provider list
+`MovieHeroSection`/`TvHeroSection`'s "Where to watch" resolves against
+(`WatchProvidersResponse?.resolveRegion()`, `MovieHeroFacts.kt`) - but the detail screen never shows
+*which* region that list came from. A user with an unfamiliar/empty-looking provider list (e.g. the
+fallback region kicked in, not their selected one) has no way to tell why without opening Account
+settings and checking. Small addition: surface the resolved region (flag emoji +
+name/code, matching `RegionPickerDialog`'s row style) next to/above the "Where to watch" row on both
+Movie and TV detail screens, using the same `resolveRegion()` call already made there - showing
+which of the two configured regions (selected vs. fallback) actually matched, not just the code.

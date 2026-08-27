@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Icon
@@ -60,6 +62,7 @@ class PersonFavoritesScreenModel(
 fun PersonFavoritesTab(
     modifier: Modifier = Modifier,
     viewModel: PersonFavoritesScreenModel = viewModel { PersonFavoritesScreenModel() },
+    lazyGridState: LazyGridState = rememberLazyGridState(),
     onPersonSelected: (personId: Long) -> Unit = {},
 ) {
     val favoritePeople by viewModel.favoritePeople.collectAsState(initial = emptyList())
@@ -78,6 +81,7 @@ fun PersonFavoritesTab(
             PersonFavoritesEmptyState()
         } else {
             LazyVerticalGrid(
+                state = lazyGridState,
                 columns = GridCells.Adaptive(minSize = PersonFavoritesTabConstant.GRID_CELL_MIN_SIZE_DP.dp),
                 contentPadding = PaddingValues(8.dp),
             ) {

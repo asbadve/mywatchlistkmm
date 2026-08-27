@@ -45,6 +45,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -71,6 +72,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AccountAvatarButton
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
+import com.ajinkyabadve.kmmmywatchlist.core.ui.splash.SplashScreen
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.ListDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
@@ -145,8 +147,20 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
         }
     CompositionLocalProvider(LocalViewModelStoreOwner provides appViewModelStoreOwner) {
         AppTheme {
-            val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
-            MainAppScreen(windowSize)
+            // Shown once per process launch, ahead of everything else - see SplashScreen's kdoc for
+            // the animation this reproduces. Skipped on Android: usesNativeAnimatedSplash() is only
+            // true there, where the native splash theme (styles.xml, splash_icon_animated.xml)
+            // already played the same "3b" icon reveal itself before this composition even starts -
+            // showing this too would be a second, redundant splash back-to-back with the first.
+            // false, not disposed/removed, once finished: there is deliberately no way back to it
+            // without a fresh process launch.
+            var showSplash by remember { mutableStateOf(!usesNativeAnimatedSplash()) }
+            if (showSplash) {
+                SplashScreen(onFinished = { showSplash = false })
+            } else {
+                val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
+                MainAppScreen(windowSize)
+            }
         }
     }
 }

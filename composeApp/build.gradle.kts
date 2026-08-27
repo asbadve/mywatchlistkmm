@@ -132,6 +132,7 @@ kotlin {
                 implementation(libs.androidx.work)
                 implementation(libs.androidx.window)
                 implementation(libs.androidx.ui.tooling.preview.android)
+                implementation(libs.androidx.splashscreen)
             }
         }
         val androidUnitTest by getting {

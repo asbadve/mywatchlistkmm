@@ -8,6 +8,7 @@ compose = "1.11.1"
 androidx-appcompat = "1.7.0"
 androidx-browser = "1.8.0"
 androidx-work = "2.11.2"
+androidx-splashscreen = "1.0.1"
 androidx-activityCompose = "1.10.1"
 compose-uitooling = "1.8.1"
 kotlinxCoroutinesSwing = "1.10.2"
@@ -48,6 +49,7 @@ adaptive-navigation3 = { module = "org.jetbrains.compose.material3.adaptive:adap
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "androidx-browser" }
 androidx-work = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
+androidx-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidx-splashscreen" }
 androidx-activityCompose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "componentsResources" }
 compose-uitooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose-uitooling" }

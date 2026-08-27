@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.toComposeRect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.core.content.getSystemService
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.window.layout.WindowMetricsCalculator
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
@@ -65,6 +66,16 @@ class AndroidApp : Application() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class)
 class AppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Must run before super.onCreate() (the library's own documented requirement) - shows
+        // Theme.MyWatchList.Splash's animated-icon frame (styles.xml, splash_icon_animated.xml)
+        // from process start, dismissing at Compose's first draw (core-splashscreen's own default
+        // timing - deliberately not held open artificially). An earlier version force-held this on
+        // screen for the icon's full 850ms via setKeepOnScreenCondition, which showed a blank
+        // splash on some fast force-kill-then-relaunch cycles - the extra held-open window likely
+        // raced the OS's task-snapshot/starting-window teardown from the previous process. Letting
+        // it dismiss at first draw (default behavior) means the animation can occasionally get cut
+        // short on a very fast device, but that's a much smaller cost than a blank launch.
+        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         com.ajinkyabadve.kmmmywatchlist.core.auth.AndroidAuthCallbackHandler

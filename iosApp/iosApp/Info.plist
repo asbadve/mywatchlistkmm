@@ -6,5 +6,18 @@
 	<array>
 		<string>com.ajinkyabadve.kmmmywatchlist.episodePoll</string>
 	</array>
+	<!-- Static-only (Apple doesn't allow custom code/animation during the traditional launch
+	     screen) - just the icon on the app's real dark background (matches
+	     theme/Color.kt's md_theme_dark_background), so cold launch no longer shows a blank/default
+	     frame before Compose's own SplashScreen (commonMain) takes over with the real animation.
+	     This key was missing entirely before (checked 2026-08-27) - not previously configured at
+	     all, not a regression. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchIcon</string>
+	</dict>
 </dict>
 </plist>

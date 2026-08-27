@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static artwork for the native splash's animated icon (splash_icon_animated.xml drives it).
+     Converted by hand from the design team's mwl_splash_icon_288_layered.svg (288dp canvas, 100-unit
+     artwork inset by translate(48 48) scale(1.92) - baked directly into every coordinate below, since
+     VectorDrawable <group> transforms don't reliably reproduce SVG's combined translate+scale order).
+     Group/path names match the SVG's layer ids (hyphens to underscores) so
+     splash_icon_animated.xml's <target> elements can address them. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+
+    <group
+        android:name="artwork"
+        android:pivotX="144"
+        android:pivotY="144"
+        android:rotation="0"
+        android:scaleX="1"
+        android:scaleY="1">
+
+        <path
+            android:name="bg"
+            android:fillColor="#5BFFA1"
+            android:pathData="M105.6,71.04H182.4A34.56,34.56 0 0 1 216.96,105.6V182.4A34.56,34.56 0 0 1 182.4,216.96H105.6A34.56,34.56 0 0 1 71.04,182.4V105.6A34.56,34.56 0 0 1 105.6,71.04Z" />
+
+        <path
+            android:name="sprocket_left_track"
+            android:fillColor="#0D0E12"
+            android:fillAlpha="0.22"
+            android:pathData="M88.32,86.4H92.16A5.76,5.76 0 0 1 97.92,92.16V195.84A5.76,5.76 0 0 1 92.16,201.6H88.32A5.76,5.76 0 0 1 82.56,195.84V92.16A5.76,5.76 0 0 1 88.32,86.4Z" />
+
+        <group android:name="sprocket_left_holes">
+            <clip-path android:pathData="M82.56,86.4h15.36v115.2h-15.36Z" />
+            <path
+                android:fillColor="#0D0E12"
+                android:pathData="M89.28,90.24 H91.2 A3.84,3.84 0 0 1 95.04,94.08 V101.76 A3.84,3.84 0 0 1 91.2,105.6 H89.28 A3.84,3.84 0 0 1 85.44,101.76 V94.08 A3.84,3.84 0 0 1 89.28,90.24 Z
+                          M89.28,113.28 H91.2 A3.84,3.84 0 0 1 95.04,117.12 V124.8 A3.84,3.84 0 0 1 91.2,128.64 H89.28 A3.84,3.84 0 0 1 85.44,124.8 V117.12 A3.84,3.84 0 0 1 89.28,113.28 Z
+                          M89.28,136.32 H91.2 A3.84,3.84 0 0 1 95.04,140.16 V147.84 A3.84,3.84 0 0 1 91.2,151.68 H89.28 A3.84,3.84 0 0 1 85.44,147.84 V140.16 A3.84,3.84 0 0 1 89.28,136.32 Z
+                          M89.28,159.36 H91.2 A3.84,3.84 0 0 1 95.04,163.2 V170.88 A3.84,3.84 0 0 1 91.2,174.72 H89.28 A3.84,3.84 0 0 1 85.44,170.88 V163.2 A3.84,3.84 0 0 1 89.28,159.36 Z
+                          M89.28,182.4 H91.2 A3.84,3.84 0 0 1 95.04,186.24 V193.92 A3.84,3.84 0 0 1 91.2,197.76 H89.28 A3.84,3.84 0 0 1 85.44,193.92 V186.24 A3.84,3.84 0 0 1 89.28,182.4 Z" />
+        </group>
+
+        <path
+            android:name="sprocket_right_track"
+            android:fillColor="#0D0E12"
+            android:fillAlpha="0.22"
+            android:pathData="M195.84,86.4H199.68A5.76,5.76 0 0 1 205.44,92.16V195.84A5.76,5.76 0 0 1 199.68,201.6H195.84A5.76,5.76 0 0 1 190.08,195.84V92.16A5.76,5.76 0 0 1 195.84,86.4Z" />
+
+        <group android:name="sprocket_right_holes">
+            <clip-path android:pathData="M190.08,86.4h15.36v115.2h-15.36Z" />
+            <path
+                android:fillColor="#0D0E12"
+                android:pathData="M196.8,90.24 H198.72 A3.84,3.84 0 0 1 202.56,94.08 V101.76 A3.84,3.84 0 0 1 198.72,105.6 H196.8 A3.84,3.84 0 0 1 192.96,101.76 V94.08 A3.84,3.84 0 0 1 196.8,90.24 Z
+                          M196.8,113.28 H198.72 A3.84,3.84 0 0 1 202.56,117.12 V124.8 A3.84,3.84 0 0 1 198.72,128.64 H196.8 A3.84,3.84 0 0 1 192.96,124.8 V117.12 A3.84,3.84 0 0 1 196.8,113.28 Z
+                          M196.8,136.32 H198.72 A3.84,3.84 0 0 1 202.56,140.16 V147.84 A3.84,3.84 0 0 1 198.72,151.68 H196.8 A3.84,3.84 0 0 1 192.96,147.84 V140.16 A3.84,3.84 0 0 1 196.8,136.32 Z
+                          M196.8,159.36 H198.72 A3.84,3.84 0 0 1 202.56,163.2 V170.88 A3.84,3.84 0 0 1 198.72,174.72 H196.8 A3.84,3.84 0 0 1 192.96,170.88 V163.2 A3.84,3.84 0 0 1 196.8,159.36 Z
+                          M196.8,182.4 H198.72 A3.84,3.84 0 0 1 202.56,186.24 V193.92 A3.84,3.84 0 0 1 198.72,197.76 H196.8 A3.84,3.84 0 0 1 192.96,193.92 V186.24 A3.84,3.84 0 0 1 196.8,182.4 Z" />
+        </group>
+
+        <path
+            android:name="glyph_m"
+            android:fillColor="#0D0E12"
+            android:pathData="M109.44,178.56V113.28h17.28l17.28,30.72 17.28,-30.72h17.28V178.56h-15.36V140.16l-11.52,23.04h-15.36l-11.52,-23.04V178.56Z" />
+
+    </group>
+</vector>
