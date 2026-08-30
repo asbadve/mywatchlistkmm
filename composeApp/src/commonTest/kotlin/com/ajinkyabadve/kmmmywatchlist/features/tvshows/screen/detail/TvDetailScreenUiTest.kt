@@ -10,6 +10,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.ExternalIds
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.SeasonSummary
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
@@ -130,6 +131,51 @@ class TvDetailScreenUiTest {
 
             onNode(hasScrollToIndexAction()).performScrollToIndex(4)
             onNodeWithText("Season 1").assertExists()
+        }
+
+    @Test
+    fun testTvDetailScreen_withImdbId_showsImdbChip() =
+        runComposeUiTest {
+            val fakeCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    getTvDetailResult = Result.success(successfulTvDetail().copy(externalIds = ExternalIds(imdbId = "tt0944947")))
+                }
+            val viewModel = TvDetailScreenModel(tvId = 1, tvDetailCacheRepository = fakeCacheRepository)
+
+            setContent {
+                TvDetailScreen(
+                    tvShowId = 1,
+                    windowSize = WindowSize.COMPACT,
+                    onBackClicked = {},
+                    onTvShowClicked = {},
+                    onViewAllSeasonsClick = {},
+                    viewModel = viewModel,
+                )
+            }
+
+            onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+            onNodeWithText("IMDb").assertExists()
+        }
+
+    @Test
+    fun testTvDetailScreen_withoutImdbId_hidesImdbChip() =
+        runComposeUiTest {
+            val fakeCacheRepository = FakeTvDetailCacheRepository().apply { getTvDetailResult = Result.success(successfulTvDetail()) }
+            val viewModel = TvDetailScreenModel(tvId = 1, tvDetailCacheRepository = fakeCacheRepository)
+
+            setContent {
+                TvDetailScreen(
+                    tvShowId = 1,
+                    windowSize = WindowSize.COMPACT,
+                    onBackClicked = {},
+                    onTvShowClicked = {},
+                    onViewAllSeasonsClick = {},
+                    viewModel = viewModel,
+                )
+            }
+
+            onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+            onNodeWithText("IMDb").assertDoesNotExist()
         }
 
     @Test

@@ -44,6 +44,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.ResolvedRegionLabel
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroScrimBrush
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.rememberHeroContentMeasurement
+import com.ajinkyabadve.kmmmywatchlist.core.ui.longPressToCopy
 import com.ajinkyabadve.kmmmywatchlist.core.usecase.FindYoutubeTrailerUseCase
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.HeroWatchOption
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.heroWatchOption
@@ -140,7 +141,10 @@ internal fun TvHeroSection(
                 color = colors.onHero,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = if (detail.isOngoing) 8.dp else 0.dp),
+                modifier =
+                    Modifier
+                        .padding(top = if (detail.isOngoing) 8.dp else 0.dp)
+                        .longPressToCopy(detail.title),
             )
             TvMetaRow(detail = detail, colors = colors, modifier = Modifier.padding(top = 8.dp))
             detail.heroEpisode()?.let { episode ->

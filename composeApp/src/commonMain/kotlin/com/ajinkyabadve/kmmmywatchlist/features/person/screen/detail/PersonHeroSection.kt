@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.format.toOneDecimalString
+import com.ajinkyabadve.kmmmywatchlist.core.ui.longPressToCopy
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.firstFilmYear
@@ -118,6 +119,7 @@ fun PersonHeroSection(
                 lineHeight = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.longPressToCopy(person.name),
             )
             val role =
                 listOfNotNull(person.knownForDepartment, person.genderLabel)

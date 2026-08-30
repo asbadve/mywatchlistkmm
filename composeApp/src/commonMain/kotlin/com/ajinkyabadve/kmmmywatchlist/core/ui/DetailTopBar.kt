@@ -79,7 +79,13 @@ fun DetailTopBar(
                 // Over a backdrop the image carries the context, and the title would fight it;
                 // it fades in as the bar goes solid. In-flow bars always show it.
                 AnimatedVisibility(visible = isSolid, enter = fadeIn(), exit = fadeOut()) {
-                    Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        title,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.longPressToCopy(title),
+                    )
                 }
             },
             navigationIcon = {

@@ -53,11 +53,13 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
+import com.ajinkyabadve.kmmmywatchlist.openUrl
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
+import mywatchlist.composeapp.generated.resources.action_view_on_imdb
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
 import mywatchlist.composeapp.generated.resources.episode_latest_badge
 import mywatchlist.composeapp.generated.resources.no_episodes_available
@@ -171,6 +173,17 @@ fun EpisodeListScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(20.dp),
                         ) {
+                            state.season.externalIds?.imdbId?.let { imdbId ->
+                                item {
+                                    Text(
+                                        text = stringResource(Res.string.action_view_on_imdb),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable { openUrl("https://www.imdb.com/title/$imdbId/") },
+                                    )
+                                }
+                            }
                             items(sortedEpisodes) { episode ->
                                 EpisodeListItem(
                                     episode = episode,
