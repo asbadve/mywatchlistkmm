@@ -26,6 +26,7 @@ import androidx.window.layout.WindowMetricsCalculator
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
 import com.ajinkyabadve.kmmmywatchlist.core.notification.AndroidNotificationConstant
+import com.ajinkyabadve.kmmmywatchlist.core.notification.CollectionNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
@@ -109,6 +110,10 @@ class AppActivity : ComponentActivity() {
             val personId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_PERSON_ID, -1L)
             if (personId < 0) return
             PendingNotificationTarget.set(PersonNotificationTarget(personId))
+        } else if (intent.hasExtra(AndroidNotificationConstant.EXTRA_COLLECTION_ID)) {
+            val collectionId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_COLLECTION_ID, -1L)
+            if (collectionId < 0) return
+            PendingNotificationTarget.set(CollectionNotificationTarget(collectionId))
         }
     }
 

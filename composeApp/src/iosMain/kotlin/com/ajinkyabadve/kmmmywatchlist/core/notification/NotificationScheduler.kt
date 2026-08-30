@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.core.notification
 
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.CollectionNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -46,6 +47,7 @@ actual object NotificationScheduler {
             CoroutineScope(Dispatchers.Default).launch {
                 TvEpisodeNotificationPoller().poll()
                 PersonCreditNotificationPoller().poll()
+                CollectionNotificationPoller().poll()
                 task.setTaskCompletedWithSuccess(true)
             }
         task.expirationHandler = { job.cancel() }

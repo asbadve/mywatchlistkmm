@@ -29,10 +29,13 @@ private class NotificationTapDelegateImpl :
         val seasonNumber = (userInfo[IosNotificationUserInfoKeyConstant.SEASON_NUMBER] as? NSNumber)?.intValue
         val episodeNumber = (userInfo[IosNotificationUserInfoKeyConstant.EPISODE_NUMBER] as? NSNumber)?.intValue
         val personId = (userInfo[IosNotificationUserInfoKeyConstant.PERSON_ID] as? NSNumber)?.longLongValue
+        val collectionId = (userInfo[IosNotificationUserInfoKeyConstant.COLLECTION_ID] as? NSNumber)?.longLongValue
         if (tvShowId != null && seasonNumber != null && episodeNumber != null) {
             PendingNotificationTarget.set(EpisodeNotificationTarget(tvShowId, seasonNumber, episodeNumber))
         } else if (personId != null) {
             PendingNotificationTarget.set(PersonNotificationTarget(personId))
+        } else if (collectionId != null) {
+            PendingNotificationTarget.set(CollectionNotificationTarget(collectionId))
         }
         withCompletionHandler()
     }

@@ -32,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,13 +48,21 @@ import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
+import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
+import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.MediaListRow
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.NotificationOptInDialog
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
+import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
+import mywatchlist.composeapp.generated.resources.collection_alert_prompt_body
+import mywatchlist.composeapp.generated.resources.collection_alert_prompt_title
 import mywatchlist.composeapp.generated.resources.featured_cast
 import mywatchlist.composeapp.generated.resources.featured_crew
 import mywatchlist.composeapp.generated.resources.section_images
@@ -71,10 +80,17 @@ fun CollectionDetailScreen(
     onPersonClicked: (Long) -> Unit = {},
     viewModel: CollectionDetailScreenModel =
         viewModel(key = "CollectionDetailScreenModel:$collectionId") { CollectionDetailScreenModel(collectionId) },
+    notificationSettingsRepository: NotificationSettingsRepository = NotificationSettingsRepositoryImpl(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var galleryImages by remember { mutableStateOf<List<String>?>(null) }
     var galleryInitialIndex by remember { mutableStateOf(0) }
+
+    // Hoisted here, not inside the opt-in dialog's own `if` block below - same reasoning as
+    // PersonDetailScreen's identical hoist: onConfirm calls a permission request that must survive
+    // the dialog's own recomposition tearing that `if` block down.
+    val notificationPermissionRequester = rememberNotificationPermissionRequester()
+    val notificationCoroutineScope = rememberCoroutineScope()
 
     val listState = rememberLazyListState()
 
@@ -133,6 +149,20 @@ fun CollectionDetailScreen(
                         galleryImages = images
                         galleryInitialIndex = index
                     }
+                    val isFollowing by viewModel.isFollowingCollection.collectAsState(initial = false)
+                    var showNotificationOptInPrompt by remember { mutableStateOf(false) }
+                    val onFollowClick = {
+                        val justFollowed = viewModel.toggleFollowCollection(state.collection, isFollowing)
+                        // Only offer the prompt on the click that actually turns following ON, and
+                        // only if there's something to ask about - same reasoning as
+                        // PersonDetailScreen's identical gate.
+                        if (justFollowed &&
+                            !notificationSettingsRepository.isEpisodeNotificationsEnabled() &&
+                            !notificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt()
+                        ) {
+                            showNotificationOptInPrompt = true
+                        }
+                    }
                     if (windowSize.isCompact()) {
                         CompactCollectionDetailContent(
                             listState = listState,
@@ -140,6 +170,8 @@ fun CollectionDetailScreen(
                             onMovieClicked = onMovieClicked,
                             onPersonClicked = onPersonClicked,
                             onShowGallery = onShowGallery,
+                            isFollowing = isFollowing,
+                            onFollowClick = onFollowClick,
                         )
                     } else {
                         ExpandedCollectionDetailContent(
@@ -147,6 +179,31 @@ fun CollectionDetailScreen(
                             onMovieClicked = onMovieClicked,
                             onPersonClicked = onPersonClicked,
                             onShowGallery = onShowGallery,
+                            isFollowing = isFollowing,
+                            onFollowClick = onFollowClick,
+                        )
+                    }
+
+                    if (showNotificationOptInPrompt) {
+                        NotificationOptInDialog(
+                            title = stringResource(Res.string.collection_alert_prompt_title, state.collection.name),
+                            body = stringResource(Res.string.collection_alert_prompt_body, state.collection.name),
+                            onConfirm = {
+                                showNotificationOptInPrompt = false
+                                notificationCoroutineScope.launch {
+                                    // Only marked "seen" once the OS permission is actually granted -
+                                    // same reasoning as PersonDetailScreen's identical confirm flow.
+                                    if (notificationPermissionRequester.request()) {
+                                        notificationSettingsRepository.setEpisodeNotificationsEnabled(true)
+                                        notificationSettingsRepository.markEpisodeAlertOptInPromptSeen()
+                                        NotificationScheduler.schedule()
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                notificationSettingsRepository.markEpisodeAlertOptInPromptSeen()
+                                showNotificationOptInPrompt = false
+                            },
                         )
                     }
                 }
@@ -171,6 +228,8 @@ private fun CompactCollectionDetailContent(
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
 ) {
     val collection = state.collection
     LazyColumn(
@@ -179,7 +238,7 @@ private fun CompactCollectionDetailContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp),
     ) {
-        item { CollectionHeader(collection = collection) }
+        item { CollectionHeader(collection = collection, isFollowing = isFollowing, onFollowClick = onFollowClick) }
         item { CollectionMoviesList(collection = collection, onMovieClicked = onMovieClicked) }
         item {
             CastSection(castList = state.featuredCast, title = stringResource(Res.string.featured_cast), onPersonClicked = onPersonClicked)
@@ -206,6 +265,8 @@ private fun ExpandedCollectionDetailContent(
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
 ) {
     val collection = state.collection
     Row(
@@ -216,7 +277,7 @@ private fun ExpandedCollectionDetailContent(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 32.dp),
         ) {
-            item { CollectionHeader(collection = collection) }
+            item { CollectionHeader(collection = collection, isFollowing = isFollowing, onFollowClick = onFollowClick) }
             item {
                 CastSection(
                     castList = state.featuredCast,
@@ -251,7 +312,11 @@ private fun ExpandedCollectionDetailContent(
 }
 
 @Composable
-private fun CollectionHeader(collection: CollectionDetail) {
+private fun CollectionHeader(
+    collection: CollectionDetail,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val density = LocalDensity.current.density
         val backdropUrl =
@@ -316,6 +381,12 @@ private fun CollectionHeader(collection: CollectionDetail) {
                     }
                 }
             }
+
+            FollowCollectionButton(
+                isFollowing = isFollowing,
+                onToggleClick = onFollowClick,
+                modifier = Modifier.padding(top = 8.dp),
+            )
 
             if (collection.overview.isNotEmpty()) {
                 Text(

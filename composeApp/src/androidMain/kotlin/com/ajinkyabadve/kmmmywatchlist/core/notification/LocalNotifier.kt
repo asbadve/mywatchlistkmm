@@ -25,6 +25,7 @@ internal object AndroidNotificationConstant {
     const val EXTRA_SEASON_NUMBER = "notification_season_number"
     const val EXTRA_EPISODE_NUMBER = "notification_episode_number"
     const val EXTRA_PERSON_ID = "notification_person_id"
+    const val EXTRA_COLLECTION_ID = "notification_collection_id"
 
     // Prefix, not just the raw id, so this can never collide with a per-reason notificationId
     // (Triple(id, mediaType, reason).hashCode() in TvEpisodeNotificationPoller) that happens to
@@ -60,6 +61,7 @@ actual object LocalNotifier {
                         putExtra(AndroidNotificationConstant.EXTRA_EPISODE_NUMBER, deepLink.episodeNumber)
                     }
                     is PersonNotificationTarget -> putExtra(AndroidNotificationConstant.EXTRA_PERSON_ID, deepLink.personId)
+                    is CollectionNotificationTarget -> putExtra(AndroidNotificationConstant.EXTRA_COLLECTION_ID, deepLink.collectionId)
                     null -> Unit
                 }
             }
@@ -73,10 +75,14 @@ actual object LocalNotifier {
         // One group per show/person, not one global group - two different returning series (or two
         // different favorited people) notifying at once should stay as separate stacks, not merge
         // into one. No deepLink at all has nothing to group by, so it posts standalone.
+        // Collections don't get grouping: a franchise notifying is rare enough (unlike an
+        // episode's two reasons, or several credits in one poll) that per-collection stacking
+        // isn't worth adding - it just posts standalone, same as a null deepLink.
         val groupKey =
             when (deepLink) {
                 is EpisodeNotificationTarget -> AndroidNotificationConstant.GROUP_KEY_PREFIX + deepLink.tvShowId
                 is PersonNotificationTarget -> AndroidNotificationConstant.PERSON_GROUP_KEY_PREFIX + deepLink.personId
+                is CollectionNotificationTarget -> null
                 null -> null
             }
         val groupSummaryTitleRes =

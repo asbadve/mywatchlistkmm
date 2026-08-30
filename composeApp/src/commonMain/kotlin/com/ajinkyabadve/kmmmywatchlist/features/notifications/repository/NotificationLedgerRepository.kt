@@ -20,6 +20,10 @@ enum class NotificationReason(
     // future_features_checklist.md item 3b: a favorited person's combined_credits gained a
     // credit id it didn't have on the previous poll - see PersonCreditNotificationPoller.
     PERSON_NEW_CREDIT("person_new_credit"),
+
+    // future_features_checklist.md item 3c: a favorited collection's parts gained a movie id it
+    // didn't have on the previous poll - see CollectionNotificationPoller.
+    COLLECTION_NEW_PART("collection_new_part"),
 }
 
 /**

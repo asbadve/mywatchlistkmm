@@ -1,6 +1,6 @@
 ---
 name: code-conventions
-description: Coding conventions for this codebase - specific exception types only (never catch/throw bare Exception), no magic strings (constants for internal strings, compose string resources for user-facing text), and prefer Kotlin scope functions/modern idioms/enums over closed value sets. Apply to ALL new or modified Kotlin code.
+description: Coding conventions for this codebase - specific exception types only (never catch/throw bare Exception), no magic strings (constants for internal strings, compose string resources for user-facing text), prefer Kotlin scope functions/modern idioms/enums over closed value sets, and bump LocalSchemaVersion.CURRENT with every MyDatabase.sq change. Apply to ALL new or modified Kotlin code.
 ---
 
 # Code conventions (user-mandated)
@@ -332,3 +332,29 @@ Two things that are *not* what this rule targets, so don't force an enum onto th
 - A genuinely open-ended or growing set (screen keys, feature flags still being added) - an enum
   makes every new case a change to the enum's own file even when nothing else about the rule
   changes; a sealed hierarchy or `*Constant` object still fits better there.
+
+## 10. Bump `LocalSchemaVersion.CURRENT` with every `MyDatabase.sq` change (agreed 2026-08-30)
+
+This project has no real SQLDelight migration path (a deliberate choice - see
+`docs/local-storage-plan.html`: "one migration file only needed if the schema changes after the
+first release - not a concern for this initial branch"). Instead, `db/LocalSchemaVersion.kt` +
+`AppDatabaseProvider`'s `resetDatabaseIfSchemaChangedForDebug()` wipe the on-disk database and
+start fresh whenever the stored version doesn't match `LocalSchemaVersion.CURRENT` - **debug
+builds only**; release builds never do this, since silently discarding a real user's local data on
+a version bump is not an acceptable trade even for the same crash.
+
+**Any commit that changes `composeApp/src/commonMain/sqldelight/.../MyDatabase.sq` - a new table, a
+new column an existing query now selects, a changed query shape an existing on-disk database can't
+just tolerate - must also bump `LocalSchemaVersion.CURRENT` in the same commit.** Forgetting this
+is silent and easy to miss: the code compiles and passes tests fine (fresh test databases always
+have the current schema), and the app only crashes on a device/emulator that already has an
+on-disk database from before the change - exactly what happened 2026-08-30, when
+`future_features_checklist.md` item 3c added the `favoriteCollection` table without bumping the
+version, and the debug auto-wipe guard saw `stored == CURRENT` and skipped, so the app crashed with
+`SQLiteException: no such table: favoriteCollection` on the very first tap of the new Collections
+tab instead of self-healing.
+
+Do **not** reach for an actual SQLDelight `.sqm` migration file or manual `PRAGMA user_version`
+tracking to fix this pre-release - that was tried and reverted the same day this rule was added; it
+directly contradicts the "not a concern for this initial branch" decision above and is real
+migration work due only once there's a first release with real user data to preserve.

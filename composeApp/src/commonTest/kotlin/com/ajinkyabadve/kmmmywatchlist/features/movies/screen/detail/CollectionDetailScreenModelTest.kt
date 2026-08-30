@@ -5,6 +5,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeFavoriteCollectionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
@@ -161,5 +162,22 @@ class CollectionDetailScreenModelTest {
 
             val state = assertIs<CollectionDetailState.Success>(viewModel.uiState.value)
             assertEquals(collection, state.collection)
+        }
+
+    @Test
+    fun testToggleFollowCollectionTurnsFollowingOnThenOff() =
+        runTest(testDispatcher) {
+            val collection = CollectionDetail(id = 263, name = "The Dark Knight Collection")
+            fakeRepository.getCollectionDetailsResult = Result.success(collection)
+            val favoriteCollectionRepository = FakeFavoriteCollectionRepository()
+            val viewModel = CollectionDetailScreenModel(263, fakeRepository, favoriteCollectionRepository)
+
+            val turnedOn = viewModel.toggleFollowCollection(collection, currentlyFollowing = false)
+            assertEquals(true, turnedOn)
+            assertEquals(listOf(263L to true), favoriteCollectionRepository.setFavoriteCalls)
+
+            val turnedOff = viewModel.toggleFollowCollection(collection, currentlyFollowing = true)
+            assertEquals(false, turnedOff)
+            assertEquals(listOf(263L to true, 263L to false), favoriteCollectionRepository.setFavoriteCalls)
         }
 }

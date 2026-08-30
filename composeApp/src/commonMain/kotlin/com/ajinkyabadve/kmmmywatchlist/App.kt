@@ -65,6 +65,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
+import com.ajinkyabadve.kmmmywatchlist.core.notification.CollectionNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
@@ -183,6 +184,10 @@ fun MainAppScreen(windowSize: WindowSize) {
             }
             is PersonNotificationTarget -> {
                 topLevelBackStack.add(PersonDetailKey(target.personId))
+                PendingNotificationTarget.consume()
+            }
+            is CollectionNotificationTarget -> {
+                topLevelBackStack.add(CollectionDetailKey(target.collectionId))
                 PendingNotificationTarget.consume()
             }
             null -> Unit
@@ -470,6 +475,9 @@ private fun MainAppScaffoldContent(
                             },
                             onListSelected = { listId ->
                                 topLevelBackStack.add(ListDetailKey(listId))
+                            },
+                            onCollectionSelected = { collectionId ->
+                                topLevelBackStack.add(CollectionDetailKey(collectionId))
                             },
                         )
                     }

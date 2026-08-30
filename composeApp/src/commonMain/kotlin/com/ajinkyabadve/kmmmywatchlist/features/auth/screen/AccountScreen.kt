@@ -61,6 +61,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.CollectionNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepositoryImpl
@@ -80,6 +82,8 @@ import mywatchlist.composeapp.generated.resources.action_close
 import mywatchlist.composeapp.generated.resources.auth_account_welcome
 import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.back_content_description
+import mywatchlist.composeapp.generated.resources.debug_poll_collection_notifications_now_description
+import mywatchlist.composeapp.generated.resources.debug_poll_collection_notifications_now_label
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_description
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_label
 import mywatchlist.composeapp.generated.resources.debug_poll_person_notifications_now_description
@@ -254,6 +258,23 @@ fun AccountScreen(
                             poller.poll()
                         }
                     },
+                    onDebugPollCollectionNotificationsNowClicked = {
+                        coroutineScope.launch {
+                            // Same idea as onDebugPollPersonNotificationsNowClicked above, but for
+                            // 3c - own row/repository set so testing collection notifications never
+                            // resets or races with episode/person testing.
+                            val favoriteCollectionRepository = FavoriteCollectionRepositoryImpl()
+                            val notificationLedgerRepository = NotificationLedgerRepositoryImpl()
+                            notificationLedgerRepository.clearForReasonForDebug(NotificationReason.COLLECTION_NEW_PART)
+                            val poller =
+                                CollectionNotificationPoller(
+                                    favoriteCollectionRepository = favoriteCollectionRepository,
+                                    notificationLedgerRepository = notificationLedgerRepository,
+                                )
+                            poller.seedOneNewPartForDebug()
+                            poller.poll()
+                        }
+                    },
                     onDebugResetEpisodeAlertPromptClicked = {
                         notificationSettingsRepository.setEpisodeNotificationsEnabled(false)
                         notificationSettingsRepository.resetEpisodeAlertOptInPromptForDebug()
@@ -409,6 +430,7 @@ private fun SettingsList(
     showDebugPollNowRow: Boolean,
     onDebugPollNowClicked: () -> Unit,
     onDebugPollPersonNotificationsNowClicked: () -> Unit,
+    onDebugPollCollectionNotificationsNowClicked: () -> Unit,
     onDebugResetEpisodeAlertPromptClicked: () -> Unit,
     onLogoutClicked: (() -> Unit)?,
 ) {
@@ -446,6 +468,11 @@ private fun SettingsList(
                 label = stringResource(Res.string.debug_poll_person_notifications_now_label),
                 description = stringResource(Res.string.debug_poll_person_notifications_now_description),
                 onClick = onDebugPollPersonNotificationsNowClicked,
+            )
+            SettingsRow(
+                label = stringResource(Res.string.debug_poll_collection_notifications_now_label),
+                description = stringResource(Res.string.debug_poll_collection_notifications_now_description),
+                onClick = onDebugPollCollectionNotificationsNowClicked,
             )
             SettingsRow(
                 label = stringResource(Res.string.debug_reset_episode_alert_prompt_label),

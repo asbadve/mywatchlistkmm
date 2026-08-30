@@ -26,6 +26,13 @@ data class PersonNotificationTarget(
     val personId: Long,
 ) : NotificationTarget
 
+/** Which collection a [CollectionNotificationPoller][com.ajinkyabadve.kmmmywatchlist.features.notifications.CollectionNotificationPoller]
+ *  new-part notification was about - Android and iOS only, same scope decision as
+ *  [PersonNotificationTarget]. */
+data class CollectionNotificationTarget(
+    val collectionId: Long,
+) : NotificationTarget
+
 /**
  * Set by a platform's notification-tap handler (Android's `AppActivity`, iOS's
  * `UNUserNotificationCenterDelegate`, JS's `Notification.onclick`, Desktop's `TrayIcon`

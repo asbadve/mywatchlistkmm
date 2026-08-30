@@ -28,6 +28,7 @@ internal object IosNotificationUserInfoKeyConstant {
     const val SEASON_NUMBER = "seasonNumber"
     const val EPISODE_NUMBER = "episodeNumber"
     const val PERSON_ID = "personId"
+    const val COLLECTION_ID = "collectionId"
 }
 
 private const val LOCAL_NOTIFIER_TAG = "LocalNotifierIos"
@@ -59,6 +60,8 @@ actual object LocalNotifier {
                         )
                     is PersonNotificationTarget ->
                         setUserInfo(mapOf(IosNotificationUserInfoKeyConstant.PERSON_ID to deepLink.personId))
+                    is CollectionNotificationTarget ->
+                        setUserInfo(mapOf(IosNotificationUserInfoKeyConstant.COLLECTION_ID to deepLink.collectionId))
                     null -> Unit
                 }
                 posterAttachment(posterUrl)?.let { setAttachments(listOf(it)) }

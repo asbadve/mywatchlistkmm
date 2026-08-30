@@ -6,6 +6,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.aggregateFeaturedCast
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.aggregateFeaturedCrew
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -18,6 +20,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,14 +49,38 @@ sealed interface CollectionDetailState {
 class CollectionDetailScreenModel(
     private val collectionId: Long,
     private val movieRepository: MovieRepository = MovieRepositoryImpl(),
+    private val favoriteCollectionRepository: FavoriteCollectionRepository = FavoriteCollectionRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
     private val _uiState = MutableStateFlow<CollectionDetailState>(CollectionDetailState.Loading)
     val uiState: StateFlow<CollectionDetailState> = _uiState.asStateFlow()
 
+    /** Local-only "favorite collection" state - see [FavoriteCollectionRepository]'s kdoc for why
+     *  this has no `account_states`-style pre-check, unlike movie/TV favorites.
+     *  `FollowCollectionButton` collects this directly rather than the composable ever touching
+     *  [favoriteCollectionRepository] itself, per code-conventions §6/§8. */
+    val isFollowingCollection: Flow<Boolean> = favoriteCollectionRepository.observeIsFavorite(collectionId)
+
     init {
         loadCollectionDetails()
+    }
+
+    /** [toggleFollowCollection] returns whether this call just turned following ON (`true`) - same
+     *  reasoning as [com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail.PersonDetailScreenModel.toggleFollowPerson]:
+     *  `viewModel(key = "CollectionDetailScreenModel:$collectionId")` can outlive a single screen
+     *  visit (this app's `NavDisplay` has no per-entry `ViewModelStore` scoping), so a
+     *  ViewModel-owned flag risks surfacing the notification opt-in prompt on a later, click-free
+     *  visit instead of only right after the tap that set it. */
+    fun toggleFollowCollection(
+        collection: CollectionDetail,
+        currentlyFollowing: Boolean,
+    ): Boolean {
+        val newValue = !currentlyFollowing
+        viewModelScope.launch {
+            favoriteCollectionRepository.setFavorite(collectionId, collection.name, collection.posterPath, newValue)
+        }
+        return newValue
     }
 
     fun loadCollectionDetails() {
