@@ -869,3 +869,156 @@ settings and checking.
   TV (`Reacher`) shows "🇮🇳 IN" under the chips. Confirmed the label correctly stays hidden when a
   title has no watch-provider data at all (e.g. an unreleased movie) - same as the section itself
   already did before this change.
+
+---
+
+## 14. AI-Powered "For You" Recommendations (Taste Profile from Favorites / Watchlist / Lists)
+**Goal**: Generate personalized recommendations from what the user has *already curated in this
+app* (their TMDB favorites, their watchlist, their favorited people, and the custom lists they
+have built), instead of the per-title "more like this" TMDB already returns. TMDB's
+`/3/movie/{id}/recommendations` and `/similar` are item-to-item: they answer "what is like *this
+one* title" (already shipped, see movies' `RecommendationsSection.kt` and TV's
+`TvRecommendationsSection.kt` on the detail screens). Nothing in the app currently answers "given
+*everything* this user tracks, what should they watch next, and why" - which is the
+recommendation users actually want on the home screen, and the one that can explain itself
+("because you favorited three Denis Villeneuve films and have two slow sci-fi shows on your
+watchlist").
+
+### What this can build on (already in the app - no new data collection needed)
+- `TrackedMediaRepository` (`features/account/repository/`) - the local SQLite `trackedMedia` table
+  mirroring TMDB favorites *and* watchlist for the signed-in account, with `category`
+  (`favorite`/`watchlist`) and media type already separated. This is the primary taste signal and
+  it is readable offline, without re-hitting `/3/account/{account_id}/favorite/*` per request.
+- `FavoritePersonRepository` (`features/person/repository/`) - the local-only `favoritePerson`
+  table (TMDB has no account-level favorite API for people). Directors/actors the user follows are
+  a strong, cheap taste signal.
+- `CustomListRepository` / `ListsRepository` (`features/account/repository/`) - the user's TMDB
+  custom lists (`customList`/`customListItem` tables). A hand-curated list is a *stronger* signal
+  than a favorite, because the user chose both the members and the theme; the list *name*
+  ("Comfort rewatches", "Heist movies") is itself usable as prompt context.
+- `movieDetailCache` / `tvDetailCache` (`MyDatabase.sq`) - genres, keywords, cast/crew and
+  overviews for titles the user has already opened, so building a taste profile does not require a
+  fresh detail fetch per tracked item.
+- The favorited-collection concept sketched in
+  [item 3c](#3c-new-movie-added-to-a-favorited-collection) - if that ships, followed franchises
+  become another input (and a useful negative signal: don't recommend a franchise entry the user
+  already tracks).
+
+### Relevant OAS endpoints (for grounding + hydration, not for the ranking itself)
+- `GET /3/search/movie`, `GET /3/search/tv` - resolve a model-proposed title (+ year) back to a
+  real TMDB id. **Required**: an LLM must never be the source of a title that then gets rendered
+  as if it came from TMDB.
+- `GET /3/movie/{movie_id}` / `GET /3/tv/{series_id}` - hydrate a resolved id into the same
+  `Movie`/`Tv` model the existing cards render, so recommendations reuse `MovieCard`/`MediaListRow`
+  with no new UI model.
+- `GET /3/discover/movie` / `GET /3/discover/tv` (already called by the genre-discovery screen,
+  [item 8](#8-genre-based-discovery-screen--done-2026-08-18)) - `with_genres`,
+  `with_keywords`, `with_cast`, `with_crew`, `without_watch_providers`,
+  `primary_release_date.gte`. The non-AI baseline *and* the candidate generator for the
+  retrieval-then-rerank shape below.
+- `GET /3/movie/{movie_id}/recommendations` & `/similar` (and the TV equivalents) - the other
+  candidate source: seeds taken from the user's own favorites, pooled and de-duplicated.
+
+### Architecture decision to make first: where does the model call happen?
+Calling a hosted LLM from the client has exactly the API-key problem
+[item 1](#1-secure-the-tmdb-api-key-via-a-server-side-proxy) already documents for the TMDB key -
+except worse, because an LLM key is metered and directly billable to whoever extracts it from the
+binary. **This feature should not ship before item 1's gateway exists**; the recommendation call
+becomes a second route on that same Cloud Function / PocketBase / Cloud Run instance, and the app
+ships no LLM credential at all.
+
+Two shapes, in increasing cost/complexity - **start at the first**:
+- [ ] **A. Retrieval, then LLM rerank + explain (recommended)**. The client (or the gateway)
+  builds a candidate pool of ~50-100 titles from `/discover` + per-favorite `/recommendations`,
+  filters out anything already in `trackedMedia`, and sends the model only a compact taste profile
+  plus the candidate list (id + title + year + genres + a one-line overview). The model returns a
+  ranked subset with a one-sentence reason each. Every returned id is validated against the
+  candidate pool it was given, so a hallucinated title is structurally impossible and no extra
+  TMDB lookup is needed. Cheap, fast, and degrades to "just show the candidate pool unranked" when
+  the model call fails.
+- [ ] **B. Free-form generation, then resolve**. The model proposes titles from its own knowledge;
+  each is resolved via `/3/search/*`. More adventurous suggestions (it can reach titles TMDB's
+  graph won't surface), but every result needs a search round-trip, unresolvable titles have to be
+  dropped silently, and the model's training cutoff makes it weak exactly where users care most -
+  new releases. Only worth attempting once A works and its recommendations feel too safe.
+
+### Model / provider choice
+- Provider: any hosted LLM behind the gateway; Anthropic's Claude API is the obvious fit given
+  this repo's tooling. Cost as of 2026-09 runs roughly $1/$5 per million input/output tokens at
+  the Haiku tier, $2/$10 at the Sonnet tier and $5/$25 at the Opus tier - verify against the
+  provider's current pricing page before wiring billing, and look the request shape up against
+  live API docs at implementation time rather than trusting recalled shapes (the same rule this
+  repo already applies to TMDB and to Compose APIs - LLM API surfaces churn faster than either).
+- Shape A's prompt is small (a taste profile plus ~100 one-line candidates, well under 10k input
+  tokens), so the **cheapest tier is the right starting point** - reranking a supplied list is not
+  a reasoning-heavy task. Measure quality before paying for a larger model.
+- [ ] Use **structured outputs** (a schema of `{tmdbId, mediaType, reason}` objects) rather than
+  parsing prose - the response goes straight into a `kotlinx.serialization` model, and a
+  schema-invalid response becomes a typed failure instead of a regex.
+- [ ] Prompt-cache the stable prefix (system prompt + instructions); keep the volatile part (taste
+  profile + candidates) last, so repeat calls for the same user are cheap.
+
+### Taste profile: what actually gets sent
+Send an aggregated *profile*, not a raw dump of every tracked title - it is smaller, cheaper, and
+sends far less about the user off-device:
+- [ ] Top genres by frequency across favorites + lists, top favorited people (with their
+  department, so "director" outranks "supporting actor"), most common keywords from the cached
+  detail rows, decade distribution, and the user's average runtime.
+- [ ] Weight favorites and custom-list members above watchlist items - a watchlist entry is an
+  intention, a favorite is a verdict.
+- [ ] Include custom-list *names* as themes, capped in count and length.
+- [ ] Send the excluded-id set (everything in `trackedMedia`) as ids only, so the model never
+  re-suggests something the user already tracks.
+- [ ] Explicitly **not** sent: account id, session id, email, region, or anything from
+  `AccountRepository` beyond the aggregate above.
+
+### Implementation Checklist
+- [ ] **Gateway route** (blocked on item 1): `POST /recommendations` holding the LLM key
+  server-side, with the same App Check / attestation posture as the TMDB proxy route. Rate-limit
+  per account - this is the one route in the app where a loop costs real money.
+- [ ] **Data Layer**: `RecommendationRepository` /`RecommendationRepositoryImpl`
+  (`features/recommendations/repository/`) - builds the taste profile from the repositories listed
+  above, assembles the candidate pool, calls the gateway through the existing `TmdbClient`-style
+  Ktor setup (its own client instance; different base URL and no `api_key` parameter), hydrates
+  results, and caches the ranked output in a new `recommendationCache` table
+  (`MyDatabase.sq`) keyed by account with a generated-at timestamp.
+- [ ] **Refresh policy**: regenerate at most once a day, and on an explicit pull-to-refresh; also
+  invalidate when the tracked set changes materially (a favorite added/removed), since a
+  recommendation row that ignores a title the user just favorited reads as broken. Never call on
+  every screen open.
+- [ ] **Business Logic**: `RecommendationsScreenModel` - loading/success/empty/error states; an
+  explicit **cold-start** state for a user with too few tracked items (say, under five) that
+  shows trending instead of an empty shelf, and an explicit **signed-out** state (this feature
+  needs an account, like
+  [item 6](#6-account-favorites--watchlist-replacing-my-fav-placeholder--done-2026-08-16)).
+- [ ] **Failure handling**: a failed or slow model call must degrade to the unranked candidate pool,
+  not to an error screen - the row still has real TMDB titles in it either way. Specific exception
+  types only (per `.claude/skills/code-conventions/SKILL.md`) - no bare `Exception` around the
+  gateway call.
+- [ ] **UI Presentation**: a "For You" row on the home screen (reusing `MediaListRow`/`MovieCard`),
+  each card carrying the model's one-line reason underneath, plus a "why this?" affordance showing
+  the profile that produced it. A dedicated full-screen list behind "See all". All user-facing
+  strings via `Res.string.*` in `composeResources/values/strings.xml`.
+- [ ] **Transparency**: label the row as AI-generated, and keep a settings toggle
+  (`AccountScreen`, alongside "Region" and restricted mode) that turns the feature off entirely -
+  off means no profile is ever built or sent.
+- [ ] **Tests** (both tiers required, per `.claude/skills/testing-conventions/SKILL.md`):
+  - Unit: taste-profile aggregation (weighting, exclusion set, cold-start threshold), candidate
+    filtering, the id-validation step that drops any model-returned id not in the candidate
+    pool, and the degrade-to-unranked path on a gateway failure. The model call itself is
+    stubbed - the tests must never hit a paid API.
+  - Compose UI: the "For You" row renders titles + reasons, the cold-start and signed-out states
+    render their fallbacks, and a card click navigates to the detail screen.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`.
+
+### Deliberately out of scope here
+- On-device / offline models. Nothing in the KMM ecosystem gives one runtime across Android, iOS,
+  desktop *and* JS today, and the quality gap at phone-sized model scale isn't worth four
+  platform-specific integrations for a "what should I watch" row.
+- Training or fine-tuning anything on user data. The profile is assembled per request and thrown
+  away; there is no model to train.
+- Cross-device sync of the generated recommendations - same conclusion as item 3b's sync note: it
+  would need this app's own backend, and regenerating locally is cheaper than syncing.
+- Ratings as a signal. TMDB has `/3/account/{account_id}/rated/*`, but the app doesn't surface
+  rating yet; add it as a profile input if/when rating ships.
