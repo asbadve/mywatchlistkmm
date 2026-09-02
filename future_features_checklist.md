@@ -1130,6 +1130,109 @@ read functions answer offline and in milliseconds - exactly what an agent needs.
 - **New attack surface.** A system-invocable service that can mutate the user's TMDB account is a
   bigger deal than anything the app ships today. Writes stay behind the session check *and* the
   settings toggle, and no function should ever expose the session id, account id, or API key.
-- **Android-only, in a multiplatform app.** iOS's equivalent is App Intents; if this proves out,
-  the sibling work is a Swift App Intents layer over the same `commonMain` functions, which is a
-  separate item, not a stretch goal here.
+- **Android-only, in a multiplatform app.** iOS's equivalent is App Intents - written up as its
+  own sibling item in [14.2](#142-expose-mywatchlist-to-siri--apple-intelligence-via-ios-app-intents),
+  since the two frameworks differ enough that neither is a port of the other.
+
+### 14.2. Expose MyWatchList to Siri / Apple Intelligence via iOS App Intents
+**Goal**: The iOS half of
+[14.1](#141-expose-mywatchlist-to-on-device-agents-via-android-appfunctions) - same idea (the
+system's assistant calls this app, so there is no LLM key and no per-request cost), different
+framework. Apple's is
+[App Intents](https://developer.apple.com/documentation/appintents): actions declared in Swift that
+Siri, Apple Intelligence, Spotlight and the Shortcuts app can invoke - "add Dune Part Two to my
+watchlist", "search MyWatchList for Villeneuve", or a Shortcut the user wires up themselves.
+
+**This is not a port of 14.1.** The two frameworks are shaped differently enough that the design
+has to be redone rather than translated:
+
+| | Android AppFunctions | iOS App Intents |
+|---|---|---|
+| What you may expose | any function you annotate; KDoc is the contract | a **fixed catalogue of system schemas**, plus custom intents outside it |
+| Maturity | `1.0.0-alpha11`, experimental preview | framework GA since iOS 16; Apple-Intelligence schemas newer (see below) |
+| Caller | Gemini, gated behind an EAP | Siri, Apple Intelligence, Spotlight, Shortcuts - Shortcuts needs no special access |
+| Language / location | Kotlin, `composeApp/src/androidMain` | **Swift, `iosApp/`** - intents cannot be written in Kotlin |
+| Build cost here | KSP is new to the build; `targetSdk` 34 → 36 | none: deployment target is already 16.2, and App Intents is iOS 16+ |
+
+**The catalogue problem (read this before scoping anything)**
+Apple's schema domains are a closed list - audio, calendar, camera, clock, files, mail, maps,
+messages, notes, phone, photos, reminders, and system-and-in-app-search as the primary ones, plus
+Shortcuts-only domains (books, browser, journaling, reader, presentation, spreadsheet, whiteboard,
+word processor) and two single-purpose ones (assistant, visual intelligence). **There is no media,
+video, or watchlist domain**, so "add this film to my watchlist" has no schema to conform to. What
+this app can actually claim from the catalogue is the search/open pair:
+- `@AppIntent(schema: .system.searchInApp)` - conforms to `ShowInAppSearchResultsIntent`, with
+  `searchScopes` and a `criteria: StringSearchCriteria`, and navigates the app to its search
+  results. Note the version churn: `.system.search` arrived in iOS 18 and is **deprecated as of
+  iOS 27** in favour of `.system.searchInApp`, which is itself iOS 27 and still in beta - so this
+  one needs an availability-gated pair, not a single call site.
+- `@AppIntent(schema: .system.open)` (iOS 27, beta) - opens a given `AppEntity`, i.e. deep-link
+  into a movie/show detail screen.
+
+Everything else this app would want to offer (mark favorite, add to watchlist, add to a list,
+"what's airing this week") has no schema and stays a **plain custom `AppIntent`**. That is not a
+failure mode - custom intents still power Shortcuts, the Action button, and Spotlight - it just
+means Siri won't freely paraphrase them the way it does schema-backed actions.
+
+**Staged plan - each stage ships value on its own**
+- [ ] **Stage 1: custom intents + `AppShortcutsProvider`** (works on today's deployment target,
+  every device, no Apple Intelligence). `SearchWatchlistIntent`, `AddToWatchlistIntent`,
+  `MarkFavoriteIntent`, `UpcomingEpisodesIntent`, each with `AppShortcutPhrases` so they appear in
+  Shortcuts and Spotlight. This is the honest first deliverable.
+- [ ] **Stage 2: `AppEntity` + `IndexedEntity`** (iOS 18+, GA) for tracked movies/shows, so the
+  user's own watchlist lands in the Spotlight index and becomes referenceable content rather than
+  just a set of verbs.
+- [ ] **Stage 3: schema conformance** (`.system.searchInApp` / `.system.open`, iOS 27, beta) behind
+  `@available`, for the Apple Intelligence path. Gate this on the betas settling.
+
+**Implementation checklist**
+- [ ] **Where the code lives**: Swift files in `iosApp/iosApp/` added to the existing app target -
+  no App Intents extension. An extension would need its own link against the `ComposeApp`
+  framework, which is built `isStatic = true` (`composeApp/build.gradle.kts`), and duplicating a
+  static framework across two targets is exactly the kind of build problem not worth taking on for
+  a first pass. Adding files means editing the checked-in `project.pbxproj` by hand or via Xcode.
+- [ ] **Bridging to shared code**: intents call `commonMain` repositories through the generated
+  `ComposeApp` Objective-C interface. Kotlin `suspend` functions surface as completion-handler
+  methods that Swift can `await`, so an intent's `async perform()` maps cleanly. Only `public`
+  Kotlin declarations are exported - some repository methods may need widening, and top-level
+  functions arrive as `<File>Kt` members.
+- [ ] **Headless-launch safety**: an intent can run with no UI ever created, which is the same
+  situation `NotificationScheduler`'s `BGTaskScheduler` handler already runs in - and that one
+  needed `ensureRegisteredAtLaunch()` precisely because a Kotlin `object`'s lazy `init` fired at
+  the wrong moment. Assume the same class of bug here: anything an intent touches
+  (`AppDatabaseProvider`, the Ktor client, settings) must be safe to initialize outside
+  `MainViewController()`, and that needs proving on device, not reasoning about.
+- [ ] **Result shapes**: return `IntentResult` with a dialog **and** a snippet view for anything a
+  user would want to see (the upcoming-episodes list, search results). A Siri response that is
+  text-only for a poster-driven app is a missed opportunity, and snippet views are plain SwiftUI.
+- [ ] **Auth and writes**: same rules as 14.1 - check the TMDB session before any write, throw a
+  specific error rather than silently no-op'ing, and never disambiguate a title by guessing. Swift
+  side, that means `throw` with a localized failure so Siri can speak it, and
+  `requestDisambiguation` / `needsValueError` where the framework can ask the user instead.
+- [ ] **Localization**: intent titles, parameter prompts and phrases live in Apple's own
+  `AppShortcuts.strings`/string catalogs, **not** in `composeResources/values/strings.xml`. This is
+  the one deliberate exception to the repo's "all user-facing strings via `Res.string.*`" rule, and
+  it should be called out in the code's KDoc/comments so it doesn't read as an oversight.
+- [ ] **User control**: honour the same settings toggle 14.1 adds (shared preference in
+  `commonMain`, read by both platforms), and honour restricted mode inside the search intent.
+- [ ] **Tests**: the intents themselves are Swift and outside the Gradle test tiers - unit-test the
+  shared logic they call (title resolution, session checks) in `commonTest` so it is covered once
+  for both platforms, and verify the intents by hand in the Shortcuts app plus Siri on a device.
+  Note in the PR that `.claude/skills/testing-conventions/SKILL.md`'s Compose UI test requirement
+  is satisfied by the settings toggle, since App Intents add no composable.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:ktlintCheck`, plus an Xcode build of `iosApp` (the Gradle tasks alone will not catch
+  a Swift or pbxproj mistake).
+
+**Risks / open questions**
+- **iOS 27 is beta.** Both schemas this app can use are beta at the time of writing, and
+  `.system.search` was deprecated one version after arriving - so stage 3 carries real churn risk
+  while stages 1 and 2 do not.
+- **Apple Intelligence is device-gated** (supported hardware only) and region/language-gated;
+  Shortcuts and Spotlight are not. Framing this feature as "Siri support" would overpromise for
+  most of the install base - "Shortcuts and Spotlight, with Siri where available" is accurate.
+- **No schema for what this app mostly does.** Worth periodically re-checking the domain list: if
+  Apple ever ships a media/watchlist domain, the custom intents from stage 1 should be re-shaped to
+  conform to it, and that would be a breaking change to any Shortcut users have built.
+- **`project.pbxproj` churn.** The Xcode project is checked in; adding a Swift file touches a
+  generated-looking file that merges badly. Keep the intent files in one group, added in one commit.
