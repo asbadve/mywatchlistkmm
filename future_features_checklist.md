@@ -1022,3 +1022,114 @@ sends far less about the user off-device:
   would need this app's own backend, and regenerating locally is cheaper than syncing.
 - Ratings as a signal. TMDB has `/3/account/{account_id}/rated/*`, but the app doesn't surface
   rating yet; add it as a profile input if/when rating ships.
+
+### 14.1. Expose MyWatchList to on-device agents via Android AppFunctions
+**Goal**: Turn the app into an on-device tool provider - the *inverse* of the rest of item 14.
+Where 14 has this app call a model, AppFunctions
+([developer.android.com/ai/appfunctions](https://developer.android.com/ai/appfunctions)) has the
+system's agent call *this app*: annotated Kotlin functions are indexed by Android 16 and invoked by
+an authorized assistant (Gemini, in Google's private preview) so "add Dune Part Two to my
+watchlist", "what's on my watchlist that I can stream tonight", or "when's the next Reacher
+episode" execute against this app's real data, with no chat UI built here and **no LLM key, no
+gateway, and no per-request cost** - the model is the caller's, not ours. Google frames it as an
+on-device MCP server: same tools-for-agents idea, but OS-level and local, so there is no network
+round-trip and nothing to host.
+
+**Status check before starting (as of 2026-09)**: experimental preview - `androidx.appfunctions`
+is at `1.0.0-alpha11` (released 2026-08-26), execution requires **Android 16 (API 36)**, and the
+Gemini integration is a private preview limited to trusted testers behind an Early Access Program
+form. So this is prototype-grade: worth building to be first in line and to shake out the shape of
+our own domain API, not something to put on a release's critical path. Expect breaking changes on
+every alpha bump.
+
+**Why this app is a good fit**
+The app's verbs are already small, well-typed, and headless-callable - the hard part of adopting
+AppFunctions is usually "our features only exist inside a ViewModel", and that is not the case
+here. [Item 3](#3-local-notifications-returning-series-favorite-actors-favorite-collections)
+already proved the pattern: `EpisodeNotificationWorker` runs the pollers from a background worker
+with no Activity, no Compose, and no DI container (repositories are constructed directly, and even
+`Res.string.*` resolves via `getString` off the main thread). An `AppFunctionService` is the same
+shape of caller. Most of the tracked data is also in local SQLite already
+([item 2](#2-local-sqlite-database-for-favoriteswatchlist-local-notification-data-source)), so
+read functions answer offline and in milliseconds - exactly what an agent needs.
+
+**Candidate functions to expose (start with reads)**
+
+| Function | Backed by | Notes |
+|---|---|---|
+| `searchTitles(query, mediaType?)` | `SearchRepository` | The safest first function - read-only, no auth, already paginated. |
+| `getWatchlist()` / `getFavorites()` | `TrackedMediaRepository` | Local SQLite, offline, no TMDB round-trip. |
+| `getUpcomingEpisodes()` | `TrackedMediaRepository.trackedTvForPolling` + `TvRepository` | Reuses item 3a's existing poll state. |
+| `whereToWatch(title)` | `MovieRepository`/`TvRepository` + `resolveRegion()` | Reuses the region resolution from [item 11](#11-region-selector-driving-ott-availability--done-2026-08-17). |
+| `addToWatchlist(title)` / `markFavorite(title)` | `AccountMediaRepository` | **Writes** - needs a signed-in TMDB session; see below. |
+| `addToList(title, listName)` | `ListsRepository` | Write; resolve the list by name, don't create silently. |
+| `recommendForMe(mood?)` | item 14's `RecommendationRepository` | The interesting bridge: hand the agent the *candidate pool + taste profile* and let **its** model do the ranking - shape A without paying for shape A. |
+
+- [ ] Pick 2-3 read functions for the first cut. Resist exposing everything: each function is a
+  permanent, agent-facing API contract, and a large surface makes the agent's tool selection worse,
+  not better.
+
+**Implementation checklist**
+- [ ] **Build setup** (the real cost - none of this exists yet):
+  - Add KSP to the build. Nothing in this project uses it today (SQLDelight has its own Gradle
+    plugin), and in a KMP module the processor must be attached to the Android target only -
+    `add("kspAndroid", libs.androidx.appfunctions.compiler)`, not a bare `ksp(...)`, or the other
+    targets fail to configure.
+  - `implementation(libs.androidx.appfunctions)` in `androidMain` only; `appfunctions-testing` in
+    the Android test source set.
+  - `compileSdk` is already 37 ✔. `targetSdk` is **34** and needs to reach 36 for the OS to index
+    the functions - that is an app-wide change with its own behaviour-change review, not a
+    one-liner, so scope it as a separate step.
+  - `minSdk` stays 24: every AppFunctions entry point is `@RequiresApi(36)`, and the service
+    declaration must be inert (never crash, never advertise) on older devices.
+- [ ] **Service entry point** (`androidMain`, e.g. `core/appfunctions/`): an
+  `@AppFunctionServiceEntryPoint`-annotated `AppFunctionService` subclass. The generated XML
+  schema and the `EXECUTE_APP_FUNCTIONS`-gated service registration go in
+  `composeApp/src/androidMain/AndroidManifest.xml`.
+- [ ] **Function layer**: thin `@AppFunction suspend` wrappers that construct the same repositories
+  `EpisodeNotificationWorker` does and delegate straight into `commonMain`. No business logic in
+  `androidMain` - if a wrapper needs logic (title→id resolution, ranking, filtering), that logic
+  belongs in a common-code function both the wrapper and the UI can call.
+- [ ] **Agent-facing DTOs**: new `@AppFunctionSerializable` data classes in `androidMain` - do
+  **not** annotate the existing `Movie`/`Tv`/`SearchResultItem` models. Those are TMDB wire shapes
+  in `commonMain` (`kotlinx.serialization`, wrong module, wrong stability guarantee); the agent
+  contract should be a deliberately small projection (id, title, year, mediaType, posterUrl).
+- [ ] **KDoc is the API**: `@AppFunction(isDescribedByKDoc = true)` means the KDoc *is* what the
+  agent reads to choose and fill the function - parameter meaning, units, what "title" accepts, and
+  what the function will refuse. This is the one place in the repo where vague KDoc is a functional
+  bug, not a style issue. Google ships an
+  [AppFunctions agent skill](https://github.com/android/skills/tree/main/device-ai/appfunctions)
+  for refining these, and a [sample app](https://github.com/android/appfunctions).
+- [ ] **Auth and writes**: every write function checks the TMDB session first and throws a specific
+  typed failure (`AppFunctionInvalidArgumentException` / a signed-out equivalent) rather than
+  silently no-op'ing - an agent reporting "added it" when nothing was added is the worst possible
+  outcome. Ambiguous title matches must fail loudly too: never guess between two results, return
+  the candidates and let the agent disambiguate. Specific exception types only, per
+  `.claude/skills/code-conventions/SKILL.md`.
+- [ ] **User control**: a settings toggle on `AccountScreen` (next to "Region" and restricted mode)
+  that disables the functions - reads and writes separately if the framework allows advertising
+  them independently. Restricted mode must be honoured inside `searchTitles`, not just in the UI:
+  an agent-driven search is still this app's search.
+- [ ] **Tests**: unit-test the wrapper layer (title resolution, the signed-out and ambiguous-match
+  failures, DTO projection) with repositories faked - these are Android-source-set tests, so they
+  run under `:composeApp:testDebugUnitTest`, not `desktopTest`. The Compose UI test that
+  `.claude/skills/testing-conventions/SKILL.md` mandates applies to the settings toggle (the only
+  UI this adds); the functions themselves have no composable to test. Manual verification is
+  `adb shell cmd app_function list-app-functions` against an API 36 emulator, per the docs.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:testDebugUnitTest`,
+  `:composeApp:compileKotlinDesktop`, `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` -
+  and confirm the desktop/iOS/JS targets still configure after KSP lands, since that is the most
+  likely thing this breaks.
+
+**Risks / open questions**
+- **Alpha churn.** `1.0.0-alpha11` in an experimental preview; assume each bump costs a small
+  migration. Keep the surface small so those migrations stay cheap.
+- **Gemini access is gated.** Without EAP admission the functions are only reachable via `adb`, so
+  the honest deliverable of a first pass is "verified callable on-device", not "works in the
+  assistant".
+- **New attack surface.** A system-invocable service that can mutate the user's TMDB account is a
+  bigger deal than anything the app ships today. Writes stay behind the session check *and* the
+  settings toggle, and no function should ever expose the session id, account id, or API key.
+- **Android-only, in a multiplatform app.** iOS's equivalent is App Intents; if this proves out,
+  the sibling work is a Swift App Intents layer over the same `commonMain` functions, which is a
+  separate item, not a stretch goal here.
