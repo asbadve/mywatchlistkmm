@@ -50,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.constant.PrivacyConsentConstant
 import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
 import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
 import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
@@ -75,6 +76,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionReposi
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.isDebugBuild
+import com.ajinkyabadve.kmmmywatchlist.openUrl
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_screen_title
@@ -96,9 +98,11 @@ import mywatchlist.composeapp.generated.resources.settings_episode_notifications
 import mywatchlist.composeapp.generated.resources.settings_episode_notifications_title
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_description
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_label
+import mywatchlist.composeapp.generated.resources.settings_privacy_policy_label
 import mywatchlist.composeapp.generated.resources.settings_region_label
 import mywatchlist.composeapp.generated.resources.settings_restricted_mode_description
 import mywatchlist.composeapp.generated.resources.settings_restricted_mode_label
+import mywatchlist.composeapp.generated.resources.tmdb_attribution_notice
 import org.jetbrains.compose.resources.stringResource
 
 private object AccountScreenConstant {
@@ -290,6 +294,7 @@ fun AccountScreen(
                         } else {
                             null
                         },
+                    onPrivacyPolicyClicked = { openUrl(PrivacyConsentConstant.PRIVACY_POLICY_URL) },
                 )
             }
         }
@@ -433,6 +438,7 @@ private fun SettingsList(
     onDebugPollCollectionNotificationsNowClicked: () -> Unit,
     onDebugResetEpisodeAlertPromptClicked: () -> Unit,
     onLogoutClicked: (() -> Unit)?,
+    onPrivacyPolicyClicked: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         SettingsRow(
@@ -487,6 +493,16 @@ private fun SettingsList(
                 labelColor = MaterialTheme.colorScheme.error,
             )
         }
+        SettingsRow(
+            label = stringResource(Res.string.settings_privacy_policy_label),
+            onClick = onPrivacyPolicyClicked,
+        )
+        Text(
+            text = stringResource(Res.string.tmdb_attribution_notice),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
     }
 }
 
