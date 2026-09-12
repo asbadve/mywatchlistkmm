@@ -7,6 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  version:
+    name: Compute release version
+    runs-on: ubuntu-latest
+    outputs:
+      version_name: ${{ steps.compute.outputs.version_name }}
+    steps:
+      # A `v*` tag push carries the real version (`v1.2.3` -> "1.2.3", read by build.gradle.kts's
+      # RELEASE_VERSION_NAME - see its declaration for how versionCode/versionName/packageVersion
+      # are all derived from this one string). No tag (workflow_dispatch) means no release is
+      # actually being cut - falls back to a run-numbered dev version instead of failing, since
+      # this workflow is also useful for producing test artifacts without tagging anything.
+      - name: Compute version from tag
+        id: compute
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "version_name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version_name=0.0.0-dev.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
+
   verify:
     name: Verify before packaging
     runs-on: ubuntu-latest
@@ -36,7 +56,7 @@ jobs:
 
   package:
     name: Package desktop distributable
-    needs: verify
+    needs: [verify, version]
     strategy:
       fail-fast: false
       matrix:
@@ -66,6 +86,7 @@ jobs:
         shell: bash
         env:
           ORG_GRADLE_PROJECT_MY_WATCH_LIST_TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          RELEASE_VERSION_NAME: ${{ needs.version.outputs.version_name }}
         run: ./gradlew packageDistributionForCurrentOS
 
       # Only one of these three globs matches on any given OS - packageDistributionForCurrentOS
@@ -82,7 +103,7 @@ jobs:
 
   package-android:
     name: Package Android release APK
-    needs: verify
+    needs: [verify, version]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -118,6 +139,7 @@ jobs:
           ANDROID_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+          RELEASE_VERSION_NAME: ${{ needs.version.outputs.version_name }}
         run: ./gradlew :composeApp:assembleRelease
 
       - name: Upload Android APK

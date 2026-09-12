@@ -216,6 +216,24 @@ val hasAndroidReleaseSigningConfig =
         androidReleaseKeyPassword,
     ).all { !it.isNullOrBlank() }
 
+// Auto-incrementing release version: release.yml's `version` job derives this from the pushed
+// git tag (`v1.2.3` -> "1.2.3") and exports it as RELEASE_VERSION_NAME, so tagging a release is
+// the only version bump a release needs - nothing to hand-edit here beforehand. Falls back to a
+// stable default for ordinary local builds, where no such tag/env var exists.
+val releaseVersionName: String = System.getenv("RELEASE_VERSION_NAME") ?: "1.0.0"
+
+// Android's versionCode must strictly increase with every Play-installable build - derived from
+// the same semver string so a tag can never silently produce a lower or equal code than the last
+// release. Any pre-release suffix (e.g. "1.2.3-rc1") is dropped before parsing; a component this
+// app's own tags won't produce (non-numeric, or more than 3 dot-separated parts) falls back to 0
+// rather than failing the build outright.
+val releaseVersionCode: Int =
+    releaseVersionName
+        .substringBefore('-')
+        .split(".")
+        .map { it.toIntOrNull() ?: 0 }
+        .let { (it.getOrElse(0) { 1 }) * 1_000_000 + (it.getOrElse(1) { 0 }) * 1_000 + it.getOrElse(2) { 0 } }
+
 android {
     namespace = "com.ajinkyabadve.kmmmywatchlist"
     compileSdk = 37
@@ -225,8 +243,8 @@ android {
         targetSdk = 34
 
         applicationId = "com.ajinkyabadve.kmmmywatchlist.androidApp"
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
     }
     sourceSets["main"].apply {
         manifest.srcFile("src/androidMain/AndroidManifest.xml")
@@ -245,6 +263,13 @@ android {
     }
     buildTypes {
         release {
+            // The detail-screen-scroll-jank skill's own benchmark methodology already assumed "R8
+            // optimization enabled" for a valid release-build measurement - this was previously
+            // false (AGP's default), so every benchmark run against `assembleRelease`/
+            // `installRelease` before 2026-09-12 measured an unminified build despite that.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig =
                 if (hasAndroidReleaseSigningConfig) {
                     signingConfigs.getByName("release")
@@ -296,7 +321,9 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "MyWatchList"
-            packageVersion = "1.0.0"
+            // dmg/msi installers require a plain X.Y.Z version - strips any "-dev.N"/"-rc1"
+            // pre-release suffix `releaseVersionName` (see its declaration above) can carry.
+            packageVersion = releaseVersionName.substringBefore('-')
             // jlink's default (jdeps-based) module detection misses java.sql - confirmed
             // 2026-08-26: a packaged .app (createDistributable/Dmg) crashed with
             // NoClassDefFoundError: java/sql/DriverManager the first time a screen actually ran a
@@ -363,6 +390,14 @@ sqldelight {
             // Default dialect (sqlite_3_18) predates SQLite's `ON CONFLICT ... DO UPDATE` syntax,
             // which trackedMedia's upsert needs (SQLite added it in 3.24, generalised in 3.35).
             dialect(libs.sqlDelight.dialect.sqlite338)
+            // NOT YET ENABLED: `verifyMigrations.set(true)` would diff every numbered `.sqm` file
+            // (see `LocalSchemaVersion`'s kdoc) against `MyDatabase.sq` at build time - exactly the
+            // safety net a real migration needs. Tried 2026-09-12 with zero `.sqm` files present
+            // (nothing to verify yet) and `verifyCommonMainMyDatabaseMigration` failed outright:
+            // "Verifying a migration requires a database file to be present... use the generate
+            // schema Gradle task" - no such task exists in this SQLDelight version's default Gradle
+            // task graph. Turn this on (and resolve that task-graph gap) when the first real `.sqm`
+            // migration is added - don't ship it disabled forever.
         }
     }
 }
