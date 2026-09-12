@@ -199,6 +199,23 @@ kotlin {
     }
 }
 
+// Real release signing, read from env vars so the keystore itself never touches the repo (CI
+// injects these from GitHub Actions secrets; a local release build needs them exported too).
+// Falls back to the debug key when any of the four are missing, so the existing
+// scroll-performance benchmarking workflow (`assembleRelease`/`installRelease` with no secrets
+// present, see the doFirst warning below) keeps working unchanged.
+val androidReleaseKeystorePath: String? = System.getenv("ANDROID_RELEASE_KEYSTORE_PATH")
+val androidReleaseKeystorePassword: String? = System.getenv("ANDROID_RELEASE_KEYSTORE_PASSWORD")
+val androidReleaseKeyAlias: String? = System.getenv("ANDROID_RELEASE_KEY_ALIAS")
+val androidReleaseKeyPassword: String? = System.getenv("ANDROID_RELEASE_KEY_PASSWORD")
+val hasAndroidReleaseSigningConfig =
+    listOf(
+        androidReleaseKeystorePath,
+        androidReleaseKeystorePassword,
+        androidReleaseKeyAlias,
+        androidReleaseKeyPassword,
+    ).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.ajinkyabadve.kmmmywatchlist"
     compileSdk = 37
@@ -216,14 +233,31 @@ android {
         res.srcDirs("src/androidMain/resources")
         resources.srcDirs("src/commonMain/resources")
     }
+    signingConfigs {
+        if (hasAndroidReleaseSigningConfig) {
+            create("release") {
+                storeFile = file(androidReleaseKeystorePath!!)
+                storePassword = androidReleaseKeystorePassword
+                keyAlias = androidReleaseKeyAlias
+                keyPassword = androidReleaseKeyPassword
+            }
+        }
+    }
     buildTypes {
-        // Signed with the debug key purely so `assembleRelease`/`installRelease` produce an
-        // installable APK for local scroll-performance benchmarking - Compose's own guidance is
-        // that Lazy layout performance can only be measured reliably in a non-debuggable build
-        // (debug builds carry extra composer/slot-table tracking that debug=true always installs
-        // regardless of minification). Not wired to any signing secret - do not use this to ship.
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig =
+                if (hasAndroidReleaseSigningConfig) {
+                    signingConfigs.getByName("release")
+                } else {
+                    // Debug-key fallback purely so `assembleRelease`/`installRelease` still produce
+                    // an installable APK for local scroll-performance benchmarking when no release
+                    // signing secrets are exported - Compose's own guidance is that Lazy layout
+                    // performance can only be measured reliably in a non-debuggable build (debug
+                    // builds carry extra composer/slot-table tracking that debug=true always
+                    // installs regardless of minification). Not a real release credential - do not
+                    // ship an APK signed this way.
+                    signingConfigs.getByName("debug")
+                }
         }
     }
     compileOptions {
@@ -232,18 +266,21 @@ android {
     }
 }
 
-// Prints once when a person actually invokes a Release-variant output task, so the debug-signing
-// benchmark shortcut above can't be ship-forgotten: this key is not a real release credential, and
-// an APK built with it cannot be uploaded as a Play Store update to the existing app (Play
-// enforces the original signing key). Deliberately only the outward-facing tasks, not every
-// internal Release-suffixed task in the dependency graph (dozens of those run per build).
-setOf("assembleRelease", "bundleRelease", "installRelease").forEach { taskName ->
-    tasks.matching { it.name == taskName }.configureEach {
-        doFirst {
-            logger.warn(
-                "\n[!] '$taskName' is signed with the DEBUG key (see composeApp/build.gradle.kts) - " +
-                    "for local benchmarking only. Do NOT distribute this APK/bundle as a real release.\n",
-            )
+// Prints once when a person actually invokes a Release-variant output task without the release
+// signing secrets exported, so the debug-signing benchmark fallback above can't be ship-forgotten:
+// the debug key is not a real release credential, and an APK built with it cannot be uploaded as a
+// Play Store update to the existing app (Play enforces the original signing key). Deliberately
+// only the outward-facing tasks, not every internal Release-suffixed task in the dependency graph
+// (dozens of those run per build).
+if (!hasAndroidReleaseSigningConfig) {
+    setOf("assembleRelease", "bundleRelease", "installRelease").forEach { taskName ->
+        tasks.matching { it.name == taskName }.configureEach {
+            doFirst {
+                logger.warn(
+                    "\n[!] '$taskName' is signed with the DEBUG key (see composeApp/build.gradle.kts) - " +
+                        "for local benchmarking only. Do NOT distribute this APK/bundle as a real release.\n",
+                )
+            }
         }
     }
 }

@@ -80,9 +80,56 @@ jobs:
             composeApp/build/compose/binaries/main/deb/*.deb
           if-no-files-found: error
 
+  package-android:
+    name: Package Android release APK
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # The keystore itself never lives in the repo - it's base64-encoded into a secret and
+      # decoded to a runner-local temp file here, which build.gradle.kts's signingConfigs block
+      # then reads via ANDROID_RELEASE_KEYSTORE_PATH. Without all four secrets present,
+      # build.gradle.kts silently falls back to debug signing instead of failing, so a missing
+      # secret here would ship a debug-signed "release" APK rather than error loudly - keep all
+      # four ANDROID_RELEASE_* secrets in sync in repo settings.
+      - name: Decode release keystore
+        run: echo "${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > "${{ runner.temp }}/release.jks"
+
+      - name: Build release APK
+        env:
+          ORG_GRADLE_PROJECT_MY_WATCH_LIST_TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          ANDROID_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          ANDROID_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: ./gradlew :composeApp:assembleRelease
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: composeApp/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
-    needs: package
+    needs: [package, package-android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     # The default GITHUB_TOKEN is read-only unless a job explicitly asks for more - without this,
