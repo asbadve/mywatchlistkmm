@@ -31,6 +31,10 @@ optional.
   a measurement artifact). Read before touching their scroll performance, or before trusting any
   on-device jank number in this repo - has the release-build benchmark setup and two documented
   dead ends so they aren't retried.
+- `.claude/skills/release-process/SKILL.md` - how to cut a release: auto-versioning from git tags,
+  Android keystore signing, real DB migrations, ProGuard/R8, and the Play Store listing (copy,
+  privacy policy, required TMDB attribution). Read before tagging a release or touching signing/
+  versioning in `composeApp/build.gradle.kts`.
 
 ## Verify
 `./gradlew :composeApp:desktopTest` (tests), `:composeApp:compileKotlinDesktop` +

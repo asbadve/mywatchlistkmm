@@ -72,6 +72,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarge
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AccountAvatarButton
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.SessionExpiredDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingFooter
+import com.ajinkyabadve.kmmmywatchlist.core.ui.privacy.PrivacyConsentGate
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.splash.SplashScreen
 import com.ajinkyabadve.kmmmywatchlist.design.searchbox.SearchBox
@@ -159,8 +160,10 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
             if (showSplash) {
                 SplashScreen(onFinished = { showSplash = false })
             } else {
-                val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
-                MainAppScreen(windowSize)
+                PrivacyConsentGate {
+                    val windowSize = WindowSize.getWindowSize(calculateWindowSizeClass)
+                    MainAppScreen(windowSize)
+                }
             }
         }
     }

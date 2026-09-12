@@ -238,4 +238,19 @@
     <!-- Restricted mode -->
     <string name="settings_restricted_mode_label">Restricted Mode</string>
     <string name="settings_restricted_mode_description">Hide adult content from search results</string>
+
+    <!-- Privacy consent -->
+    <string name="tmdb_attribution_notice">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="privacy_consent_title">Privacy Policy</string>
+    <string name="privacy_consent_intro">Before you continue, please review how MyWatchList handles your data.</string>
+    <string name="privacy_consent_point_account">Signing in with TMDB lets the app read and write your favorites, watchlist, and lists on your behalf.</string>
+    <string name="privacy_consent_point_local">Favorites, watchlist, and cached details are stored locally on this device to work offline.</string>
+    <string name="privacy_consent_point_notifications">Notifications you opt into are computed on this device only.</string>
+    <string name="privacy_consent_point_no_tracking">There is no analytics or ad tracking in this app.</string>
+    <string name="privacy_consent_open_full_policy">Open full policy</string>
+    <string name="privacy_consent_load_error_message">Couldn't load the privacy policy. Check your connection and try again.</string>
+    <string name="privacy_consent_retry_button">Retry</string>
+    <string name="privacy_consent_checkbox_label">I have read and accept the Privacy Policy</string>
+    <string name="privacy_consent_accept_button">Accept &amp; Continue</string>
+    <string name="settings_privacy_policy_label">Privacy Policy</string>
 </resources>
