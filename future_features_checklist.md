@@ -134,6 +134,24 @@ done anyway), `remoteKeys` (Paging3's own bookkeeping), `notificationLedger` and
 - No offline *write* queue for favoriting/listing itself still holds as a boundary - TMDB calls
   still need a live session; only already-in-flight toggles get the optimistic local hide.
 
+### Real SQLDelight migration path — added 2026-09-12 for the v1.0.0 release
+The debug-only wipe-on-mismatch (`LocalSchemaVersion`) was always a dev-loop shortcut, never a real
+migration - fine while no release existed for a real on-disk database to migrate *from*, not
+acceptable once one does. `LocalSchemaVersion.CURRENT` reset from `3` to `1` to match
+`MyDatabase.Schema.version` (every prior bump predated this and only ever tracked debug wipes).
+From this release on:
+- `composeApp/build.gradle.kts`'s `sqldelight` block: `verifyMigrations.set(true)` - fails the
+  build if a numbered `.sqm` migration file doesn't produce exactly what `MyDatabase.sq` describes.
+- Android/iOS: `AndroidSqliteDriver`/`NativeSqliteDriver` already run `create()`/`migrate()`
+  automatically against a versioned `SqlSchema` - no change needed there.
+- **Desktop's `JdbcSqliteDriver` did not** - it only ever called `schema.create()` once for a
+  brand-new file and otherwise left an existing file exactly as it was, so a real user's desktop
+  database would have silently stayed on its old, now-incompatible shape forever after an update
+  (crashing the first time a query touched what changed). Fixed: `DatabaseDriverFactory.kt`
+  (desktopMain) now tracks the on-disk version in SQLite's own `PRAGMA user_version` and calls
+  `schema.migrate()` by hand when it's behind `schema.version`.
+- JS never persists (see "What's different from the schema sketch" above) - nothing to migrate.
+
 ---
 
 ## 3. Local Notifications (Returning Series, Favorite Actors, Favorite Collections)

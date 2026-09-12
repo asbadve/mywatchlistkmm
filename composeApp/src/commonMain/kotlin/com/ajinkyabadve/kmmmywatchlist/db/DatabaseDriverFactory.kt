@@ -31,12 +31,13 @@ internal suspend fun createDatabase(): MyDatabase {
 }
 
 /**
- * This project has no real SQLDelight migration path (see [LocalSchemaVersion]'s kdoc) - without
- * this, every schema-touching change to `MyDatabase.sq` crashed with `SQLiteException: no such
- * table/column` the first time a query touched it, requiring a manual `pm clear`/reinstall.
- * Debug builds only: when the stored version doesn't match [LocalSchemaVersion.CURRENT], wipe the
- * on-disk database and start fresh instead. Release builds never do this - silently discarding a
- * real user's local data on a version bump is not an acceptable trade even for the same crash.
+ * A dev-loop shortcut, not this app's real migration mechanism - see [LocalSchemaVersion]'s kdoc
+ * for that (per-platform `createSqlDriver` applies `MyDatabase.Schema.migrate()` against real
+ * numbered `.sqm` files). This exists for a schema change still in flux, where writing a migration
+ * for a shape that's about to change again isn't worth it yet: debug builds only, when the stored
+ * version doesn't match [LocalSchemaVersion.CURRENT], wipe the on-disk database and start fresh
+ * instead of relying on (or requiring) a migration. Release builds never do this - silently
+ * discarding a real user's local data on a version bump is not an acceptable trade.
  */
 private fun resetDatabaseIfSchemaChangedForDebug() {
     if (!isDebugBuild()) return

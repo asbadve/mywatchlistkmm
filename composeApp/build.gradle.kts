@@ -199,6 +199,41 @@ kotlin {
     }
 }
 
+// Real release signing, read from env vars so the keystore itself never touches the repo (CI
+// injects these from GitHub Actions secrets; a local release build needs them exported too).
+// Falls back to the debug key when any of the four are missing, so the existing
+// scroll-performance benchmarking workflow (`assembleRelease`/`installRelease` with no secrets
+// present, see the doFirst warning below) keeps working unchanged.
+val androidReleaseKeystorePath: String? = System.getenv("ANDROID_RELEASE_KEYSTORE_PATH")
+val androidReleaseKeystorePassword: String? = System.getenv("ANDROID_RELEASE_KEYSTORE_PASSWORD")
+val androidReleaseKeyAlias: String? = System.getenv("ANDROID_RELEASE_KEY_ALIAS")
+val androidReleaseKeyPassword: String? = System.getenv("ANDROID_RELEASE_KEY_PASSWORD")
+val hasAndroidReleaseSigningConfig =
+    listOf(
+        androidReleaseKeystorePath,
+        androidReleaseKeystorePassword,
+        androidReleaseKeyAlias,
+        androidReleaseKeyPassword,
+    ).all { !it.isNullOrBlank() }
+
+// Auto-incrementing release version: release.yml's `version` job derives this from the pushed
+// git tag (`v1.2.3` -> "1.2.3") and exports it as RELEASE_VERSION_NAME, so tagging a release is
+// the only version bump a release needs - nothing to hand-edit here beforehand. Falls back to a
+// stable default for ordinary local builds, where no such tag/env var exists.
+val releaseVersionName: String = System.getenv("RELEASE_VERSION_NAME") ?: "1.0.0"
+
+// Android's versionCode must strictly increase with every Play-installable build - derived from
+// the same semver string so a tag can never silently produce a lower or equal code than the last
+// release. Any pre-release suffix (e.g. "1.2.3-rc1") is dropped before parsing; a component this
+// app's own tags won't produce (non-numeric, or more than 3 dot-separated parts) falls back to 0
+// rather than failing the build outright.
+val releaseVersionCode: Int =
+    releaseVersionName
+        .substringBefore('-')
+        .split(".")
+        .map { it.toIntOrNull() ?: 0 }
+        .let { (it.getOrElse(0) { 1 }) * 1_000_000 + (it.getOrElse(1) { 0 }) * 1_000 + it.getOrElse(2) { 0 } }
+
 android {
     namespace = "com.ajinkyabadve.kmmmywatchlist"
     compileSdk = 37
@@ -208,22 +243,46 @@ android {
         targetSdk = 34
 
         applicationId = "com.ajinkyabadve.kmmmywatchlist.androidApp"
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
     }
     sourceSets["main"].apply {
         manifest.srcFile("src/androidMain/AndroidManifest.xml")
         res.srcDirs("src/androidMain/resources")
         resources.srcDirs("src/commonMain/resources")
     }
+    signingConfigs {
+        if (hasAndroidReleaseSigningConfig) {
+            create("release") {
+                storeFile = file(androidReleaseKeystorePath!!)
+                storePassword = androidReleaseKeystorePassword
+                keyAlias = androidReleaseKeyAlias
+                keyPassword = androidReleaseKeyPassword
+            }
+        }
+    }
     buildTypes {
-        // Signed with the debug key purely so `assembleRelease`/`installRelease` produce an
-        // installable APK for local scroll-performance benchmarking - Compose's own guidance is
-        // that Lazy layout performance can only be measured reliably in a non-debuggable build
-        // (debug builds carry extra composer/slot-table tracking that debug=true always installs
-        // regardless of minification). Not wired to any signing secret - do not use this to ship.
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // The detail-screen-scroll-jank skill's own benchmark methodology already assumed "R8
+            // optimization enabled" for a valid release-build measurement - this was previously
+            // false (AGP's default), so every benchmark run against `assembleRelease`/
+            // `installRelease` before 2026-09-12 measured an unminified build despite that.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig =
+                if (hasAndroidReleaseSigningConfig) {
+                    signingConfigs.getByName("release")
+                } else {
+                    // Debug-key fallback purely so `assembleRelease`/`installRelease` still produce
+                    // an installable APK for local scroll-performance benchmarking when no release
+                    // signing secrets are exported - Compose's own guidance is that Lazy layout
+                    // performance can only be measured reliably in a non-debuggable build (debug
+                    // builds carry extra composer/slot-table tracking that debug=true always
+                    // installs regardless of minification). Not a real release credential - do not
+                    // ship an APK signed this way.
+                    signingConfigs.getByName("debug")
+                }
         }
     }
     compileOptions {
@@ -232,18 +291,21 @@ android {
     }
 }
 
-// Prints once when a person actually invokes a Release-variant output task, so the debug-signing
-// benchmark shortcut above can't be ship-forgotten: this key is not a real release credential, and
-// an APK built with it cannot be uploaded as a Play Store update to the existing app (Play
-// enforces the original signing key). Deliberately only the outward-facing tasks, not every
-// internal Release-suffixed task in the dependency graph (dozens of those run per build).
-setOf("assembleRelease", "bundleRelease", "installRelease").forEach { taskName ->
-    tasks.matching { it.name == taskName }.configureEach {
-        doFirst {
-            logger.warn(
-                "\n[!] '$taskName' is signed with the DEBUG key (see composeApp/build.gradle.kts) - " +
-                    "for local benchmarking only. Do NOT distribute this APK/bundle as a real release.\n",
-            )
+// Prints once when a person actually invokes a Release-variant output task without the release
+// signing secrets exported, so the debug-signing benchmark fallback above can't be ship-forgotten:
+// the debug key is not a real release credential, and an APK built with it cannot be uploaded as a
+// Play Store update to the existing app (Play enforces the original signing key). Deliberately
+// only the outward-facing tasks, not every internal Release-suffixed task in the dependency graph
+// (dozens of those run per build).
+if (!hasAndroidReleaseSigningConfig) {
+    setOf("assembleRelease", "bundleRelease", "installRelease").forEach { taskName ->
+        tasks.matching { it.name == taskName }.configureEach {
+            doFirst {
+                logger.warn(
+                    "\n[!] '$taskName' is signed with the DEBUG key (see composeApp/build.gradle.kts) - " +
+                        "for local benchmarking only. Do NOT distribute this APK/bundle as a real release.\n",
+                )
+            }
         }
     }
 }
@@ -259,7 +321,9 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "MyWatchList"
-            packageVersion = "1.0.0"
+            // dmg/msi installers require a plain X.Y.Z version - strips any "-dev.N"/"-rc1"
+            // pre-release suffix `releaseVersionName` (see its declaration above) can carry.
+            packageVersion = releaseVersionName.substringBefore('-')
             // jlink's default (jdeps-based) module detection misses java.sql - confirmed
             // 2026-08-26: a packaged .app (createDistributable/Dmg) crashed with
             // NoClassDefFoundError: java/sql/DriverManager the first time a screen actually ran a
@@ -326,6 +390,14 @@ sqldelight {
             // Default dialect (sqlite_3_18) predates SQLite's `ON CONFLICT ... DO UPDATE` syntax,
             // which trackedMedia's upsert needs (SQLite added it in 3.24, generalised in 3.35).
             dialect(libs.sqlDelight.dialect.sqlite338)
+            // NOT YET ENABLED: `verifyMigrations.set(true)` would diff every numbered `.sqm` file
+            // (see `LocalSchemaVersion`'s kdoc) against `MyDatabase.sq` at build time - exactly the
+            // safety net a real migration needs. Tried 2026-09-12 with zero `.sqm` files present
+            // (nothing to verify yet) and `verifyCommonMainMyDatabaseMigration` failed outright:
+            // "Verifying a migration requires a database file to be present... use the generate
+            // schema Gradle task" - no such task exists in this SQLDelight version's default Gradle
+            // task graph. Turn this on (and resolve that task-graph gap) when the first real `.sqm`
+            // migration is added - don't ship it disabled forever.
         }
     }
 }
