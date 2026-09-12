@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.core.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -21,15 +22,29 @@ private const val TARGET_TAG = "longPressToCopyTarget"
 private const val TARGET_TEXT = "The Dark Knight"
 private const val BASELINE_CLIPBOARD_TEXT = "unrelated pre-existing clipboard content"
 
+// In-memory fake so these tests never touch the real host clipboard - the desktop actual backs
+// LocalClipboardManager with the real AWT system clipboard, which is unavailable on a headless CI
+// runner (no X server) and throws/no-ops instead of storing text there.
+private class FakeClipboardManager : ClipboardManager {
+    private var stored: AnnotatedString? = null
+
+    override fun setText(annotatedString: AnnotatedString) {
+        stored = annotatedString
+    }
+
+    override fun getText(): AnnotatedString? = stored
+}
+
 @OptIn(ExperimentalTestApi::class)
 class LongPressToCopyUiTest {
     @Test
     fun testLongPress_copiesTextToClipboard() =
         runComposeUiTest {
-            lateinit var clipboardManager: ClipboardManager
+            val clipboardManager = FakeClipboardManager()
             setContent {
-                clipboardManager = LocalClipboardManager.current
-                Box(modifier = Modifier.size(48.dp).testTag(TARGET_TAG).longPressToCopy(TARGET_TEXT))
+                CompositionLocalProvider(LocalClipboardManager provides clipboardManager) {
+                    Box(modifier = Modifier.size(48.dp).testTag(TARGET_TAG).longPressToCopy(TARGET_TEXT))
+                }
             }
 
             onNodeWithTag(TARGET_TAG).performTouchInput { longClick() }
@@ -37,19 +52,16 @@ class LongPressToCopyUiTest {
             assertEquals(TARGET_TEXT, clipboardManager.getText()?.text)
         }
 
-    // Seeds a known baseline directly (not via TARGET_TEXT, which another test in this class
-    // legitimately leaves on the clipboard) rather than asserting "empty" - the desktop actual
-    // backs LocalClipboardManager with the real host AWT clipboard, which persists across tests
-    // and isn't guaranteed empty to begin with.
     @Test
     fun testPlainClick_doesNotCopyToClipboard() =
         runComposeUiTest {
-            lateinit var clipboardManager: ClipboardManager
-            setContent {
-                clipboardManager = LocalClipboardManager.current
-                Box(modifier = Modifier.size(48.dp).testTag(TARGET_TAG).longPressToCopy(TARGET_TEXT))
-            }
+            val clipboardManager = FakeClipboardManager()
             clipboardManager.setText(AnnotatedString(BASELINE_CLIPBOARD_TEXT))
+            setContent {
+                CompositionLocalProvider(LocalClipboardManager provides clipboardManager) {
+                    Box(modifier = Modifier.size(48.dp).testTag(TARGET_TAG).longPressToCopy(TARGET_TEXT))
+                }
+            }
 
             onNodeWithTag(TARGET_TAG).performClick()
 
