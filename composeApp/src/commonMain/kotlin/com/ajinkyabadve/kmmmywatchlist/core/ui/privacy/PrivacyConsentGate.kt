@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.core.constant.PrivacyConsentConstant
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.PrivacyConsentRepository
@@ -71,12 +73,20 @@ private fun PrivacyConsentScreen(onAccept: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = checked,
-                            onCheckedChange = { checked = it },
-                            modifier = Modifier.testTag(PrivacyConsentGateConstant.CHECKBOX_TAG),
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier =
+                            Modifier
+                                .toggleable(
+                                    value = checked,
+                                    role = Role.Checkbox,
+                                    onValueChange = { checked = it },
+                                ).testTag(PrivacyConsentGateConstant.CHECKBOX_TAG),
+                    ) {
+                        // Click handling lives on the Row (toggleable above), not here - tapping
+                        // the label text is the standard way users expect to toggle a checkbox,
+                        // and `onCheckedChange = null` avoids a second, redundant click target.
+                        Checkbox(checked = checked, onCheckedChange = null)
                         Text(stringResource(Res.string.privacy_consent_checkbox_label))
                     }
                     Button(
