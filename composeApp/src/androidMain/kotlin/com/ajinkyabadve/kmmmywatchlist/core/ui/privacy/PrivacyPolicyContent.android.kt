@@ -29,16 +29,16 @@ import mywatchlist.composeapp.generated.resources.privacy_consent_retry_button
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The hosted privacy policy URL is a Claude Artifact page - it has its own JS-driven viewer chrome
- * (share button, version picker, etc.), not plain static HTML, so it needs scripting to render at
- * all. [WebView.getSettings]'s `javaScriptEnabled` defaults to `false` (unlike iOS's `WKWebView`,
- * which defaults to enabled) - confirmed 2026-09-12 on an emulator: without this, the page hung on
- * its own loading spinner forever, main-frame navigation "succeeding" from WebView's perspective
- * (the HTML document itself loaded fine) while the viewer's JS never ran to replace that spinner
- * with real content. `SuppressLint` because this WebView only ever loads one URL this app itself
- * hardcodes ([com.ajinkyabadve.kmmmywatchlist.core.constant.PrivacyConsentConstant.PRIVACY_POLICY_URL]),
- * never arbitrary/user-supplied content, so the usual XSS concern `javaScriptEnabled` triggers a
- * lint warning for doesn't apply here.
+ * `javaScriptEnabled` (off by [WebView.getSettings]'s default, unlike iOS's `WKWebView` which
+ * defaults to on) - the hosted page's own back-to-top button needs it, and a Claude Artifact URL
+ * was tried first for [com.ajinkyabadve.kmmmywatchlist.core.constant.PrivacyConsentConstant.PRIVACY_POLICY_URL]
+ * that genuinely required scripting just to render at all (its JS-driven viewer chrome loads real
+ * content through a cross-origin frame handshake that doesn't complete inside an embedded WebView -
+ * confirmed 2026-09-12 on an emulator: main-frame navigation "succeeded" from WebView's perspective
+ * while the page stayed on its own loading spinner forever). Now a plain static page hosted on
+ * GitHub Pages instead, but there's no reason to turn scripting back off. `SuppressLint` because
+ * this WebView only ever loads that one hardcoded URL, never arbitrary/user-supplied content, so
+ * the usual XSS concern `javaScriptEnabled` triggers a lint warning for doesn't apply here.
  *
  * A plain [WebView] with no [WebViewClient] also never reports failures back to the app and would
  * leave its own built-in loading spinner stuck forever on any real network failure - unacceptable

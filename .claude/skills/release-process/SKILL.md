@@ -88,17 +88,30 @@ Enabled (`isMinifyEnabled`/`isShrinkResources` on the `release` build type,
 - **TMDB attribution - required, not optional.** TMDB's API Terms of Use require the notice
   *"This product uses the TMDB API but is not endorsed or certified by TMDB."* to appear (a) in
   the store listing description and (b) somewhere in the app itself (their attribution logo or
-  the same text). As of 2026-09-12 **the in-app half is missing** - only JustWatch's
-  watch-provider attribution exists (`MovieHeroFacts.kt`'s kdoc). Add a TMDB attribution line to
-  `AccountScreen` (or wherever an About/Settings section ends up) before submitting to the Play
-  Store - TMDB can revoke API access for a listed app that skips this.
-- **Privacy policy** - Play Console requires a URL. Draft covers: what's collected (TMDB OAuth
-  session, locally-cached favorites/watchlist/lists/detail payloads - see `future_features_checklist.md`
-  item 2 - and local notification state), that there's no separate analytics/tracking layer, that
-  TMDB is a third-party data processor under its own terms, and the same TMDB attribution notice
-  above. Publish it somewhere with a stable public URL (a Claude Artifact is the fastest path -
-  see this repo's session history for the first published version) and put that URL in both Play
-  Console and the in-app attribution section.
+  the same text). **Done 2026-09-12**: `AccountScreen`'s settings list ends with the exact
+  required sentence plus a "Privacy Policy" row.
+- **Privacy policy** - Play Console requires a URL, and it must be one the in-app consent gate
+  (below) can actually load. **Hosted on GitHub Pages** (`gh-pages` branch, `privacy-policy.html`
+  - a standalone static page, no framework dependency): https://asbadve.github.io/mywatchlistkmm/privacy-policy.html.
+  **Do not host this as a Claude Artifact URL** - tried first and confirmed broken 2026-09-12: an
+  artifact page's cross-origin frame-shell architecture (content loads through a `postMessage`
+  handshake between `claude.ai` and a `claudeusercontent.com` sub-frame) doesn't complete inside
+  an embedded `WebView`/`WKWebView`, only a full top-level browser tab - the page rendered fine
+  when opened directly in Chrome but silently never loaded inside the app's own consent gate.
+  Content covers: what's collected (TMDB OAuth session, locally-cached favorites/watchlist/lists/
+  detail payloads - see `future_features_checklist.md` item 2 - and local notification state),
+  that there's no separate analytics/tracking layer, that TMDB/JustWatch/Google Play are
+  third-party data processors under their own terms, and the TMDB attribution notice.
+- **First-launch consent gate - done 2026-09-12** (`core/ui/privacy/PrivacyConsentGate.kt`):
+  blocks the app after splash until the user checks a box and taps Accept, persisted via
+  `PrivacyConsentRepository` so it only shows once per install. Android/iOS render the policy in a
+  real embedded `WebView`/`WKWebView` (JavaScript enabled - the page's back-to-top button needs
+  it, and enabling it also happens to be what would have been required for a JS-dependent host
+  like an Artifact URL); Desktop/JS get a native Compose summary with a system-browser link
+  instead, since Compose Desktop has no built-in WebView and JCEF is too heavy to justify for a
+  screen shown once (see this file's Android/iOS signing section for other JCEF-avoidance calls in
+  this codebase). Both embedded-WebView platforms track load failures and offer a retry rather
+  than leaving the user stuck on an infinite spinner with no way past an unskippable gate.
 - **Screenshots** - capture fresh ones per the run-app skill once the listing's feature set is
   final; Play Console wants phone screenshots at minimum, tablet/10-inch optional.
 
