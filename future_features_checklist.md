@@ -902,13 +902,17 @@ it.
   (`MovieHeroSection`/`TvHeroSection`/`PersonHeroSection`, visible immediately on load) and the
   shared `DetailTopBar`'s title `Text` (covers Episode/Season/Collection, whose only title lives
   there, and also becomes available on Movie/TV/Person once scrolled past the hero).
-- Verification: `LongPressToCopyUiTest` (long-press copies, plain click doesn't - seeded against a
-  known baseline value rather than asserting "empty," since the desktop actual backs
-  `LocalClipboardManager` with the real host AWT clipboard, which persists across test runs and
-  isn't guaranteed empty), plus IMDb-chip/link show/hide cases added to the existing
+- Verification: `LongPressToCopyUiTest` (long-press copies, plain click doesn't), plus
+  IMDb-chip/link show/hide cases added to the existing
   `TvDetailScreenUiTest`/`EpisodeListScreenUiTest` files. All green (`desktopTest`, `ktlintCheck`,
   `assembleDebug`). Movie/Person/Episode's own pre-existing IMDb links remain untested (a
   pre-existing gap, not introduced here) - not retrofitted, out of scope for this pass.
+- **Fixed 2026-09-12: `LongPressToCopyUiTest` failed in CI.** The original version read
+  `LocalClipboardManager.current` and asserted against the real desktop-actual AWT system
+  clipboard; that's unavailable on the headless GitHub Actions runner (no X server), so both
+  assertions failed there despite passing locally. Fixed by injecting an in-memory fake
+  `ClipboardManager` via `CompositionLocalProvider` instead, making the test hermetic - no CI
+  workflow change needed.
 ---
 
 ## 14. AI-Powered "For You" Recommendations (Taste Profile from Favorites / Watchlist / Lists)
