@@ -248,6 +248,8 @@
     <string name="privacy_consent_point_notifications">Notifications you opt into are computed on this device only.</string>
     <string name="privacy_consent_point_no_tracking">There is no analytics or ad tracking in this app.</string>
     <string name="privacy_consent_open_full_policy">Open full policy</string>
+    <string name="privacy_consent_load_error_message">Couldn't load the privacy policy. Check your connection and try again.</string>
+    <string name="privacy_consent_retry_button">Retry</string>
     <string name="privacy_consent_checkbox_label">I have read and accept the Privacy Policy</string>
     <string name="privacy_consent_accept_button">Accept &amp; Continue</string>
     <string name="settings_privacy_policy_label">Privacy Policy</string>
