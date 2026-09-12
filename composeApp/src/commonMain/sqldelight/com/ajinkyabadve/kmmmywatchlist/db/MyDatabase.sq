@@ -377,3 +377,37 @@ DELETE FROM favoritePerson WHERE id = ?;
 
 updateFavoritePersonCreditIds:
 UPDATE favoritePerson SET lastKnownCreditIds = ? WHERE id = ?;
+
+-- future_features_checklist.md item 3c: favorited collections, local-only for the same reason
+-- favoritePerson is above - TMDB has no account-level favorite/follow API for collections either
+-- (confirmed against the live OpenAPI docs: /3/account/{account_id}/favorite's media_type only
+-- accepts "movie"/"tv", and the collection reference pages - Collection Details/Images - are
+-- read-only). So this table is the sole source of truth for "which collections are followed," not
+-- a cache of anything TMDB returns.
+--
+-- lastKnownPartIds is the same NULL-vs-'' distinction as favoritePerson.lastKnownCreditIds: NULL
+-- means "never polled yet" - CollectionNotificationPoller treats that poll as baselining only, so
+-- following a 20-film franchise doesn't fire 20 notifications at once.
+CREATE TABLE favoriteCollection (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    posterPath TEXT,
+    addedAt INTEGER NOT NULL,
+    lastKnownPartIds TEXT
+);
+
+-- Most-recently-followed first, same reasoning as selectAllFavoritePeople.
+selectAllFavoriteCollections:
+SELECT * FROM favoriteCollection ORDER BY addedAt DESC;
+
+selectFavoriteCollectionById:
+SELECT * FROM favoriteCollection WHERE id = ?;
+
+insertFavoriteCollection:
+INSERT OR REPLACE INTO favoriteCollection (id, name, posterPath, addedAt) VALUES (?, ?, ?, ?);
+
+deleteFavoriteCollection:
+DELETE FROM favoriteCollection WHERE id = ?;
+
+updateFavoriteCollectionPartIds:
+UPDATE favoriteCollection SET lastKnownPartIds = ? WHERE id = ?;

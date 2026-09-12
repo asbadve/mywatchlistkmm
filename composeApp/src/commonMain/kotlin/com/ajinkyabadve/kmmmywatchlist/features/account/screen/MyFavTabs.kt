@@ -22,6 +22,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
+import mywatchlist.composeapp.generated.resources.tab_collections
 import mywatchlist.composeapp.generated.resources.tab_favorites
 import mywatchlist.composeapp.generated.resources.tab_lists
 import mywatchlist.composeapp.generated.resources.tab_watchlist
@@ -33,9 +34,12 @@ private sealed interface MyFavTab {
     data object Watchlist : MyFavTab
 
     data object Lists : MyFavTab
+
+    data object Collections : MyFavTab
 }
 
-/** The signed-in "My Fav" content: Favorites / Watchlist / Lists, behind the same [PillTabRow] chrome `MovieScreenTabs` uses. */
+/** The signed-in "My Fav" content: Favorites / Watchlist / Lists / Collections, behind the same
+ *  [PillTabRow] chrome `MovieScreenTabs` uses. */
 @Composable
 fun MyFavTabs(
     session: UserSession,
@@ -43,23 +47,26 @@ fun MyFavTabs(
     onTvSelected: (tvId: Long) -> Unit,
     onListSelected: (listId: Long) -> Unit,
     modifier: Modifier = Modifier,
+    onCollectionSelected: (collectionId: Long) -> Unit = {},
     // Test-only seams, same pattern MovieScreenTabs uses for its per-tab repositories.
     listsRepository: ListsRepository? = null,
     trackedMediaRepository: TrackedMediaRepository? = null,
     customListRepository: CustomListRepository? = null,
 ) {
-    val tabs = remember { listOf(MyFavTab.Favorites, MyFavTab.Watchlist, MyFavTab.Lists) }
+    val tabs = remember { listOf(MyFavTab.Favorites, MyFavTab.Watchlist, MyFavTab.Lists, MyFavTab.Collections) }
     var selectedIndex by rememberSaveable { mutableStateOf(0) }
     val tabTitles =
         listOf(
             stringResource(Res.string.tab_favorites),
             stringResource(Res.string.tab_watchlist),
             stringResource(Res.string.tab_lists),
+            stringResource(Res.string.tab_collections),
         )
 
     val favoritesGridState = rememberLazyGridState()
     val watchlistGridState = rememberLazyGridState()
     val listsListState = rememberLazyListState()
+    val collectionsGridState = rememberLazyGridState()
     val coroutineScope = rememberCoroutineScope()
 
     // Re-tapping the already-selected tab is a common "jump back to the top" gesture - scroll its
@@ -71,6 +78,7 @@ fun MyFavTabs(
                     MyFavTab.Favorites -> favoritesGridState.animateScrollToItem(0)
                     MyFavTab.Watchlist -> watchlistGridState.animateScrollToItem(0)
                     MyFavTab.Lists -> listsListState.animateScrollToItem(0)
+                    MyFavTab.Collections -> collectionsGridState.animateScrollToItem(0)
                 }
             }
         } else {
@@ -119,6 +127,12 @@ fun MyFavTabs(
                             )
                         },
                     lazyListState = listsListState,
+                )
+
+            MyFavTab.Collections ->
+                FavoriteCollectionsTab(
+                    lazyGridState = collectionsGridState,
+                    onCollectionSelected = onCollectionSelected,
                 )
         }
     }

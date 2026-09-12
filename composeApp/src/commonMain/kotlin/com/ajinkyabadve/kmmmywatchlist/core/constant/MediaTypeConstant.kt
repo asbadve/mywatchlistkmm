@@ -13,4 +13,10 @@ object MediaTypeConstant {
     const val MOVIE = "movie"
     const val TV = "tv"
     const val PERSON = "person"
+
+    // Not a real TMDB media_type - collections aren't one. Used only as the notificationLedger
+    // mediaType bucket a collection-level dedup row is keyed under (see
+    // CollectionNotificationPoller): its parts are always movies, so mediaType alone can't
+    // distinguish "this row is about collection id 5" from "this row is about movie id 5".
+    const val COLLECTION = "collection"
 }

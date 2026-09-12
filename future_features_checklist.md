@@ -59,116 +59,80 @@ threat model shifts from "key stolen forever" to "endpoint abusable, revocable, 
 
 ---
 
-## 2. Local SQLite Database for Favorites/Watchlist (Local Notification Data Source)
-**In progress on branch `feature/local-sqlite-storage`.** SQLDelight readiness research (per
-target: Android/iOS/Desktop production-ready, JS/Wasm best-effort only - and why Room 3.0 isn't a
-better bet right now), plus the extended schema that also covers custom lists (not just
-favorites/watchlist), lives in `docs/local-storage-plan.html` (gitignored, local-only - same
-pattern as items 4 and 9's linked docs).
+## 2. Local SQLite Database for Favorites/Watchlist (Local Notification Data Source) — DONE
+**Built on branch `feature/local-sqlite-storage`**, and gone well beyond the original scope below -
+it now backs Favorites/Watchlist, custom lists, notification poll state, and a
+`NetworkBoundResource`-style detail cache, not just a favorites/watchlist mirror. SQLDelight
+readiness research that kicked this off (per target: Android/iOS/Desktop production-ready,
+JS/Wasm best-effort only - and why Room 3.0 wasn't a better bet) lives in
+`docs/local-storage-plan.html` (gitignored, local-only - same pattern as items 4 and 9's linked
+docs).
 
-**Goal**: Mirror the user's TMDB favorites and watchlist into an on-device SQLite database, so the
-app has a fast, offline-readable local copy of "what the user is tracking" instead of hitting
-`/3/account/{account_id}/favorite/*` and `/3/account/{account_id}/watchlist/*` on every screen
-open. This local table is also the natural data source for
-[item 3](#3-local-notifications-returning-series-favorite-actors-favorite-collections)'s
-background poller - it needs to enumerate "everything the user is tracking" repeatedly on a
-schedule without hammering TMDB's account endpoints on every poll tick, and it needs somewhere to
-persist per-item poll state (last known `next_episode_to_air`, last seen credit ids, etc.) that a
-handful of scalar `multiplatform-settings` flags doesn't model well once there's more than one of
-them per tracked item.
+**What actually shipped, vs. the original sketch below**: the plan called for a simple
+`sync(category)` method that fetches TMDB pages and upserts/deletes them locally. What was built
+instead is a full **Paging3 `RemoteMediator`** (`TrackedMediaRemoteMediator`) - the local
+`trackedMedia` table *is* the paging source (`QueryPagingSource` over `selectByCategoryPaged`),
+fed page-by-page from TMDB only as the grid scrolls, rather than a bulk sync pass. Toggling
+favorite/watchlist off marks a row `pendingDelete` immediately (optimistic local hide, works
+offline) and only hard-deletes it once TMDB confirms - see `TrackedMediaRepository.markPendingDelete`/
+`clearPendingDelete`/`confirmDelete`, wired from `MediaActionsState`. `MyDatabase.sq` grew well past
+the `trackedMedia` sketch: `customList`/`customListItem` (item 6's Lists feature, with the same
+pending-delete pattern), `movieDetailCache`/`tvDetailCache`/`tvSeasonDetailCache`/
+`personDetailCache` (full detail-screen payloads, see "Deliberately out of scope" below - this was
+done anyway), `remoteKeys` (Paging3's own bookkeeping), `notificationLedger` and `favoritePerson`
+(item 3's dedup/local-follow state).
 
-**Not a new dependency - already half-scaffolded and unused.** `app.cash.sqldelight`
-(`gradle/libs.versions.toml`'s `sqlDelight = "2.0.0"`) is already applied as a Gradle plugin
-(`composeApp/build.gradle.kts:9`, root `build.gradle.kts:7`) with a driver dependency wired into
-**every** platform source set already:
-- `implementation(libs.sqlDelight.driver.android)` in `androidMain`
-- `implementation(libs.sqlDelight.driver.sqlite)` in `desktopMain`
-- `implementation(libs.sqlDelight.driver.js)` in `jsMain`
-- `implementation(libs.sqlDelight.driver.native)` in `iosMain`
-
-But the actual database definition is commented out
-(`composeApp/build.gradle.kts`'s `sqldelight { databases { ... } }` block, marked `//todo`) and
-`composeApp/src/commonMain/sqldelight/MyDatabase.sq` is a 0-byte placeholder file with no schema.
-This reads as leftover KMP-template scaffolding from before this project's own architecture was
-established - never finished or removed. Implementing this item means **finishing** that setup,
-not introducing a new dependency from scratch.
-
-### Dependency checklist (what's already there vs. what's missing):
+### Dependency checklist:
 - [x] `app.cash.sqldelight` Gradle plugin applied at root and in `composeApp`.
-- [x] Platform drivers declared and already `implementation(...)`'d in every relevant source set
-  (see the four bullets above) - nothing to add to `libs.versions.toml`'s dependency list itself.
-- [ ] Bump `sqlDelight = "2.0.0"` in `gradle/libs.versions.toml` to current stable (`2.3.x` as of
-  this research in 2026-08 - re-check the actual latest at implementation time).
-- [ ] Uncomment and fill in `composeApp/build.gradle.kts`'s `sqldelight { databases { create(...)
-  } }` block with a real `packageName` (e.g. `com.ajinkyabadve.kmmmywatchlist.db`) so the Gradle
-  plugin actually generates the typed Kotlin API from the `.sq` file.
-- [ ] Add an `expect`/`actual` `DatabaseDriverFactory` (mirrors the `WebAuthLauncher` pattern this
-  codebase already uses for other per-platform primitives) so each platform constructs its
-  `SqlDriver` correctly: `AndroidSqliteDriver` (needs a `Context`; Koin is already pinned in
-  `libs.versions.toml` - `koin = "3.4.3"` - but currently unused anywhere in the codebase, worth
-  deciding whether to finally wire it up here or just thread `Context` manually like other
-  Android-only pieces do), `NativeSqliteDriver` (iOS), a JVM `sqlite-driver` pointed at a per-user
-  app-data directory (desktop), and the web-worker driver plus a bundled sqlite `.wasm` binary (JS
-  - confirm current SQLDelight JS/Wasm driver guidance before committing, since that target's
-  story is the most likely to have shifted since the pinned `2.0.0`).
+- [x] Platform drivers declared in every relevant source set (`android`/`sqlite`/`js`/`native`).
+- [x] `sqlDelight` bumped from `2.0.0` to `2.3.2` in `gradle/libs.versions.toml`.
+- [x] `composeApp/build.gradle.kts`'s `sqldelight { databases { create("MyDatabase") { ... } } }`
+  block filled in: `packageName.set("com.ajinkyabadve.kmmmywatchlist.db")`,
+  `generateAsync.set(true)` (required for the JS target's async `WebWorkerDriver` - every
+  platform's generated queries API is suspend-based as a result), and
+  `dialect(libs.sqlDelight.dialect.sqlite338)` (the default dialect predates the
+  `ON CONFLICT ... DO UPDATE` syntax the upsert queries use).
+- [x] `expect`/`actual` `DatabaseDriverFactory` on all four platforms (`androidMain`/`desktopMain`/
+  `iosMain`/`jsMain`), behind an `AppDatabaseProvider` singleton accessor.
 
-### Schema sketch (`MyDatabase.sq`):
-```sql
-CREATE TABLE trackedMedia (
-    id INTEGER NOT NULL,
-    mediaType TEXT NOT NULL,      -- "movie" | "tv" - reuses MediaTypeConstant's values
-    category TEXT NOT NULL,       -- "favorite" | "watchlist"
-    title TEXT NOT NULL,
-    posterPath TEXT,
-    addedAt INTEGER NOT NULL,           -- epoch millis, for "recently added" sorting
-    lastSyncedAt INTEGER NOT NULL,
-    -- Poll-state columns item 3's pollers read/write - nullable until the first poll runs.
-    lastKnownNextEpisodeAirDate TEXT,   -- 3a: returning-series polling
-    lastKnownCreditIds TEXT,            -- 3b: comma-separated, favorite-person polling
-    PRIMARY KEY (id, mediaType, category)
-);
-
-CREATE INDEX trackedMedia_category ON trackedMedia(category);
-
-selectByCategory:
-SELECT * FROM trackedMedia WHERE category = ?;
-
-upsert:
-INSERT OR REPLACE INTO trackedMedia (id, mediaType, category, title, posterPath, addedAt, lastSyncedAt, lastKnownNextEpisodeAirDate, lastKnownCreditIds)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-deleteMissing:
-DELETE FROM trackedMedia WHERE category = ? AND id NOT IN ?;
-```
+### What's different from the schema sketch:
+- [x] `trackedMedia` table built, but keyed/shaped for paging + optimistic delete rather than a
+  flat sync mirror - see `MyDatabase.sq`'s `trackedMedia`/`selectByCategoryPaged`/
+  `markTrackedMediaPendingDelete` and the RemoteMediator note above.
+- [x] Poll-state columns (`lastKnownNextEpisodeAirDate`, `lastKnownCreditIds`, plus
+  `lastKnownStatus` which the sketch didn't anticipate, for skipping ended/canceled shows) - all
+  present and read/written by item 3's pollers via `TrackedMediaRepository`.
+- **The JS/web target does not use this table at all.** `NetworkOnlyTrackedMediaRepositoryImpl`
+  (jsMain) skips local storage entirely and hits TMDB directly - a deliberate scope decision (see
+  its kdoc), not a gap: web has no offline story to begin with, so the sql.js/`WebWorkerDriver`
+  bundling cost wasn't worth it for that target. `trackedTvForPolling()` returns empty there.
 
 ### Implementation Checklist:
-- [ ] **Data Layer**:
-  - `TrackedMediaRepository`/`TrackedMediaRepositoryImpl` wraps the generated SQLDelight queries;
-    a `sync(category)` method fetches the current favorite/watchlist pages from the already-built
-    `AccountMediaRepository` ([item 6](#6-account-favorites--watchlist-replacing-my-fav-placeholder))
-    and upserts them locally, then deletes local rows no longer present remotely.
-  - Call `sync()` opportunistically - on app foreground and right after any favorite/watchlist
-    toggle from `MediaActionButtons` - not on a fixed timer. TMDB stays the source of truth; this
-    is a read-cache plus a home for local-only poll state, not an offline-write queue.
-- [ ] **Business Logic**:
-  - `AccountFavoritesWatchlistTab`/`AccountMediaListScreenModel` read from
-    `TrackedMediaRepository` first (instant local paint) and reconcile against the network
-    response once it lands, instead of today's network-only load.
-  - Item 3's background poller reads its candidate set from `TrackedMediaRepository` instead of
-    re-fetching every favorites/watchlist page from TMDB each poll cycle, and writes
-    `lastKnownNextEpisodeAirDate`/`lastKnownCreditIds` back into the row it read from - one local
-    round trip per poll instead of N TMDB calls.
-- [ ] **UI Presentation**: none directly - this is a caching/data-layer change underneath the
-  already-shipped Favorites/Watchlist UI ([item 6](#6-account-favorites--watchlist-replacing-my-fav-placeholder));
-  no new screens.
+- [x] **Data Layer**: `TrackedMediaRepository`/`SqliteTrackedMediaRepositoryImpl` wrap the
+  generated SQLDelight queries; `TrackedMediaRemoteMediator` (not a `sync()` method - see above)
+  keeps the local table in step with `AccountMediaRepository` ([item 6](#6-account-favorites--watchlist-replacing-my-fav-placeholder))
+  as the grid scrolls. `TrackedMediaRepositoryImplTest`/`TrackedMediaRemoteMediatorTest`
+  (desktopTest) and `FakeTrackedMediaRepository` (commonTest) cover it.
+- [x] **Business Logic**: `AccountMediaListScreenModel` reads from
+  `TrackedMediaRepository.pagedFlow` (local-first, `cachedIn(viewModelScope)`), not a network-only
+  load. Item 3's `TvEpisodeNotificationPoller`/`PersonCreditNotificationPoller` read their
+  candidate sets from `TrackedMediaRepository.trackedTvForPolling()`/`favoritePerson`, and write
+  poll state straight back into the row they read from.
+- [x] **UI Presentation**: none directly, as planned - it's a caching/data-layer change underneath
+  the already-shipped Favorites/Watchlist UI.
 
-### Deliberately out of scope here:
-- No offline *write* queue (favoriting while offline, syncing later) - TMDB calls still need a
-  live session regardless, and that's a materially bigger feature than what item 3's poller
-  actually needs.
-- No caching of full movie/TV detail payloads - just enough per-item metadata
-  (title/poster/category/added date/poll state) to render a list and drive the poller; detail
-  screens keep hitting TMDB directly as they do today.
+### Scope that grew beyond the original plan:
+- **Full movie/TV/season/person detail-payload caching was explicitly out of scope below - built
+  anyway.** `MovieDetailCacheRepository`/`TvDetailCacheRepository` back `MovieDetailScreenModel`
+  via the new `NetworkBoundResource` (`core/data/NetworkBoundResource.kt`, a Kotlin/Flow port of
+  Google's "Guide to app architecture" sample): peek the local cache, decide whether to fetch,
+  fetch-and-save on success, fall back to the cache on failure/offline. Every detail screen repeats
+  this shape by hand today; `NetworkBoundResource` does the orchestration once.
+- **Custom lists (item 6) got the same local-cache treatment** (`customList`/`customListItem`
+  tables, same pending-delete pattern as `trackedMedia`) - not called out at all in the original
+  plan, which only scoped favorites/watchlist.
+- No offline *write* queue for favoriting/listing itself still holds as a boundary - TMDB calls
+  still need a live session; only already-in-flight toggles get the optimistic local hide.
 
 ---
 
@@ -413,12 +377,47 @@ a person is **local-only, does not sync across devices** - a new `favoritePerson
   managed-Postgres muscle, and $0-with-no-pause suits a personal project better than a managed DB
   that needs to stay warm.
 
-### 3c. New movie added to a favorited collection
+### 3c. New movie added to a favorited collection — DONE
 **Relevant OAS endpoints**: `GET /3/collection/{collection_id}` (`parts[]`, diffed by id).
-- [ ] Track collections the user has favorited a member of (e.g. favoriting a Marvel movie offers
-  "follow this collection").
-- [ ] Poll each followed collection's `parts`; notify when a part id appears that wasn't present on
-  the previous poll (a newly-added/announced entry in the franchise).
+
+**TMDB API check, ground-truthed against the live OpenAPI docs before building anything**: same
+finding as 3b's favorite-person check - TMDB has **no account-level favorite/follow API for
+collections either**. `POST /3/account/{account_id}/favorite`'s `media_type` only accepts
+`"movie"`/`"tv"`, and the collection reference pages (`Collection Details`, `Collection Images`)
+are read-only. So following a collection is **local-only, does not sync across devices** - a new
+`favoriteCollection` SQLDelight table (`MyDatabase.sq`), same shape as `favoritePerson`.
+
+- [x] "Favorite collection" concept: `FavoriteCollectionRepository` (local SQLite,
+  `observeIsFavorite` Flow-backed) + `FollowCollectionButton` on `CollectionDetailScreen`'s header
+  (pure composable, no repository - `CollectionDetailScreenModel` owns the repository, per
+  code-conventions §6/§7/§8), with the same "saved on this device only" caveat
+  `FollowPersonButton` shows.
+- [x] `CollectionNotificationPoller` polls each favorited collection's `parts` (via the already-
+  built `MovieRepository.getCollectionDetails`) and notifies on any part id not seen on the
+  previous poll, via the same `NotificationLedgerRepository`/`NotificationScheduler`/
+  `LocalNotifier` infrastructure 3a/3b built (`NotificationReason.COLLECTION_NEW_PART`) - one
+  shared periodic job/permission/setting covers all three, not a third toggle. Carries the same
+  first-poll-seeds-baseline-without-notifying fix 3b needed (a 20-film franchise doesn't fire 20
+  notifications the moment it's followed) from day one, rather than as a later bug fix.
+- [x] In-context notification opt-in prompt on `CollectionDetailScreen`, same
+  `NotificationOptInDialog` shell 3a/3b already share.
+- [x] Tap-to-navigate deep link, Android + iOS only (matches 3b's `PersonNotificationTarget` scope
+  decision - Desktop/JS still show the notification, just don't act on a tap):
+  `CollectionNotificationTarget(collectionId)` opens `CollectionDetailKey`.
+- [x] **"Collections" tab under My Fav** (requested alongside this item, not left for a later
+  ask like 3b's Person sub-tab was): `MyFavTabs` grew a 4th `PillTabRow` entry,
+  `FavoriteCollectionsTab` (`features/account/screen/`) lists every locally-followed collection via
+  `FavoriteCollectionRepository.observeFavoriteCollections()`, reusing the same `mediaPersonRow`
+  grid item `PersonFavoritesTab` renders with (not actually person-specific despite its package).
+  Same local-only caveat and empty-state treatment as the Person tab's equivalent.
+- Debug: `AccountScreen`'s "Poll collection notifications now" row mirrors the person one
+  (`seedOneNewPartForDebug` holds back one part so a forced poll notifies once per collection, not
+  once per part - same reasoning as `resetAllTvPollStateForDebug`/`seedOneNewCreditForDebug`).
+- Verification: `CollectionNotificationPollerTest` (commonTest, 6 cases mirroring
+  `PersonCreditNotificationPollerTest`), `FollowCollectionButtonUiTest`, `FavoriteCollectionsTabUiTest`,
+  plus additions to `CollectionDetailScreenModelTest`/`CollectionDetailScreenUiTest`. All green
+  (`desktopTest`, `ktlintCheck`, `assembleDebug`). Real-device confirmation of the notification
+  itself not yet done - see `run-app` skill's debug-row steps, same as 3a/3b.
 
 ---
 
@@ -870,6 +869,50 @@ settings and checking.
   title has no watch-provider data at all (e.g. an unreleased movie) - same as the section itself
   already did before this change.
 
+### 13.2. IMDb link on every detail screen + long-press-to-copy on detail titles — DONE
+**Goal**: "We have it already" turned out to be true for 3 of 5 detail screens - Movie
+(`MovieMetaSection.kt`'s `MovieExternalLinks`), Person (`PersonDetailScreen.kt`'s `PersonLinksRow`)
+and Episode (`EpisodeDetailScreen.kt`'s plain "View on IMDb" text) already rendered an IMDb link
+from `ExternalIds.imdbId`, which was already being fetched for every one of these models. The two
+real gaps, found by grepping every detail model/screen rather than trusting the claim: **TV show**
+and **season detail** - both already had `externalIds` fetched and modeled, just nothing rendered
+it.
+
+- [x] **TV show**: `TvMetaSection.kt` gained `TvExternalLinks` - an `AssistChip` row (IMDb/
+  Instagram/X/Facebook), copy-pasted from `MovieExternalLinks`' exact shape (no Homepage entry -
+  `TvDetail` has no `homepage` field).
+- [x] **Season detail** (`EpisodeListScreen.kt`, the season's episode list - there's no separate
+  "season detail" screen; `AllSeasonsScreen` only lists seasons): a "View on IMDb" header item
+  above the episode list, copy-pasted from `EpisodeDetailScreen`'s existing plain-clickable-`Text`
+  pattern and reusing its `action_view_on_imdb` string resource, gated on
+  `season.externalIds?.imdbId`.
+- [x] Both reuse the app's existing `internal expect fun openUrl(url: String?)` (`App.kt`) - the
+  same mechanism every other external link in this app already calls. No new URL-opening
+  mechanism introduced.
+- [x] **Long-press-to-copy on every detail screen's title** (net-new pattern - grepped
+  `combinedClickable`/`onLongClick`/clipboard across the whole app first, found nothing to reuse).
+  New `Modifier.longPressToCopy(text)` (`core/ui/LongPressToCopy.kt`) - copies to the clipboard via
+  `LocalClipboardManager` plus a haptic tick, no toast/snackbar (none exists anywhere in this app;
+  adding one app-wide was judged out of scope for a copy-the-title convenience). Deliberately
+  **not** Compose 1.11.1's newer suspend `LocalClipboard`/`ClipEntry` API - `ClipEntry`
+  construction is platform-native with no shared plain-text constructor, which would mean a new
+  `expect`/`actual` per platform just to copy a string; `ClipboardManager` is `@Deprecated` in this
+  version but still fully functional and already multiplatform - revisit if it's ever actually
+  removed. Wired into all 4 places a detail screen's title can render: the three hero title `Text`s
+  (`MovieHeroSection`/`TvHeroSection`/`PersonHeroSection`, visible immediately on load) and the
+  shared `DetailTopBar`'s title `Text` (covers Episode/Season/Collection, whose only title lives
+  there, and also becomes available on Movie/TV/Person once scrolled past the hero).
+- Verification: `LongPressToCopyUiTest` (long-press copies, plain click doesn't), plus
+  IMDb-chip/link show/hide cases added to the existing
+  `TvDetailScreenUiTest`/`EpisodeListScreenUiTest` files. All green (`desktopTest`, `ktlintCheck`,
+  `assembleDebug`). Movie/Person/Episode's own pre-existing IMDb links remain untested (a
+  pre-existing gap, not introduced here) - not retrofitted, out of scope for this pass.
+- **Fixed 2026-09-12: `LongPressToCopyUiTest` failed in CI.** The original version read
+  `LocalClipboardManager.current` and asserted against the real desktop-actual AWT system
+  clipboard; that's unavailable on the headless GitHub Actions runner (no X server), so both
+  assertions failed there despite passing locally. Fixed by injecting an in-memory fake
+  `ClipboardManager` via `CompositionLocalProvider` instead, making the test hermetic - no CI
+  workflow change needed.
 ---
 
 ## 14. AI-Powered "For You" Recommendations (Taste Profile from Favorites / Watchlist / Lists)

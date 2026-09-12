@@ -15,5 +15,6 @@ package com.ajinkyabadve.kmmmywatchlist.db
  * schema-touching change during development.
  */
 internal object LocalSchemaVersion {
-    const val CURRENT = 2
+    // Bumped 2026-08-30: future_features_checklist.md item 3c added the favoriteCollection table.
+    const val CURRENT = 3
 }

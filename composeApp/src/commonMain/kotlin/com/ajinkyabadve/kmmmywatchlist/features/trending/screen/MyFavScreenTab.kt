@@ -35,6 +35,7 @@ fun MyFavScreenTab(
     onMovieSelected: (movieId: Long) -> Unit = {},
     onTvSelected: (tvId: Long) -> Unit = {},
     onListSelected: (listId: Long) -> Unit = {},
+    onCollectionSelected: (collectionId: Long) -> Unit = {},
     webAuthLauncher: WebAuthLauncher = rememberWebAuthLauncher(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     screenModel: AuthScreenModel =
@@ -73,6 +74,7 @@ fun MyFavScreenTab(
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
                     onListSelected = onListSelected,
+                    onCollectionSelected = onCollectionSelected,
                     listsRepository = listsRepository,
                     trackedMediaRepository = trackedMediaRepository,
                     customListRepository = customListRepository,

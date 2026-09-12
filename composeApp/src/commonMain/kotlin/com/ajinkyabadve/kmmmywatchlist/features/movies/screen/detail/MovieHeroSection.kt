@@ -43,6 +43,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroProviderChip
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.heroScrimBrush
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.rememberHeroContentMeasurement
+import com.ajinkyabadve.kmmmywatchlist.core.ui.longPressToCopy
 import com.ajinkyabadve.kmmmywatchlist.core.usecase.FindYoutubeTrailerUseCase
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.openUrl
@@ -130,6 +131,7 @@ internal fun MovieHeroSection(
                 color = colors.onHero,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.longPressToCopy(detail.title),
             )
             HeroMetaRow(detail = detail, colors = colors, modifier = Modifier.padding(top = 8.dp))
             watchOption?.let { option ->

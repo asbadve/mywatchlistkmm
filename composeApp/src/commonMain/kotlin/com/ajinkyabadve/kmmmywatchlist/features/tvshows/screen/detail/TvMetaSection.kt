@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.formatFullReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
+import com.ajinkyabadve.kmmmywatchlist.openUrl
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.section_genres
 import mywatchlist.composeapp.generated.resources.section_keywords
@@ -168,6 +169,34 @@ fun TvMetaSection(detail: TvDetail) {
                 text = "${(detail.voteAverage * 10).toInt() / 10.0} / 10",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
+            )
+        }
+
+        TvExternalLinks(detail = detail)
+    }
+}
+
+// External links as Material 3 assist chips, same pattern as the movie/person screens.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TvExternalLinks(detail: TvDetail) {
+    val ids = detail.externalIds
+    val links =
+        buildList {
+            ids?.imdbId?.let { add("IMDb" to "https://www.imdb.com/title/$it/") }
+            ids?.instagramId?.let { add("Instagram" to "https://www.instagram.com/$it/") }
+            ids?.twitterId?.let { add("X" to "https://x.com/$it") }
+            ids?.facebookId?.let { add("Facebook" to "https://www.facebook.com/$it") }
+        }
+    if (links.isEmpty()) return
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        links.forEach { (label, url) ->
+            AssistChip(
+                onClick = { openUrl(url) },
+                label = { Text(label) },
             )
         }
     }

@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>MyWatchList</title>
-    <script src="skiko.js"></script>
+    <!-- No separate skiko.js include needed - skiko 0.144.6 ships skiko.mjs, and composeApp.js
+         already bundles/loads the skiko wasm runtime itself (as a webpack asset). This tag
+         previously 404'd on every load (confirmed 2026-08-31); removed rather than pointed at
+         skiko.mjs, since nothing here actually needs a standalone <script> for it. -->
     <style>
         html, body {
             margin: 0;

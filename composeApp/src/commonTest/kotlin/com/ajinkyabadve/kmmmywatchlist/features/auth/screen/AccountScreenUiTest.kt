@@ -6,6 +6,7 @@ import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
@@ -124,7 +125,9 @@ class AccountScreenUiTest {
             onNodeWithText("Used for watch provider availability only").assertIsDisplayed()
             onNodeWithText("Restricted Mode").assertIsDisplayed()
             onNodeWithText("Episode notifications").assertIsDisplayed()
-            onNodeWithText("Log out").assertIsDisplayed()
+            // The debug section grew a third row ("Poll collection notifications now"), pushing
+            // "Log out" below the initial scroll viewport - scroll it into view before asserting.
+            onNodeWithText("Log out").performScrollTo().assertIsDisplayed()
         }
 
     @Test
@@ -221,7 +224,9 @@ class AccountScreenUiTest {
                 )
             }
 
-            onNodeWithText("Log out").performClick()
+            // Same scroll-into-view need as testLoggedInStateShowsProfileAndLogoutRow above - the
+            // debug section's third row pushes "Log out" below the initial scroll viewport.
+            onNodeWithText("Log out").performScrollTo().performClick()
 
             assertTrue(backClicked)
             onNodeWithText("Sign in to TMDB").assertIsDisplayed()

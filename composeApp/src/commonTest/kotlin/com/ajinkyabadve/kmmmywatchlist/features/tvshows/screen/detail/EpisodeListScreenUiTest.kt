@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.ExternalIds
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import io.ktor.utils.io.errors.IOException
@@ -68,6 +69,48 @@ class EpisodeListScreenUiTest {
             onNodeWithText("Retry").performClick()
 
             onNodeWithText("1. Pilot").assertExists()
+        }
+
+    @Test
+    fun testEpisodeListScreen_withImdbId_showsImdbLink() =
+        runComposeUiTest {
+            val fakeRepository =
+                FakeTvRepository().apply {
+                    getSeasonDetailsResult =
+                        Result.success(successfulSeasonWithEpisodes().copy(externalIds = ExternalIds(imdbId = "tt1480055")))
+                }
+            val viewModel = EpisodeListScreenModel(tvId = 1, seasonNumber = 1, tvRepository = fakeRepository)
+
+            setContent {
+                EpisodeListScreen(
+                    tvShowId = 1,
+                    seasonNumber = 1,
+                    onBackClicked = {},
+                    onEpisodeClicked = {},
+                    viewModel = viewModel,
+                )
+            }
+
+            onNodeWithText("View on IMDb").assertExists()
+        }
+
+    @Test
+    fun testEpisodeListScreen_withoutImdbId_hidesImdbLink() =
+        runComposeUiTest {
+            val fakeRepository = FakeTvRepository().apply { getSeasonDetailsResult = Result.success(successfulSeasonWithEpisodes()) }
+            val viewModel = EpisodeListScreenModel(tvId = 1, seasonNumber = 1, tvRepository = fakeRepository)
+
+            setContent {
+                EpisodeListScreen(
+                    tvShowId = 1,
+                    seasonNumber = 1,
+                    onBackClicked = {},
+                    onEpisodeClicked = {},
+                    viewModel = viewModel,
+                )
+            }
+
+            onNodeWithText("View on IMDb").assertDoesNotExist()
         }
 
     @Test
