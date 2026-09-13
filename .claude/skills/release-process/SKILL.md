@@ -112,8 +112,21 @@ Enabled (`isMinifyEnabled`/`isShrinkResources` on the `release` build type,
   screen shown once (see this file's Android/iOS signing section for other JCEF-avoidance calls in
   this codebase). Both embedded-WebView platforms track load failures and offer a retry rather
   than leaving the user stuck on an infinite spinner with no way past an unskippable gate.
-- **Screenshots** - capture fresh ones per the run-app skill once the listing's feature set is
-  final; Play Console wants phone screenshots at minimum, tablet/10-inch optional.
+- **Screenshots - done 2026-09-13** (`docs/store-screenshots/`): 2 phone screenshots (720x1280
+  JPEG, no alpha - Play rejects RGBA PNGs), deliberately showing only Creative Commons/open-source
+  films (Big Buck Bunny, Sintel - both Blender Foundation open movies), not the trending screen's
+  usual mainstream titles. Using someone else's copyrighted poster art in the app's *own* store
+  marketing is a different, riskier claim than TMDB API attribution covers. Verified authenticity
+  against TMDB before capturing (director credit + plot synopsis match), not just by title - a
+  second, invalid "Big Buck Bunny" search result existed with no real TMDB entry behind it.
+- **AAB, not just APK - done 2026-09-13.** Play Console rejects a plain APK upload; it requires
+  the Android App Bundle format. `package-android` now builds both in one Gradle invocation
+  (`assembleRelease` for the GitHub Release's direct-install APK, `bundleRelease` for a
+  Play-Console-only `android-release-aab` artifact) - see `composeApp/build/outputs/bundle/release/*.aab`
+  locally. The AAB is deliberately **not** attached to the public GitHub Release: it isn't directly
+  installable on a device (only Play Console's own bundletool split-APK generation can do that),
+  so publishing it there would only confuse direct-install users - download it from the workflow
+  run's own artifact list instead when it's time to upload to Play Console.
 
 ## Cutting the release
 
@@ -122,6 +135,13 @@ Enabled (`isMinifyEnabled`/`isShrinkResources` on the `release` build type,
 2. `git checkout master && git pull`.
 3. `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z` - this alone triggers `release.yml`:
    `version` -> `verify` -> `package` (macOS/Linux/Windows desktop) + `package-android` -> `release`
-   (publishes a GitHub Release with all four artifacts attached, tag pushes only).
-4. Separately: upload the Android artifact to Play Console (not automated - this skill's "Play
-   Store listing" section covers what needs to be ready first).
+   (publishes a GitHub Release with the three desktop installers + the Android APK attached, tag
+   pushes only - the AAB is deliberately excluded, see above).
+4. Separately: download `android-release-aab` from the `package-android` job's workflow run
+   artifacts and upload it to Play Console by hand (not automated - this skill's "Play Store
+   listing" section covers what needs to be ready first, including the full IARC content rating
+   questionnaire, which for this app should be answered assuming its TMDB-sourced catalog is
+   completely unfiltered - browsing/search can surface violence, gore, sexual content, language,
+   and drug/alcohol/tobacco references or depictions across virtually every category, since
+   nothing in the app curates by content warning beyond "Restricted Mode" excluding TMDB's own
+   `adult`-flagged entries from Search/Discover only, not Trending).
