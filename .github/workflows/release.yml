@@ -102,7 +102,7 @@ jobs:
           if-no-files-found: error
 
   package-android:
-    name: Package Android release APK
+    name: Package Android release APK + AAB
     needs: [verify, version]
     runs-on: ubuntu-latest
     steps:
@@ -132,7 +132,11 @@ jobs:
       - name: Decode release keystore
         run: echo "${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > "${{ runner.temp }}/release.jks"
 
-      - name: Build release APK
+      # Both in one invocation (shared Gradle daemon/config-cache, same signing env) - the APK is
+      # for direct-install/sideload distribution via the GitHub Release below; the AAB is the
+      # actual format Play Console requires for a Play Store submission (it rejects a plain APK
+      # upload). Neither is a substitute for the other.
+      - name: Build release APK and AAB
         env:
           ORG_GRADLE_PROJECT_MY_WATCH_LIST_TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           ANDROID_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
@@ -140,13 +144,23 @@ jobs:
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
           RELEASE_VERSION_NAME: ${{ needs.version.outputs.version_name }}
-        run: ./gradlew :composeApp:assembleRelease
+        run: ./gradlew :composeApp:assembleRelease :composeApp:bundleRelease
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: android-release-apk
           path: composeApp/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      # Not attached to the GitHub Release below (that's for direct-install users, who need an
+      # APK, not an AAB) - download this artifact from the workflow run and upload it to Play
+      # Console by hand, since Play Store submission isn't part of this pipeline.
+      - name: Upload Android AAB (for manual Play Console upload)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-aab
+          path: composeApp/build/outputs/bundle/release/*.aab
           if-no-files-found: error
 
   release:
@@ -160,10 +174,23 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download all distributables
+      # Deliberately not a single "download everything" step: android-release-aab must never
+      # reach this public GitHub Release. It isn't directly installable (Play Console's own
+      # bundletool split-APK generation is the only thing that can turn it into something a
+      # device can install) - publishing it here would only confuse direct-install users. It's
+      # downloaded from the workflow run's own artifact list instead, for manual Play Console
+      # upload - see package-android's upload step.
+      - name: Download desktop distributables
         uses: actions/download-artifact@v4
         with:
+          pattern: desktop-*
           path: dist
+
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-apk
+          path: dist/android-release-apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
