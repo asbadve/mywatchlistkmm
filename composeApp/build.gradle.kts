@@ -240,7 +240,7 @@ android {
 
     defaultConfig {
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
 
         applicationId = "com.ajinkyabadve.kmmmywatchlist.androidApp"
         versionCode = releaseVersionCode
@@ -270,6 +270,17 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Play Console's "native code, no debug symbols" warning traces to
+            // libandroidx.graphics.path.so (androidx.graphics:graphics-path, pulled in
+            // transitively by Compose UI's path/shape clipping) - confirmed 2026-09-13 by
+            // inspecting a built AAB's BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb.
+            // This project has no NDK/CMake native code of its own, and `ndk.debugSymbolLevel`
+            // only controls symbol stripping for native code *this build compiles* - it cannot
+            // retroactively add symbols to a prebuilt third-party .so it never built (confirmed:
+            // setting FULL here produced no BUNDLE-METADATA/com.android.tools.build.debugsymbols
+            // entry in the AAB). This is a known, widely-reported, non-blocking warning for
+            // Compose apps generally, not something fixable from this app's own Gradle config -
+            // left unset rather than keeping a setting that does nothing here.
             signingConfig =
                 if (hasAndroidReleaseSigningConfig) {
                     signingConfigs.getByName("release")
