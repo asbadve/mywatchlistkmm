@@ -1297,3 +1297,158 @@ means Siri won't freely paraphrase them the way it does schema-backed actions.
   conform to it, and that would be a breaking change to any Shortcut users have built.
 - **`project.pbxproj` churn.** The Xcode project is checked in; adding a Swift file touches a
   generated-looking file that merges badly. Keep the intent files in one group, added in one commit.
+
+---
+
+## 15. Autoscroll the Trending Media Carousels
+**Goal**: Auto-advance `TrendingScreenTab`'s three `TrendingMediaCarousel`s (Trending Movies/Tv
+show/People, each a Material3 `HorizontalMultiBrowseCarousel` + `rememberCarouselState` today - see
+`TrendingScreenTab.kt`) on a timer, like a typical media-app hero carousel, instead of requiring a
+manual swipe. Pure UI/UX - no new TMDB endpoint, no data-layer change (the three sections already
+load via `TrendingScreenTabViewModel`).
+
+### Relevant OAS endpoints
+None - purely a presentation-layer change on top of data the Trending tab already fetches.
+
+### Implementation Checklist:
+- [ ] **Core autoscroll loop**: a `LaunchedEffect(state)` per carousel that calls
+  `CarouselState.animateScrollToItem` on an interval (e.g. every 4-5s), wrapping back to index 0
+  after the last item. Needs its own small helper (e.g. `rememberAutoScrollCarouselState` or a
+  `Modifier.autoScroll(state, intervalMs)`) shared across all three sections rather than
+  copy-pasted three times, since `TrendingMediaCarousel` is already one function called for all
+  three `mediaType`s.
+- [ ] **Pause on user interaction**: must stop auto-advancing while the user is actively dragging/
+  flinging the carousel (`CarouselState`/the underlying `LazyListState` exposes
+  `isScrollInProgress` - check what `rememberCarouselState` surfaces for this in the resolved
+  Material3 version per `gradle/libs.versions.toml`) and resume after a short idle delay, so it
+  never fights a manual swipe mid-gesture.
+- [ ] **Pause when off-screen / app backgrounded**: only run the timer while `TrendingScreenTab` is
+  the visible tab and the app is foregrounded - an off-screen `LaunchedEffect` still ticking wastes
+  battery and can cause a jarring jump when the user returns. Tie the effect's key/lifecycle to
+  whatever visibility signal this app already has for the bottom-tab navigation (check how other
+  tab-scoped effects in this codebase, if any, handle this) rather than inventing a new one.
+- [ ] **Accessibility**: respect a "reduce motion" style preference if this app or the platform
+  exposes one; at minimum, don't auto-scroll while TalkBack/VoiceOver is active, since a moving
+  carousel under a screen reader is actively hostile to navigate. Needs research into what's
+  actually available per-platform (`expect`/`actual` territory, similar to other platform-capability
+  checks elsewhere in this file) before deciding the exact mechanism.
+- [ ] **Per-section independence**: three carousels means three independent timers/states - verify
+  scrolling one manually doesn't pause or reset the other two, and that all three don't drift into
+  visually synchronized advancement (some jitter/stagger is preferable to all three jumping at
+  once).
+- [ ] **Tests**: a Compose UI test asserting the carousel's selected index advances after
+  `mainClock.advanceTimeBy(...)` with no interaction, and does *not* advance while a drag gesture is
+  in progress (`ComposeTestRule`'s fake clock + `performTouchInput` pattern) - same tier as this
+  project's other new-feature UI tests per `.claude/skills/testing-conventions/SKILL.md`.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` - then manually confirm on-device (per the
+  `run-app` skill) that the motion feels right (interval, easing) rather than trusting the numbers
+  alone, since this is a pure-feel UX addition.
+
+---
+
+## 16. Colorblind-Friendly Theme
+**Goal**: A third selectable color scheme, alongside the existing Light/Dark (`theme/Theme.kt`'s
+`LightColorScheme`/`DarkColorScheme`, both `md_theme_*` constants in `theme/Color.kt`), for
+deuteranopia/protanopia (red-green) and tritanopia (blue-yellow) users. This app's primary accent
+is a mint green (`#5BFFA1` per the logo/design system - see [[design-artefact-links]]), and red is
+almost certainly used somewhere for errors/ratings/destructive actions - green-vs-red is exactly
+the pair red-green colorblindness (the most common form, ~8% of men) cannot reliably distinguish,
+so this isn't a hypothetical concern for this specific palette.
+
+### Relevant OAS endpoints
+None - purely a presentation-layer/settings addition, no TMDB data involved.
+
+### Implementation Checklist:
+- [ ] **Audit current color usage for meaning-carrying-color, not just the two schemes' hex
+  values**: grep every `MaterialTheme.colorScheme.` call site (43 files per item 4's research above)
+  and every raw `Color(...)` literal for places where color is the *only* signal - not just "is this
+  ugly for a colorblind user" but "does this lose information entirely" (e.g. a rating badge that's
+  only ever tinted green=good/red=bad with no icon or number backing it up, a chip that changes only
+  color to show selected state). Fix those with a secondary non-color cue (icon, underline, bold
+  weight) regardless of which theme is active - that's a general accessibility fix, not specific to
+  this new theme, and should land first/separately since every future theme benefits from it.
+- [ ] **Palette research**: don't hand-pick "colorblind-safe-looking" colors by eye - run candidate
+  palettes through a simulator (Chrome DevTools' vision-deficiency emulation, or a tool like Coblis/
+  Viz-Palette) for all three common types (deuteranopia, protanopia, tritanopia), and check contrast
+  ratios still meet WCAG AA once shifted. Consider whether this should be one extra scheme or two
+  (red-green vs. blue-yellow needs different fixes) - decide from what the simulator actually shows
+  for this app's specific palette, not a generic assumption.
+- [ ] **Scheme plumbing**: mirror `LightColorScheme`/`DarkColorScheme`'s exact shape - a third
+  `ColorScheme` (or a light+dark pair of them, matching how the existing two schemes already handle
+  light/dark independently) built from new `md_theme_colorblind_*`-style constants in `Color.kt`.
+  `AppTheme`'s `useDarkTheme: Boolean` param isn't enough once there's a third scheme choice - needs
+  widening to a proper enum/sealed type (`AppColorScheme.Light`/`Dark`/`Colorblind...`) threaded
+  through the same place `useDarkTheme` is today.
+- [ ] **Settings persistence + UI**: a new `ThemeRepository`-style setting (same
+  `multiplatform-settings` store as `RestrictedModeRepository`/region/auth), exposed as a row on
+  `AccountScreen`'s settings list (same place Restricted Mode/Region live) - likely a small picker
+  (radio group or dropdown) rather than a `Switch`, since it's a 3+-way choice, not binary.
+- [ ] **`LocalIsDarkTheme` follow-through**: anything reading this composition local for a
+  hand-picked color the `ColorScheme` doesn't name (the hero scrim, artwork foregrounds - see its
+  own kdoc) needs re-checked once a colorblind variant exists, since those call sites currently
+  assume only two possible answers.
+- [ ] **Tests**: a Compose UI test (or a simpler unit test on the scheme-selection logic) asserting
+  the right `ColorScheme` is applied for each of the three settings values, same tier as this
+  project's other new-feature tests per `.claude/skills/testing-conventions/SKILL.md`. Visual
+  correctness itself (does it actually read well) is a manual/simulator check, not something a unit
+  test can verify.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` - then manually confirm on-device with a
+  vision-deficiency simulator/emulation tool per the palette-research step above, across both light
+  and dark surfaces per [[feedback-check-both-themes]].
+
+---
+
+## 17. Date-Grouped Headings for "Now Playing"-style Tabs (Today / Tomorrow / ...)
+**Goal**: Group items in Movies' "Now Playing" tab (`MoviesConstant.NOW_PLAYING_MOVIES`, endpoint
+`now_playing`) - and the same concept applies to TV's "Airing Today"/"On The Air" tabs
+(`TvShowsConstant.AIRING_TODAY_TV`/`ON_THE_AIR_TV`) - under date section headings ("Today",
+"Tomorrow", then a plain date for anything further out), instead of today's single undifferentiated
+grid. The data is already there: `Movie.releaseDate` (a TMDB `release_date` string) already backs
+`Movie.isUpcoming(today)` (`features/movies/model/Movie.kt`), so this is a grouping/presentation
+change on top of an existing field, not a new API call.
+
+### Relevant OAS endpoints
+None new - `GET /3/movie/now_playing`, `GET /3/tv/airing_today`, `GET /3/tv/on_the_air` are all
+already called; TMDB's `now_playing`/`on_the_air` responses also carry a top-level
+`dates.minimum`/`dates.maximum` window worth threading through if useful for bounding the grouped
+range, currently discarded by `MoviePageResult` (only `page`/`list`/`totalResults`/`totalPages` are
+modeled).
+
+### Implementation Checklist:
+- [ ] **Grouping logic**: a small pure function (`commonMain`, easy to unit test) that buckets a
+  `List<Movie>` (or the TV equivalent) into `Today` / `Tomorrow` / a per-date bucket beyond that,
+  using `kotlinx.datetime.LocalDate.parse(releaseDate)` against "today" the same way
+  `Movie.isUpcoming(today)` already does - reuse that comparison pattern rather than re-deriving it.
+  Decide the cutoff for "just show the date" (this week? this month?) and how far-future/blank/
+  unparsable dates are bucketed (mirror `isUpcoming`'s fail-safe: an unparsable date shouldn't crash
+  or silently vanish from the grid).
+- [ ] **Grid restructuring**: `CommonMovieListScreenContent.kt`'s `screenContent` renders a flat
+  `LazyVerticalGrid { items(movies) { ... } }` today, shared across *all* movie tabs (Now Playing,
+  Upcoming, Popular, Top Rated) - grouping only makes sense for the date-driven ones. Needs either a
+  parallel grouped variant used only for Now Playing/Airing Today/On The Air, or a mode flag on the
+  existing one, using `LazyVerticalGrid`'s `item(span = { GridItemSpan(maxLineSpan) })` for the
+  section-heading rows interleaved with each date bucket's `items(...)` poster grid - not a second
+  nested `LazyVerticalGrid` per section (grids-inside-a-grid breaks scroll performance).
+- [ ] **Pagination interaction**: today's `shouldStartPaginate`/infinite-scroll logic keys off the
+  flat item list's last visible index - verify it still triggers correctly once heading rows are
+  interleaved (their presence shifts index math), and that a newly-paginated-in page's items land in
+  the correct existing date bucket rather than starting a duplicate "Tomorrow" section further down
+  the list.
+- [ ] **TV reuse**: check whether `TvShowsConstant`'s "Airing Today"/"On The Air" tabs share
+  `CommonMovieListScreenContent`'s grid or have their own equivalent - if the two `Movie`/TV list
+  models differ enough that the grouping function can't be shared as-is, keep the bucketing logic
+  itself common (it only needs a date string) even if the two screens wire it in separately.
+- [ ] **Strings**: "Today"/"Tomorrow" heading labels go through `Res.string.*`
+  (`composeResources/values/strings.xml`) per this repo's no-magic-strings convention, not inlined -
+  and the plain-date fallback format needs to be locale-aware (`kotlinx.datetime`/platform date
+  formatting), not a hardcoded pattern.
+- [ ] **Tests**: a unit test on the grouping function (today/tomorrow/later/blank/unparsable cases,
+  mirroring how `Movie.isUpcoming` is likely already tested) plus a Compose UI test asserting the
+  heading rows render in the right order with the right items under each, per
+  `.claude/skills/testing-conventions/SKILL.md`.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`, then confirm on-device that pagination and
+  scroll performance still feel right with headings interleaved (per the `run-app` skill) - the
+  grid's item count/shape changes more than a typical UI tweak here.
