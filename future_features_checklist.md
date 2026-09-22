@@ -1297,3 +1297,182 @@ means Siri won't freely paraphrase them the way it does schema-backed actions.
   conform to it, and that would be a breaking change to any Shortcut users have built.
 - **`project.pbxproj` churn.** The Xcode project is checked in; adding a Swift file touches a
   generated-looking file that merges badly. Keep the intent files in one group, added in one commit.
+
+---
+
+## 15. Backup & Restore for Device-Only Data (the data TMDB does not hold)
+**Goal**: Give the user a file they own for everything this app keeps *only on their device*.
+Favorites, watchlist and custom lists all come back by themselves on the next sign-in - they're
+mirrors of TMDB account state ([item 2](#2-local-sqlite-database-for-favoriteswatchlist-local-notification-data-source--done),
+[item 6](#6-account-favorites--watchlist-replacing-my-fav-placeholder--done-2026-08-16)) - but the
+local-only concepts have no server behind them at all. Followed people
+([item 3b](#3b-favorite-actorperson---new-credit-announced--done-2026-08-26)) and followed
+collections ([item 3c](#3c-new-movie-added-to-a-favorited-collection--done)) exist *because* TMDB
+has no account API for them, and the settings that shape the whole app (region, restricted mode,
+notification opt-in, Discover filters) live in `multiplatform-settings`. Reinstall the app, move to
+a new phone, or hit "Clear data" and every one of those is gone with nothing to sync back from.
+
+**No TMDB endpoints are involved - that is the entire point of this item.** Unlike every other
+entry in this file, there is no OAS section here: the data being backed up is precisely the data
+TMDB will never return.
+
+### Exact scope: what goes in the file
+Decided by "would this come back on its own after a reinstall?" - if yes, it stays out.
+
+| Data | Where it lives now | Comes back on its own? | In the backup |
+|---|---|---|---|
+| Followed people | `favoritePerson` table, `FavoritePersonRepository` | **No** - TMDB has no favorite/follow API for people (confirmed 2026-08-26, see the table's kdoc) | ✅ |
+| Followed collections | `favoriteCollection` table, `FavoriteCollectionRepository` | **No** - same finding for collections | ✅ |
+| Selected + fallback region | `region_selected_code` / `region_fallback_code` (`RegionConstant`) | No | ✅ |
+| Restricted mode | `restricted_mode_enabled` (`RestrictedModeConstant`) | No | ✅ |
+| Episode-notification opt-in | `episode_notifications_enabled`, `episode_alert_opt_in_prompt_seen` (`NotificationSettingsConstant`) | No | ✅ |
+| Saved Discover filters | `discover_movie_filters_json` / `discover_tv_filters_json` (`DiscoverFilterRepository`) | No | ✅ |
+| Favorites / watchlist / custom lists | `trackedMedia`, `customList`, `customListItem` | **Yes** - re-synced from TMDB on sign-in | ❌ |
+| Detail caches, `remoteKeys` | `movieDetailCache` / `tvDetailCache` / `tvSeasonDetailCache` / `personDetailCache` / `remoteKeys` | Yes - pure read-through caches | ❌ |
+| Poll state + notification ledger | `trackedMedia.lastKnown*`, `favoritePerson.lastKnownCreditIds`, `favoriteCollection.lastKnownPartIds`, `notificationLedger` | n/a - see below | ❌ (deliberate) |
+| TMDB session | `auth_session_id`, `auth_account_id`, `auth_username`, `auth_name`, `auth_avatar_url` (`AuthRepository`) | Yes - the user signs in again | ❌ **never** |
+| Privacy-policy acceptance | `privacy_policy_accepted_v1` (`PrivacyConsentRepository`) | n/a - re-shown per install | ❌ (deliberate) |
+
+Three exclusions are decisions, not oversights, and each should be stated in the exporter's KDoc so
+nobody "fixes" them later:
+- **The auth session must never be written to the file.** `auth_session_id` is a bearer credential
+  for the user's real TMDB account; a backup file gets copied into cloud drives, chat apps and
+  email. Export works by an explicit allow-list of keys, never by dumping the whole `Settings`
+  store - that way a future settings key can't silently join the export.
+- **Poll state stays out, and that is what makes restore quiet.** `lastKnownCreditIds` /
+  `lastKnownPartIds` being `NULL` already means "never polled yet", and
+  `PersonCreditNotificationPoller` / `CollectionNotificationPoller` treat that first poll as
+  baselining only (see both tables' kdocs). Restoring 40 followed people with no poll state
+  therefore fires **zero** notifications on the next poll, instead of one per past credit. Restore
+  gets the right behaviour by writing *less*, not more.
+- **The privacy-consent flag stays out.** Restoring an "already accepted" boolean from a
+  user-editable file would let a fresh install skip its consent gate.
+
+### Format: one versioned JSON file, not a copy of the database
+- [ ] A single `.json` file, `kotlinx.serialization` (the app's only serializer already), named
+  `mywatchlist-backup-YYYY-MM-DD.json`. The payload is at most a few hundred short rows, so a
+  human-readable, diff-able text file costs nothing.
+- [ ] Envelope: `{ "format": 1, "exportedAt": <epochMillis>, "people": [...], "collections": [...],
+  "settings": { ... } }`. `format` is the **backup contract's** own integer and is deliberately
+  *not* `LocalSchemaVersion.CURRENT` - a `MyDatabase.sq` migration that doesn't change what's
+  exported must not invalidate old backups, and a change to the exported shape must bump something
+  even when the schema is untouched. Say exactly this in its KDoc, since the two look
+  interchangeable at a glance.
+- [ ] Decode with `Json { ignoreUnknownKeys = true }` (the same setting every other decode in this
+  app uses), so a file written by a newer build restores its known parts on an older one instead of
+  failing outright. A `format` *greater* than the build knows is still refused explicitly, with a
+  typed result - silently half-restoring a future format is worse than declining.
+- **Not** the SQLite file itself: copying it would drag in the TMDB-derived caches this item just
+  excluded, tie every backup to the SQLDelight schema version and its migration chain, and hand the
+  user an opaque blob instead of something they can read.
+
+### Restore semantics (decide these before writing code)
+- [ ] **Merge by default, never wipe-and-replace.** A restore adds the people/collections that
+  aren't already followed and leaves existing ones alone. Both repositories' `setFavorite` is
+  already backed by `INSERT OR REPLACE`, so merge is the cheap path; a destructive "replace
+  everything" mode is the one that would need extra code, and it isn't worth shipping in the first
+  cut.
+- [ ] **Preserve `addedAt` from the file.** `selectAllFavoritePeople` / `selectAllFavoriteCollections`
+  order by `addedAt DESC` ("most-recently-followed first"), so restoring with `now()` would scramble
+  the user's ordering into "whatever order the JSON array happened to be in". Today's
+  `setFavorite(...)` signature takes no `addedAt`, so this needs a new repository method (e.g.
+  `restoreFavoritePeople(List<BackupPerson>)`) rather than the backup layer reaching past the
+  repositories into SQLDelight directly.
+- [ ] **Settings restore is per-key and only for keys present in the file** - a backup written
+  before a setting existed must not reset that setting to a default.
+- [ ] Restore never touches `trackedMedia` / `customList` / `customListItem` / the caches.
+
+### The real cost: this app has no file picker on any platform
+Checked before designing anything, per `.claude/skills/code-conventions/SKILL.md`'s "check the
+platform first": **Compose Multiplatform 1.11.1 (`gradle/libs.versions.toml`) ships no common file
+dialog** - confirmed 2026-09, it has never had one. The closest thing already in the repo is
+`util/ImageSaver.kt`, an `expect class` with four actuals, and it does not fit: it *writes* only, to
+a fixed location per platform (Android MediaStore/Pictures, iOS Photos album, desktop `~/Downloads`,
+a JS anchor-click download), with no user-chosen destination and no read counterpart at all. Restore
+needs a *read* from a user-picked file, which is genuinely new on all four targets.
+
+Two ways to get it - **pick one before starting**:
+- **A. Hand-rolled `expect`/`actual`, no new dependency (recommended).** Android:
+  `ActivityResultContracts.CreateDocument` / `OpenDocument` (SAF - no storage permission needed).
+  iOS: `UIDocumentPickerViewController`. Desktop: `java.awt.FileDialog` via `AwtWindow`. JS: the
+  existing Blob-download trick for export plus a hidden `<input type="file">` for import. Android
+  and iOS need a live Activity/`UIViewController`, which is exactly the problem
+  `rememberWebAuthLauncher()` (`core/auth/WebAuthLauncher.kt`) and
+  `rememberNotificationPermissionRequester()` already solved in this repo as a
+  `@Composable expect fun remember…()` returning an interface - copy that shape rather than
+  inventing a third one. Cost: four small platform files, no dependency, full control.
+- **B. FileKit (`io.github.vinceglb:filekit`).** One common API covering Android/iOS/JVM/JS
+  (`FileKit.openFilePicker()` / `saveFile()`), backed by the same native pickers option A would call
+  by hand. **Check compatibility first**: 0.16.0 (released ~Sept 2026) is built against Compose
+  Multiplatform **1.12**, while this repo is on **1.11.1**, so this is a dependency bump decision,
+  not a drop-in. It would also be this app's first third-party dependency for platform IO.
+- Whichever wins, the custom code's KDoc must record what the platform equivalent was and why it
+  didn't fit (the convention's requirement) - here: "CMP has no common file dialog as of 1.11.1".
+
+### Implementation Checklist
+- [ ] **Models** (`features/settings/model/Backup.kt`): `@Serializable` `BackupEnvelope`,
+  `BackupPerson(id, name, profilePath, addedAt)`, `BackupCollection(id, name, posterPath, addedAt)`,
+  `BackupSettings(...)` - one nullable field per allow-listed key, so "absent" and "set to false"
+  stay distinguishable.
+- [ ] **Repository** (`features/settings/repository/BackupRepository.kt` + `Impl`):
+  `suspend fun exportToJson(): String` and `suspend fun restoreFromJson(json: String): RestoreResult`.
+  It composes the existing repositories (`FavoritePersonRepository`, `FavoriteCollectionRepository`,
+  `Settings`) - no raw SQLDelight access, same layering every other repository here follows.
+- [ ] **Typed outcomes, no bare `Exception`** (per `.claude/skills/code-conventions/SKILL.md`): a
+  `sealed interface RestoreResult` with `Restored(peopleCount, collectionsCount, settingsCount)`,
+  `UnsupportedFormat(found, supported)` and `Malformed`. Catch `SerializationException` and
+  `IllegalArgumentException` specifically - the exact pair `DiscoverFilterRepositoryImpl` already
+  catches around its own JSON decode.
+- [ ] **Platform IO**: the picker/writer chosen above, plus an in-memory fake for tests.
+- [ ] **Business logic**: `BackupScreenModel` - idle / exporting / restoring / result states, and an
+  explicit confirm step before a restore runs.
+- [ ] **UI**: a "Backup & restore" row on `AccountScreen`
+  (`features/auth/screen/AccountScreen.kt`), alongside the existing Region / Restricted mode /
+  Privacy policy rows, opening a small screen or dialog with "Export backup" and "Restore from
+  file". Result reporting goes in a dialog or inline text, **not** a snackbar - this app has no
+  snackbar host anywhere (established in [item 13.2](#132-imdb-link-on-every-detail-screen--long-press-to-copy-on-detail-titles--done)),
+  and adding one app-wide is out of scope here.
+- [ ] **Strings**: every user-facing string via `Res.string.*` in
+  `composeApp/src/commonMain/composeResources/values/strings.xml` (`settings_backup_label`,
+  `backup_export_action`, `backup_restore_action`, `backup_restore_confirm_message`,
+  `backup_restore_result_message`, `backup_error_unsupported_format`, …). No magic strings; the
+  settings keys the exporter allow-lists are `private const val`s referencing the existing
+  `*Constant` objects, not re-typed literals.
+- [ ] **Tests** (both tiers required, per `.claude/skills/testing-conventions/SKILL.md`):
+  - Unit: export→restore round-trip preserves people, collections and their `addedAt` ordering;
+    merge keeps pre-existing follows; a `format` from the future returns `UnsupportedFormat`;
+    malformed JSON returns `Malformed` and writes nothing; unknown extra fields decode fine; and -
+    the one that matters most - **the exported JSON contains no `auth_` key and no session id**, as
+    a standing regression test for the leak this design exists to prevent.
+  - Compose UI: the Account row renders and opens the screen, the restore confirm dialog appears and
+    its confirm action calls through, and the error result renders its message.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`.
+
+### Deliberately out of scope
+- **Cloud sync / cross-device backup.** Same conclusion as
+  [item 3b](#3b-favorite-actorperson---new-credit-announced--done-2026-08-26)'s sync note and
+  [item 14](#14-ai-powered-for-you-recommendations-taste-profile-from-favorites--watchlist--lists)'s:
+  it needs this app's own backend. A file the user moves themselves needs none.
+- **Android Auto Backup / iCloud key-value store.** Platform-specific, invisible to the user, and
+  neither helps someone moving between Android and iOS - which is the case a KMM app should handle
+  best, not worst.
+- **Encryption / password-protecting the file.** Nothing in it is a credential, by construction. If
+  that ever stops being true the answer is encryption, not a comment - so the allow-list is the
+  thing to defend in review.
+- **Scheduled or automatic backups.** Export is a user action. A background writer would need a
+  destination it can write unattended, which is the one thing SAF/`UIDocumentPicker` deliberately
+  don't give.
+
+### Risks / open questions
+- **JS barely has anything to back up.** Its SQLDelight driver is in-memory per page load
+  (`jsMain/db/DatabaseDriverFactory.kt` - never persisted to IndexedDB/OPFS), so on web an export
+  captures only the current session's follows plus the `Settings`-backed preferences. Either ship it
+  there as-is with that caveat, or hide the row on JS - decide, don't leave it accidental.
+- **File-size ceiling is not a concern, file *trust* is.** The JSON is user-editable by design, so
+  the restore path validates every field (ids positive, names non-blank, region codes matching the
+  existing region list) rather than trusting the file - a hand-edited backup should fail cleanly,
+  never write junk rows.
+- **The picker decision drives the effort estimate.** Option A is four small platform files;
+  option B is a Compose Multiplatform version bump. Settle that first - everything else in this item
+  is small.
