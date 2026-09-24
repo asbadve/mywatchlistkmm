@@ -1333,6 +1333,10 @@ Decided by "would this come back on its own after a reinstall?" - if yes, it sta
 | TMDB session | `auth_session_id`, `auth_account_id`, `auth_username`, `auth_name`, `auth_avatar_url` (`AuthRepository`) | Yes - the user signs in again | ❌ **never** |
 | Privacy-policy acceptance | `privacy_policy_accepted_v1` (`PrivacyConsentRepository`) | n/a - re-shown per install | ❌ (deliberate) |
 
+If [item 16](#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts)
+ships, its local-only `releaseReminder` table joins the ✅ rows above by the same test (its
+`lastKnownReleaseDate` stays out, like the other poll-state columns).
+
 Three exclusions are decisions, not oversights, and each should be stated in the exporter's KDoc so
 nobody "fixes" them later:
 - **The auth session must never be written to the file.** `auth_session_id` is a bearer credential
@@ -1476,3 +1480,185 @@ Two ways to get it - **pick one before starting**:
 - **The picker decision drives the effort estimate.** Option A is four small platform files;
   option B is a Compose Multiplatform version bump. Settle that first - everything else in this item
   is small.
+
+---
+
+## 16. Release-Date Reminders for Unreleased Titles ("Remind me" CTA + day-before / release-day alerts)
+**Goal**: Let the user tap **"Remind me"** on a movie or show that hasn't come out yet, and get two
+local notifications: one the day before it releases, one on release day. The app already *tells*
+the user a title is unreleased - `UpcomingBadge` renders wherever `isUpcoming(today)` is true
+(`SearchResultItem`/`Movie`/`Tv`, shown on the Discover tabs, search results and the favorites/
+watchlist grid) - but then does nothing about it, so remembering to come back is entirely the
+user's problem.
+
+Nothing in [item 3](#3-local-notifications-returning-series-favorite-actors-favorite-collections)
+covers this. `TvEpisodeNotificationPoller` keys off `next_episode_to_air`, which an unpremiered
+show doesn't have; `PersonCreditNotificationPoller`/`CollectionNotificationPoller` fire on *new*
+credits/parts appearing, not on a known date arriving. And movies are polled by nothing at all -
+`selectTrackedTvForPolling` is `WHERE mediaType = 'tv'`. An upcoming title falls through every
+existing poller.
+
+### What this reuses (most of it is already built)
+- **The entire notification stack**, from [item 3](#3-local-notifications-returning-series-favorite-actors-favorite-collections)'s
+  shared infrastructure: `NotificationScheduler` (WorkManager / `BGTaskScheduler` / JVM executor /
+  `setInterval`), `LocalNotifier`, `NotificationPermissionRequester`, `NotificationImageFetcher`
+  for the poster, and `PendingNotificationTarget` for tap-to-open. **No new per-platform code.**
+- **The 6-hour poll cadence is already the right one.** `AndroidNotificationSchedulerConstant.POLL_INTERVAL`
+  is `6.hours`, so a day-granularity reminder gets four chances to fire. "Notify on the date
+  itself" is also not a new shape - it is exactly what `NotificationReason.EPISODE_AIRING` already
+  does by comparing an air date against `today()`.
+- **The dedup ledger needs no change.** `notificationLedger` is keyed
+  `(id, mediaType, reason, cursorValue)`; putting the *resolved release date* in `cursorValue`
+  means a date that slips re-notifies for the new date while an exact repeat stays suppressed -
+  the same property that lets `EPISODE_ANNOUNCED` fire again for a later season.
+- **`release_dates` is already on the wire and already modeled.** `MovieRepositoryImpl`'s
+  `append_to_response` includes `release_dates`, and `ReleaseDatesResponse` / `ReleaseDatesResult` /
+  `ReleaseDateItem` all exist in `MovieDetail.kt` - including `type: Int`, which **nothing currently
+  reads** (`usCertification()` is the only consumer and it only looks at `certification`). So for
+  movies this feature needs no new endpoint, no new append value and no new model field.
+- **Region resolution** from [item 11](#11-region-selector-driving-ott-availability--done-2026-08-17):
+  `RegionRepository` plus `resolveRegion()`/`resolveRegionCode()`'s selected → fallback → any
+  priority.
+
+### Relevant OAS endpoints
+- `GET /3/movie/{movie_id}?append_to_response=release_dates` - **already called exactly like this.**
+  `release_date` (the primary date) plus the per-country `release_dates.results[]` buckets.
+- `GET /3/tv/{series_id}` - `first_air_date` and `status` (`"Planned"` / `"In Production"` /
+  `"Returning Series"`), already fetched by `TvRepositoryImpl`.
+
+### Decide first: *which* release date the reminder fires on
+This is the one genuine design question, and getting it wrong makes the feature actively annoying.
+- `movie.release_date` is TMDB's **primary** release date, which is frequently a festival premiere
+  or a US theatrical date - not the date the title becomes available to this user.
+- The `release_dates` buckets carry a `type`, documented by TMDB as: **1** Premiere, **2**
+  Theatrical (limited), **3** Theatrical, **4** Digital, **5** Physical, **6** TV.
+- [ ] **Ground-truth this against the live API before building**, per
+  `.claude/skills/tmdb-api/SKILL.md` - the session that wrote this item could not (the sandbox
+  blocks `api.themoviedb.org` and `developer.themoviedb.org`), so the type numbering above comes
+  from TMDB's own Movie Bible page, not from a live response.
+- **Recommendation**: resolve in the user's region first (reusing item 11's selected → fallback →
+  any priority), preferring type **3 Theatrical**, then **4 Digital**, then falling back to
+  `release_date`. **Type 1 Premiere must never be the reminder date** - telling someone their film
+  is out because it screened at a festival is worse than not telling them at all.
+- [ ] Put the resolved source in the notification body ("In theatres in IN on Friday"), so a date
+  the user disagrees with is at least explicable. A user-facing "remind me for digital releases
+  only" preference is a good *second* pass, not first-cut scope.
+- TV is simple: `first_air_date`, which has no per-region equivalent.
+
+### The CTA: where the button goes, and where it can't
+- [ ] **It cannot live in `MediaActionButtonsSection`.** That composable does
+  `val session = (authUiState as? AuthUiState.LoggedIn)?.session ?: return` - it renders nothing
+  when signed out. A release reminder needs **no TMDB account**: it is purely local, like followed
+  people and collections. Gating it behind sign-in would be a self-inflicted limitation.
+- [ ] Add `ReleaseReminderButton` (`core/ui/hero/`), rendered in the movie/TV hero only when
+  `isUpcoming(today)` is true. Model it on **`FollowCollectionButton`** - already a local-only,
+  signed-out-capable follow toggle backed by a local table, which is precisely this shape.
+- [ ] First tap calls `rememberNotificationPermissionRequester().request()` and then
+  `NotificationScheduler.schedule()` - the identical pair `EpisodeAlertOptInDialog` and
+  `AccountScreen`'s episode-notifications toggle already call. Do not invent a third opt-in path.
+- [ ] Optional second entry point, once the detail-screen one works: the same toggle next to the
+  existing `UpcomingBadge` in `AccountMediaGridContent`.
+
+### Data model
+- [ ] New **local-only** `releaseReminder` table in `MyDatabase.sq`, sitting alongside
+  `favoritePerson` / `favoriteCollection` and local-only for the same documented reason - there is
+  nothing on TMDB's side to sync it to. Columns: `id`, `mediaType`, `title`, `posterPath`,
+  `addedAt`, `lastKnownReleaseDate TEXT` (NULL = never polled, same convention as
+  `lastKnownCreditIds`), `PRIMARY KEY (id, mediaType)`.
+- [ ] **Not** a column on `trackedMedia`: a reminder has to work for a title that is neither
+  favorited nor watchlisted, and while signed out - cases where no `trackedMedia` row exists at all.
+- [ ] **Bump `LocalSchemaVersion.CURRENT` and ship a numbered `N.sqm` migration** - mandatory for
+  any `MyDatabase.sq` change (`.claude/skills/code-conventions/SKILL.md`, and `LocalSchemaVersion`'s
+  own kdoc). This would be the **first real `.sqm` file since the v1.0.0 reset**, so it is also the
+  moment to turn on `verifyMigrations.set(true)` in `composeApp/build.gradle.kts`'s `sqldelight`
+  block, which that kdoc already flags as the thing to do alongside the first migration.
+- [ ] **Add `releaseReminder` to [item 15](#15-backup--restore-for-device-only-data-the-data-tmdb-does-not-hold)'s
+  backup scope** - it is device-only data with no server behind it, which is exactly that item's
+  inclusion test. (Its `lastKnownReleaseDate` stays out, by the same "restore quietly" rule.)
+
+### The poller
+- [ ] `ReleaseNotificationPoller` (`features/notifications/`), same shape as the three existing
+  pollers, called from `EpisodeNotificationWorker.doWork()` next to them - **one periodic job, not
+  a fourth**, matching the reasoning already in `PersonCreditNotificationPoller`'s kdoc.
+- [ ] Two new `NotificationReason` entries with explicit `storageValue`s (the enum's existing
+  convention): `RELEASE_TOMORROW("release_tomorrow")` and `RELEASE_TODAY("release_today")`.
+- [ ] `cursorValue` = the resolved release date, per the dedup property above.
+- [ ] **Never fire a late "tomorrow".** If the device was off or offline through the day-before
+  window, the poll must skip `RELEASE_TOMORROW` and fire only `RELEASE_TODAY` - the ledger dedups
+  repeats but cannot catch a notification that is simply wrong by the time it lands. Compare the
+  resolved date against `today()` and fire `RELEASE_TOMORROW` **only** when it is exactly one day
+  out.
+- [ ] **Age the row out.** Unlike a favorite, a reminder has a natural end: drop the row once the
+  release date is ~7 days past (not immediately - a date that slips *backwards* shouldn't lose the
+  row). This keeps the poll set naturally tiny.
+- [ ] Per-item `try`/`catch` isolation around each detail call, catching `HttpExceptions`,
+  `IOException`, `ContentConvertException` and `SerializationException` specifically - copy
+  `TvEpisodeNotificationPoller.pollOne`'s existing handling, no bare `Exception`
+  (`.claude/skills/code-conventions/SKILL.md`).
+- [ ] Reuse `LocalNotifier.post`'s existing `posterUrl` and `deepLink` params. Tap should open the
+  movie/TV detail screen, which needs a new `NotificationTarget` variant alongside
+  `EpisodeNotificationTarget` in `core/notification/NotificationDeepLink.kt`, plus the
+  `MovieDetailKey`/`TvDetailKey` push in `App.kt`'s `MainAppScreen`.
+
+### Implementation Checklist
+- [ ] **Schema**: `releaseReminder` table + queries (`selectAllReleaseReminders`,
+  `selectReleaseReminderById`, `insertReleaseReminder`, `deleteReleaseReminder`,
+  `updateLastKnownReleaseDate`, `selectReleaseRemindersForPolling`), the `.sqm` migration, and the
+  `LocalSchemaVersion.CURRENT` bump.
+- [ ] **Data Layer**: `ReleaseReminderRepository` / `Impl` (`features/notifications/repository/`),
+  mirroring `FavoriteCollectionRepository`'s interface shape -
+  `observeHasReminder(id, mediaType): Flow<Boolean>`, `setReminder(...)`,
+  `remindersForPolling(): List<ReleaseReminderPollCandidate>`.
+- [ ] **Date resolution**: `MovieDetail.resolveReleaseDate(regionCode): ResolvedRelease?` in
+  `MovieHeroFacts.kt` next to the existing `usCertification()`/`resolveRegionCode()` helpers,
+  returning the date **and** which type won so the notification body can name it. A `ReleaseType`
+  **enum** (not raw ints) per the conventions' closed-value-set rule, with the TMDB integer as its
+  stored value.
+- [ ] **Business logic**: `ReleaseNotificationPoller` as specced above.
+- [ ] **UI**: `ReleaseReminderButton` in the movie and TV heroes; all copy via `Res.string.*` in
+  `composeResources/values/strings.xml` (`action_remind_me`, `action_reminder_set`,
+  `notification_release_tomorrow_title/_body`, `notification_release_today_title/_body`).
+- [ ] **Settings**: reminders ride the existing episode-notifications toggle's permission +
+  scheduling, but get their own row on `AccountScreen` so a user can keep episode alerts and turn
+  release reminders off. Add a debug "Poll release notifications now" row next to the existing
+  three, with the matching `clearForReasonForDebug` call per reason.
+- [ ] **Tests** (both tiers, per `.claude/skills/testing-conventions/SKILL.md`):
+  - Unit (`ReleaseNotificationPollerTest`, modelled on `TvEpisodeNotificationPollerTest`): fires
+    `RELEASE_TOMORROW` exactly one day out and never two days or zero days out; fires
+    `RELEASE_TODAY` on the day; a missed day-before window produces only the release-day
+    notification; a slipped date re-notifies while an identical re-poll does not; rows age out
+    after the window; one item's HTTP failure doesn't abort the rest. Plus date resolution:
+    region-theatrical beats digital beats primary, and **type 1 Premiere is never chosen**.
+  - Compose UI (`ReleaseReminderButtonUiTest`): the button renders only for an upcoming title,
+    renders while signed out, and tapping it toggles the reminder state.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`.
+
+### Deliberately out of scope
+- **Exact-time alarms.** Android's `SCHEDULE_EXACT_ALARM` is a restricted permission with a Play
+  Console declaration attached, and day-granularity reminders do not need it. The existing 6-hour
+  poll is sufficient and costs nothing new.
+- **Per-title custom lead times** ("remind me a week before"). Two fixed reminders first; a lead-time
+  picker is a preferences surface that should only exist if users ask for it.
+- **Season-premiere reminders for shows already airing.** [Item 3a](#3a-returning-series---newupcoming-episode--done-2026-08-26)
+  already covers those through `next_episode_to_air` - this item is only for titles with no release
+  at all yet.
+- **Calendar export** (`.ics` / system calendar write). A different permission model and a different
+  feature; the reminder table would be a fine source for it later.
+
+### Risks / open questions
+- **Release dates are the most volatile field TMDB has for unreleased titles.** The `cursorValue`
+  design absorbs slips correctly, but the user-visible result is that dates move. A third reason
+  (`RELEASE_DATE_CHANGED`) is tempting - resist it in the first cut, since three notifications per
+  title is how a useful feature becomes one people turn off.
+- **Desktop and JS are weak here.** Their schedulers only run while the app/tab is open, which
+  matters far more for a once-ever release-day alert than for an episode poll that gets another
+  chance tomorrow. The honest platform story is Android/iOS; consider not showing the CTA on
+  desktop/JS rather than promising something that mostly won't fire.
+- **Timezones.** A TMDB release date is a plain `LocalDate` with no timezone, and `today()` uses
+  `TimeZone.currentSystemDefault()` - the same assumption `TvEpisodeNotificationPoller` already
+  makes. Fine to keep, worth stating in the KDoc rather than rediscovering.
+- **A reminder for a never-dated title.** TMDB frequently carries an announced film with an empty
+  or year-only `release_date`. `isUpcoming()` already reads those as *not* upcoming (missing/
+  unparsable dates return false), so the CTA won't appear - which is the right behaviour, but it
+  means the most-anticipated titles are often exactly the ones that can't be reminded about yet.
