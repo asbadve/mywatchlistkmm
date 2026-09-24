@@ -20,7 +20,7 @@ This document contains core instructions, architectural decisions, and layout ru
   - `navigation/` — app navigation (Compose Navigation, no Voyager — see section 5).
   - `network/` — Ktor client builder/config, constants, exceptions.
   - `theme/`, `util/` — theming and utilities.
-* **Docs**: `README.md` (setup, run instructions per target, screenshots), `future_features_checklist.md` (TMDB-spec-driven roadmap: search, favorites/watchlist, detail screens, discovery, TMDB auth).
+* **Docs**: `README.md` (setup, run instructions per target, screenshots), `future_features_checklist.md` (TMDB-spec-driven roadmap - open items only), `shipped_features.md` (archive of what already shipped, kept for the design reasoning and documented dead ends).
 * **Other skill files**: `.agents/skills/tmdb-guidelines/SKILL.md` — TMDB API/OpenAPI usage and image-resolution rules (see that file when touching TMDB network/image code).
 
 ---
