@@ -36,7 +36,7 @@ import mywatchlist.composeapp.generated.resources.app_icon
 import org.jetbrains.compose.resources.painterResource
 
 private object SplashScreenConstant {
-    // Matches the "3b" (Reel spin-up) animation spec captured in future_features_checklist.md
+    // Matches the "3b" (Reel spin-up) animation spec captured in shipped_features.md
     // item 12, pulled from the MyWatchList Logo design file's own CSS keyframes.
     const val ICON_DURATION_MILLIS = 850
     const val MYWATCH_DELAY_MILLIS = 500L
@@ -83,7 +83,7 @@ private fun keyframeValue(
 
 /**
  * The app's launch splash - reproduces the "3b" (Reel spin-up) animation from the MyWatchList Logo
- * design file (see `future_features_checklist.md` item 12 for the exact spec this was built from),
+ * design file (see `shipped_features.md` item 12 for the exact spec this was built from),
  * as Compose animations rather than the design file's literal CSS. Shown once per process launch
  * from `App()`, ahead of `MainAppScreen` - on iOS/Desktop/JS only. Android skips this entirely
  * ([usesNativeAnimatedSplash] is true there): the same "3b" icon motion runs natively instead, via

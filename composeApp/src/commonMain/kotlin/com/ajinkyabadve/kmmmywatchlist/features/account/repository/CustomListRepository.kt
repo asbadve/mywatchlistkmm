@@ -41,7 +41,7 @@ private object CustomListRepositoryConstant {
 
 /**
  * Local SQLite is the single source of truth for a signed-in user's custom lists (see
- * `docs/local-storage-plan.html` and `future_features_checklist.md` item 2) - same SSOT role as
+ * `docs/local-storage-plan.html` and `shipped_features.md` item 2) - same SSOT role as
  * [TrackedMediaRepository], for [ListsRepository]'s `/3/list` data instead of favorites/watchlist.
  * [observeLists]/[observeListDetail] never talk to the network; [sync]/[refreshListDetail] fetch from
  * TMDB and write through to the local tables, which is what the two `observe*` Flows re-emit from -

@@ -34,7 +34,7 @@ private object NotificationOptInDialogConstant {
  * app asks about: the first time a TV show is favorited/watchlisted while notifications are off
  * (see `MediaActionButtonsSection`, [title]/[body] from `episode_alert_prompt_*`), and the first
  * time a person is followed while notifications are off (see `PersonDetailScreen`, [title]/[body]
- * from `person_alert_prompt_*`) - see `future_features_checklist.md` item 3a/3b and the design
+ * from `person_alert_prompt_*`) - see `shipped_features.md` item 3a/3b and the design
  * artifact this was originally built from ("Episode Alerts Prompt"). The caller decides *when* to
  * show this and *what* [onConfirm]/[onDismiss] do (both callers request the OS permission then
  * flip the same shared `NotificationSettingsRepository` setting/`NotificationScheduler` job) - this

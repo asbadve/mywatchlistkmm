@@ -35,7 +35,7 @@ private object CollectionNotificationPollerConstant {
 }
 
 /**
- * `future_features_checklist.md` item 3c: polls every favorited collection's `parts` for a movie
+ * `shipped_features.md` item 3c: polls every favorited collection's `parts` for a movie
  * id not seen on the previous poll and posts a local notification for it. Plain class, not a
  * ScreenModel - driven by `NotificationScheduler`'s platform background job, same shape as
  * [PersonCreditNotificationPoller] (mirrors its per-item try/catch, cursor-always-updates-
