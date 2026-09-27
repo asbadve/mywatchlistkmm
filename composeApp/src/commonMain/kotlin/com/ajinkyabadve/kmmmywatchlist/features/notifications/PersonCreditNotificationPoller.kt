@@ -35,7 +35,7 @@ private object PersonCreditNotificationPollerConstant {
 }
 
 /**
- * `future_features_checklist.md` item 3b: polls every favorited person's `combined_credits` for a
+ * `shipped_features.md` item 3b: polls every favorited person's `combined_credits` for a
  * credit id not seen on the previous poll and posts a local notification for it. Plain class, not
  * a ScreenModel - driven by `NotificationScheduler`'s platform background job, same shape as
  * [TvEpisodeNotificationPoller] (mirrors its per-item try/catch, cursor-always-updates-regardless-

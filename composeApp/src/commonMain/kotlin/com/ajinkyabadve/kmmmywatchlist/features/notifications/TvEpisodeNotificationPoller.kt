@@ -38,7 +38,7 @@ private object TvEpisodeNotificationPollerConstant {
 }
 
 /**
- * `future_features_checklist.md` item 3a: polls every favorited/watchlisted TV show for a new or
+ * `shipped_features.md` item 3a: polls every favorited/watchlisted TV show for a new or
  * newly-airing episode and posts a local notification. Plain class, not a ScreenModel - nothing
  * composes this, it's driven by `NotificationScheduler`'s platform background job.
  *

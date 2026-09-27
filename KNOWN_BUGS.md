@@ -2,7 +2,8 @@
 
 Reproducible defects with a known symptom, tracked here so they survive across sessions.
 Engineering/ops work-in-progress lives in the (untracked) `TASKS.md`; product ideas live in
-`future_features_checklist.md`.
+`future_features_checklist.md`, and features that already shipped are archived in
+`shipped_features.md`.
 
 Each entry: what you see, where it is, what has been ruled out, and the next concrete step.
 

@@ -38,8 +38,8 @@ data class TrackedTvPollCandidate(
 
 /**
  * Local SQLite mirror of a signed-in user's favorites/watchlist (see
- * `docs/local-storage-plan.html` and `future_features_checklist.md` item 2) - a read-cache for
- * instant local paint plus a home for future_features_checklist.md item 3's per-item poll state,
+ * `docs/local-storage-plan.html` and `shipped_features.md` item 2) - a read-cache for
+ * instant local paint plus a home for shipped_features.md item 3's per-item poll state,
  * not a source of truth. [pagedFlow]/[TrackedMediaRemoteMediator] are what keep it in sync with
  * TMDB; nothing here ever writes to TMDB itself.
  */

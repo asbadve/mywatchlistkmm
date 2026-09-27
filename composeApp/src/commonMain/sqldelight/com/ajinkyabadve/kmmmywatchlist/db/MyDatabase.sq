@@ -21,7 +21,7 @@ CREATE TABLE trackedMedia (
     voteAverage REAL NOT NULL DEFAULT 0.0,   -- SearchResultItem.voteAverage
     addedAt INTEGER NOT NULL,       -- app-local: this row's first insert time
     lastSyncedAt INTEGER NOT NULL,  -- app-local: last time this row matched a sync() pass
-    -- Poll-state columns future_features_checklist.md item 3's pollers read/write - nullable
+    -- Poll-state columns shipped_features.md item 3's pollers read/write - nullable
     -- until the first poll runs. Not sourced from any single API field.
     lastKnownNextEpisodeAirDate TEXT,
     lastKnownCreditIds TEXT,
@@ -307,7 +307,7 @@ INSERT OR REPLACE INTO remoteKeys (queryKey, nextPage, prevPage, nextKey) VALUES
 deleteRemoteKeys:
 DELETE FROM remoteKeys WHERE queryKey = ?;
 
--- future_features_checklist.md item 3a: one row per (media, reason) once a notification has
+-- shipped_features.md item 3a: one row per (media, reason) once a notification has
 -- actually been sent for it - the sole source of truth for "have we already notified about this"
 -- so a poll never re-notifies. cursorValue is reason-specific (the episode air_date, for both 3a
 -- reasons "episode_announced"/"episode_airing") - comparing it against the current poll's value is
@@ -336,7 +336,7 @@ INSERT OR REPLACE INTO notificationLedger (id, mediaType, reason, cursorValue, n
 clearNotificationLedgerForDebugByReason:
 DELETE FROM notificationLedger WHERE reason = ?;
 
--- future_features_checklist.md item 3b: favorited people, local-only (TMDB has no account-level
+-- shipped_features.md item 3b: favorited people, local-only (TMDB has no account-level
 -- favorite/follow API for people - only movies and TV, confirmed 2026-08-26 against the live
 -- OpenAPI docs), so this table is the sole source of truth for "who is favorited," not a cache of
 -- anything TMDB returns. Deliberately its own table rather than a trackedMedia row: a person isn't
@@ -378,7 +378,7 @@ DELETE FROM favoritePerson WHERE id = ?;
 updateFavoritePersonCreditIds:
 UPDATE favoritePerson SET lastKnownCreditIds = ? WHERE id = ?;
 
--- future_features_checklist.md item 3c: favorited collections, local-only for the same reason
+-- shipped_features.md item 3c: favorited collections, local-only for the same reason
 -- favoritePerson is above - TMDB has no account-level favorite/follow API for collections either
 -- (confirmed against the live OpenAPI docs: /3/account/{account_id}/favorite's media_type only
 -- accepts "movie"/"tv", and the collection reference pages - Collection Details/Images - are

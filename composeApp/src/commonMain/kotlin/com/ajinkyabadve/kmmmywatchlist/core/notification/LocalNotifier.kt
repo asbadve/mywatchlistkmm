@@ -1,7 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.core.notification
 
 /**
- * Posts a local (on-device, no push infra) notification - see `future_features_checklist.md`
+ * Posts a local (on-device, no push infra) notification - see `shipped_features.md`
  * item 3's shared-infrastructure checklist. Not `@Composable` (unlike `core/auth/WebAuthLauncher.kt`'s
  * `expect`/`actual`s) since posting isn't tied to a composition - the poller that calls this runs
  * on a background scheduler, not inside a screen. Permission *requesting* is a separate
