@@ -883,4 +883,63 @@ it.
   assertions failed there despite passing locally. Fixed by injecting an in-memory fake
   `ClipboardManager` via `CompositionLocalProvider` instead, making the test hermetic - no CI
   workflow change needed.
+
+## 14. Autoscroll the Trending Media Carousels — DONE (2026-09-27)
+**Goal**: Auto-advance `TrendingScreenTab`'s three `TrendingMediaCarousel`s (Trending Movies/Tv
+show/People, each a Material3 `HorizontalMultiBrowseCarousel` + `rememberCarouselState` today - see
+`TrendingScreenTab.kt`) on a timer, like a typical media-app hero carousel, instead of requiring a
+manual swipe. Pure UI/UX - no new TMDB endpoint, no data-layer change (the three sections already
+load via `TrendingScreenTabViewModel`).
+
+### Relevant OAS endpoints
+None - purely a presentation-layer change on top of data the Trending tab already fetches.
+
+### Implementation Checklist:
+- [x] **Core autoscroll loop**: `AutoScrollCarouselEffect` (`core/ui/carousel/AutoScrollCarousel.kt`)
+  - a `LaunchedEffect` that calls `CarouselState.animateScrollToItem` every
+  `AutoScrollCarouselConstant.INTERVAL_MS` (4.5s), wrapping back to index 0 after the last item.
+  Called once from `TrendingMediaCarousel` (`TrendingScreenTab.kt`), which is already the single
+  function all three `mediaType`s share, so one call site covers all three sections rather than
+  three copies.
+- [x] **Pause on user interaction**: `CarouselState` implements `ScrollableState` directly (verified
+  by decompiling the resolved `material3-desktop:1.9.0` jar - `libs.versions.toml`'s `compose` entry
+  tracks Compose Multiplatform, not Material3 1:1), so `state.isScrollInProgress` is checked before
+  each tick fires - no custom drag-detection needed. A tick skipped this way is retried on the next
+  interval, which doubles as the "resume after a short idle delay" the checklist asked for.
+- [x] **Pause when off-screen / app backgrounded**: two mechanisms, no new visibility plumbing
+  needed. Leaving the Trending tab disposes `TrendingScreenTab` from composition (Navigation3's
+  `NavDisplay`/`entryProvider`), which cancels the effect via structured concurrency for free. App
+  backgrounding is tracked with a hand-rolled `DisposableEffect` + `LifecycleEventObserver` on
+  `androidx.compose.ui.platform.LocalLifecycleOwner`, not the newer
+  `androidx.lifecycle.compose.currentStateAsState()` extension - the latter needs the
+  `lifecycle-runtime-compose` artifact resolving in the IDE's editor classpath, which this project's
+  Android Studio setup would not pick up in `commonMain` even after a clean Gradle sync (command-line
+  builds always resolved it correctly, so the extension itself was never broken - only edited in an
+  environment that couldn't see it). `isAutoScrollAllowed` requires `Lifecycle.State.STARTED` or
+  above.
+- [x] **Accessibility**: `isReducedMotionEnabled()` (already existed in `PlatformUtil.kt` for the
+  splash screen - reused rather than duplicated, per code-conventions §2c/§2e) and a new
+  `isScreenReaderActive()` sibling (Android `AccessibilityManager.isTouchExplorationEnabled`/
+  TalkBack, iOS `UIAccessibilityIsVoiceOverRunning()`; Desktop/JS have no such API and return `false`
+  - documented in both functions' KDoc, per code-conventions §2e's "say what the platform equivalent
+  was and why it did not fit"). Both gate `isAutoScrollAllowed`.
+- [x] **Per-section independence**: each `TrendingMediaCarousel` call gets its own `CarouselState`
+  and its own `AutoScrollCarouselEffect`/`LaunchedEffect` instance - no shared timer. Different item
+  counts per section (movies/TV/people) mean their wrap-around cycles naturally desync rather than
+  staying in lockstep; not verified against a live TMDB result set beyond the desktop compile/
+  test/lint pass below.
+- [x] **Tests**: `AutoScrollCarouselLogicTest` (5 cases, `kotlin.test`) covers the extracted
+  `isAutoScrollAllowed` gate (item count, reduce-motion, screen-reader, lifecycle state) without a
+  Compose harness. `AutoScrollCarouselEffectUiTest` (Compose UI, `mainClock.advanceTimeBy`) asserts
+  the carousel advances with no interaction and does not advance while `ScrollableState.scroll{}` is
+  held open (a real `CarouselState`/`HorizontalMultiBrowseCarousel` had to be rendered in the test,
+  not a bare `Modifier.scrollable` - `animateScrollToItem` needs the actual Pager layout to move
+  `currentItem` against; a real synthetic `down()+moveBy()` touch gesture was also tried for the
+  drag-pause case, but `isScrollInProgress` only pulses `true` for the instant an event is
+  dispatched, not for as long as the pointer is nominally held, and lined up unreliably with the
+  virtual clock in a `runComposeUiTest`).
+- [x] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` all green. Manual on-device confirmation of
+  motion feel (interval, easing) not yet done - per this project's verification-preference memory,
+  the user runs/launches the app themselves.
 ---
