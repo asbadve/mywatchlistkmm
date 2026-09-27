@@ -1014,9 +1014,27 @@ alternative, a live cache-then-network fetch per tracked show when the Upcoming 
 `NetworkBoundResource`'s existing pattern), was considered and deferred. Revisit if this gap proves
 disruptive in practice.
 
+### Follow-up 2026-09-28: rendered as a timeline, not a flat list
+Reworked into a timeline rendering after the initial pass shipped: rows are grouped by exact date
+(`upcomingItems.groupBy { it.date }`, order-preserving since the source list is already date-sorted)
+under **one header per shared date** rather than repeating the date on every row, plus a dot-and-
+connecting-line rail (`TimelineIndicator`) to the left of each row - the line breaks between date
+groups (transparent above the first row and below the last row of each group) so the rail visually
+reads as one continuous timeline per date, not one per row. `UpcomingDateHeader` reuses the same
+`resolveUpcomingDateLabel`/`formatUpcomingDateLabel` pair the original per-row date text used.
+Covered by `UpcomingReleasesTabUiTest`'s two-items-sharing-a-date case (asserts exactly one header
+node renders for the shared date). This also satisfies the "Date-grouped headings on this list"
+follow-up originally scoped below for item 17 to share logic with - not blocked on that item after
+all, since the bucketing needed here (exact-date grouping, not a Today/Tomorrow/Later bucket) turned
+out to be simpler than item 17's own.
+
+### Known follow-up: further visual polish deferred
+The timeline's visual design (spacing, dot/line sizing and color, poster size, header typography) is
+a first pass, not a final one - explicitly deferred to a later UI-focused pass rather than iterated
+on further here. Revisit once there's real seeded data to look at on-device across both themes (per
+[[feedback-check-both-themes]]) rather than guessing further in isolation.
+
 ### Deliberately out of scope
-- **Date-grouped headings on this list** (Today/Tomorrow/Later) - a nice follow-up once item 17
-  (still open in `future_features_checklist.md`) exists to share the bucketing logic with.
 - **A live on-demand refresh** that force-fetches every tracked show's current season on Upcoming-tab
   open - see "Known limitation" above; deferred, not ruled out.
 ---
