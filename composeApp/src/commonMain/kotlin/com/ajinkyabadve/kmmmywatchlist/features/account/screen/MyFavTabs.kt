@@ -19,16 +19,20 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRep
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.tab_collections
 import mywatchlist.composeapp.generated.resources.tab_favorites
 import mywatchlist.composeapp.generated.resources.tab_lists
+import mywatchlist.composeapp.generated.resources.tab_upcoming
 import mywatchlist.composeapp.generated.resources.tab_watchlist
 import org.jetbrains.compose.resources.stringResource
 
 private sealed interface MyFavTab {
+    data object Upcoming : MyFavTab
+
     data object Favorites : MyFavTab
 
     data object Watchlist : MyFavTab
@@ -38,8 +42,8 @@ private sealed interface MyFavTab {
     data object Collections : MyFavTab
 }
 
-/** The signed-in "My Fav" content: Favorites / Watchlist / Lists / Collections, behind the same
- *  [PillTabRow] chrome `MovieScreenTabs` uses. */
+/** The signed-in "My Fav" content: Upcoming / Favorites / Watchlist / Lists / Collections, behind
+ *  the same [PillTabRow] chrome `MovieScreenTabs` uses. */
 @Composable
 fun MyFavTabs(
     session: UserSession,
@@ -53,16 +57,21 @@ fun MyFavTabs(
     trackedMediaRepository: TrackedMediaRepository? = null,
     customListRepository: CustomListRepository? = null,
 ) {
-    val tabs = remember { listOf(MyFavTab.Favorites, MyFavTab.Watchlist, MyFavTab.Lists, MyFavTab.Collections) }
+    val tabs =
+        remember {
+            listOf(MyFavTab.Upcoming, MyFavTab.Favorites, MyFavTab.Watchlist, MyFavTab.Lists, MyFavTab.Collections)
+        }
     var selectedIndex by rememberSaveable { mutableStateOf(0) }
     val tabTitles =
         listOf(
+            stringResource(Res.string.tab_upcoming),
             stringResource(Res.string.tab_favorites),
             stringResource(Res.string.tab_watchlist),
             stringResource(Res.string.tab_lists),
             stringResource(Res.string.tab_collections),
         )
 
+    val upcomingListState = rememberLazyListState()
     val favoritesGridState = rememberLazyGridState()
     val watchlistGridState = rememberLazyGridState()
     val listsListState = rememberLazyListState()
@@ -75,6 +84,7 @@ fun MyFavTabs(
         if (index == selectedIndex) {
             coroutineScope.launch {
                 when (tabs[index]) {
+                    MyFavTab.Upcoming -> upcomingListState.animateScrollToItem(0)
                     MyFavTab.Favorites -> favoritesGridState.animateScrollToItem(0)
                     MyFavTab.Watchlist -> watchlistGridState.animateScrollToItem(0)
                     MyFavTab.Lists -> listsListState.animateScrollToItem(0)
@@ -93,6 +103,17 @@ fun MyFavTabs(
             onTabSelected = onTabSelected,
         )
         when (tabs[selectedIndex]) {
+            MyFavTab.Upcoming ->
+                UpcomingReleasesTab(
+                    viewModel =
+                        viewModel(key = "UpcomingReleases:${session.accountId}") {
+                            UpcomingReleasesScreenModel(trackedMediaRepository ?: TrackedMediaRepositoryImpl())
+                        },
+                    lazyListState = upcomingListState,
+                    onMovieSelected = onMovieSelected,
+                    onTvSelected = onTvSelected,
+                )
+
             MyFavTab.Favorites ->
                 AccountFavoritesWatchlistTab(
                     category = AccountMediaCategory.FAVORITES,

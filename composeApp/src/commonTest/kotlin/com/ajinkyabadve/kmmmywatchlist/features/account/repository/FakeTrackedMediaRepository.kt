@@ -122,4 +122,22 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
     ) {
         confirmDeleteCalls.add(Triple(id, mediaType, category))
     }
+
+    private val upcomingFlow = MutableStateFlow<List<UpcomingMediaItem>>(emptyList())
+
+    /** Seeds what [observeUpcoming] emits - dumb, no SQL sort/filter simulation. That logic is
+     *  covered against a real in-memory database in `desktopTest`'s `TrackedMediaRepositoryImplTest`. */
+    fun seedUpcoming(items: List<UpcomingMediaItem>) {
+        upcomingFlow.value = items
+    }
+
+    override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> = upcomingFlow
+
+    private val trackedTvShowsFlow = MutableStateFlow<List<TrackedTvShowSummary>>(emptyList())
+
+    fun seedTrackedTvShows(shows: List<TrackedTvShowSummary>) {
+        trackedTvShowsFlow.value = shows
+    }
+
+    override fun observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>> = trackedTvShowsFlow
 }

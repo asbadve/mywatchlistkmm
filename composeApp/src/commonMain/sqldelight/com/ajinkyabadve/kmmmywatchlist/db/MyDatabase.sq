@@ -78,6 +78,27 @@ selectTrackedTvForPolling:
 SELECT DISTINCT id, mediaType, lastKnownNextEpisodeAirDate, lastKnownStatus FROM trackedMedia
 WHERE mediaType = 'tv' AND isDeleted = 0;
 
+-- future_features_checklist.md item 18: tracked movies not yet released, soonest first. TV is
+-- deliberately not covered here - a show's *next episode* date alone can't show every unreleased
+-- episode of the current season (e.g. a show with 4 episodes still to air), which is what item 18
+-- actually needs (confirmed 2026-09-28 against a real favorited series) - see
+-- selectTrackedTvShows below, whose rows are combined with cached season data
+-- (TvDetailCacheRepository.observeSeasons) at the ScreenModel layer instead. DISTINCT because a
+-- movie tracked under both favorite and watchlist produces two otherwise-identical rows (same
+-- id/title/posterPath/date).
+selectUpcomingTrackedMedia:
+SELECT DISTINCT id, title, posterPath, releaseDate AS upcomingDate
+FROM trackedMedia
+WHERE isDeleted = 0 AND mediaType = 'movie' AND releaseDate >= :today
+ORDER BY upcomingDate ASC;
+
+-- future_features_checklist.md item 18: every currently tracked TV show (regardless of poll
+-- state), for combining with cached per-episode season data - see selectUpcomingTrackedMedia's
+-- kdoc above for why episode-level dates can't come from trackedMedia's own columns. DISTINCT for
+-- the same favorite+watchlist reason as selectUpcomingTrackedMedia.
+selectTrackedTvShows:
+SELECT DISTINCT id, title, posterPath FROM trackedMedia WHERE mediaType = 'tv' AND isDeleted = 0;
+
 -- Debug-only ("Poll episode notifications now" row, AccountScreen - see isDebugBuild()): forgets
 -- every tracked TV show's last-seen air date so the next poll treats its current
 -- next_episode_to_air as newly announced again, regardless of what a previous real poll already

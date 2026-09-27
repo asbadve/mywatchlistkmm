@@ -6,11 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class AutoScrollCarouselLogicTest {
-    private companion object {
-        const val MULTIPLE_ITEMS = 5
-        const val SINGLE_ITEM = 1
-    }
-
     @Test
     fun testIsAutoScrollAllowed_trueWhenEverySignalPermitsIt() {
         assertTrue(
@@ -69,5 +64,10 @@ class AutoScrollCarouselLogicTest {
                 lifecycleState = Lifecycle.State.CREATED,
             ),
         )
+    }
+
+    private companion object {
+        const val MULTIPLE_ITEMS = 5
+        const val SINGLE_ITEM = 1
     }
 }

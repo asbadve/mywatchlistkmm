@@ -203,10 +203,17 @@
     <string name="auth_error_expired">Authentication request expired. Please try signing in again.</string>
     <string name="auth_account_welcome">Welcome, %1$s!</string>
     <string name="account_screen_title">Account</string>
+    <string name="tab_upcoming">Upcoming</string>
     <string name="tab_favorites">Favorites</string>
     <string name="tab_watchlist">Watchlist</string>
     <string name="tab_lists">Lists</string>
     <string name="tab_collections">Collections</string>
+    <string name="account_upcoming_empty_title">Nothing upcoming</string>
+    <string name="account_upcoming_empty_message">Movies and shows you're tracking that haven't released yet show up here, soonest first.</string>
+    <string name="upcoming_today">Today</string>
+    <string name="upcoming_tomorrow">Tomorrow</string>
+    <string name="upcoming_in_days">In %1$d days</string>
+    <string name="upcoming_episode_label">S%1$d E%2$d</string>
     <string name="favorites_empty_message">No favorites yet. Tap the heart on a movie or TV show to add one.</string>
     <string name="watchlist_empty_message">Your watchlist is empty. Tap the bookmark on a movie or TV show to add one.</string>
     <string name="lists_empty_message">You have no custom lists yet.</string>

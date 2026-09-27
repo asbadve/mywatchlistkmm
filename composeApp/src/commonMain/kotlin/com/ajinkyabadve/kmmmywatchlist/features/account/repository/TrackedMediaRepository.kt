@@ -6,10 +6,13 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
 import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.paging3.QueryPagingSource
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.db.AppDatabaseProvider
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
+import com.ajinkyabadve.kmmmywatchlist.db.SelectUpcomingTrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
@@ -19,6 +22,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 
 private object TrackedMediaConstant {
     const val CATEGORY_FAVORITE = "favorite"
@@ -34,6 +41,41 @@ data class TrackedTvPollCandidate(
     val id: Int,
     val lastKnownNextEpisodeAirDate: String?,
     val lastKnownStatus: String?,
+)
+
+/** Which date [UpcomingMediaItem.date] represents - a closed set, so an enum rather than a
+ *  boolean/string, per code-conventions §9. */
+enum class UpcomingDateKind {
+    MOVIE_RELEASE,
+    NEXT_EPISODE,
+}
+
+/**
+ * One row of the "Upcoming" tab (future_features_checklist.md item 18) - a tracked movie not yet
+ * released ([TrackedMediaRepository.observeUpcoming], [dateKind] = [UpcomingDateKind.MOVIE_RELEASE],
+ * [seasonNumber]/[episodeNumber] null), or one specific unreleased episode of a tracked TV show
+ * ([dateKind] = [UpcomingDateKind.NEXT_EPISODE], built at the ScreenModel layer from
+ * [TrackedMediaRepository.observeTrackedTvShows] combined with cached season data - see
+ * `UpcomingReleasesScreenModel`'s kdoc for why episode-level items don't come from this repository
+ * directly). A show with several unreleased episodes produces one [UpcomingMediaItem] per episode,
+ * not one per show.
+ */
+data class UpcomingMediaItem(
+    val id: Int,
+    val mediaType: String,
+    val title: String,
+    val posterPath: String?,
+    val date: LocalDate,
+    val dateKind: UpcomingDateKind,
+    val seasonNumber: Int? = null,
+    val episodeNumber: Int? = null,
+)
+
+/** One currently tracked TV show, as read by [TrackedMediaRepository.observeTrackedTvShows]. */
+data class TrackedTvShowSummary(
+    val id: Int,
+    val title: String,
+    val posterPath: String?,
 )
 
 /**
@@ -118,6 +160,25 @@ interface TrackedMediaRepository {
         mediaType: String,
         category: AccountMediaCategory,
     )
+
+    /**
+     * future_features_checklist.md item 18: every tracked movie not yet released, soonest first -
+     * see `MyDatabase.sq`'s `selectUpcomingTrackedMedia` kdoc. Movie-only: a TV show's *next*
+     * episode date alone can't list every unreleased episode of its current season, so TV is
+     * covered by [observeTrackedTvShows] instead, combined with cached season data at the
+     * ScreenModel layer. Purely local/reactive, no network call. Empty on the web target, which has
+     * no local table to enumerate - see `NetworkOnlyTrackedMediaRepositoryImpl`'s kdoc.
+     */
+    fun observeUpcoming(): Flow<List<UpcomingMediaItem>>
+
+    /**
+     * Every currently tracked TV show, regardless of poll state - see `MyDatabase.sq`'s
+     * `selectTrackedTvShows` kdoc. Used to build the "Upcoming" tab's per-episode entries from
+     * cached season data (`TvDetailCacheRepository.observeSeasons`), since this repository has no
+     * per-episode dates of its own. Empty on the web target - see
+     * `NetworkOnlyTrackedMediaRepositoryImpl`'s kdoc.
+     */
+    fun observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>>
 }
 
 /**
@@ -259,6 +320,31 @@ internal class SqliteTrackedMediaRepositoryImpl(
     ) {
         databaseProvider().myDatabaseQueries.deleteTrackedMediaRow(id.toLong(), mediaType, category.storageValue)
     }
+
+    override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> =
+        flow {
+            val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+            emitAll(
+                databaseProvider()
+                    .myDatabaseQueries
+                    .selectUpcomingTrackedMedia(today)
+                    .asFlow()
+                    .mapToList(Dispatchers.Default)
+                    .map { rows -> rows.map { it.toUpcomingMediaItem() } },
+            )
+        }
+
+    override fun observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>> =
+        flow {
+            emitAll(
+                databaseProvider()
+                    .myDatabaseQueries
+                    .selectTrackedTvShows()
+                    .asFlow()
+                    .mapToList(Dispatchers.Default)
+                    .map { rows -> rows.map { TrackedTvShowSummary(id = it.id.toInt(), title = it.title, posterPath = it.posterPath) } },
+            )
+        }
 }
 
 internal val AccountMediaCategory.storageValue: String
@@ -267,6 +353,19 @@ internal val AccountMediaCategory.storageValue: String
             AccountMediaCategory.FAVORITES -> TrackedMediaConstant.CATEGORY_FAVORITE
             AccountMediaCategory.WATCHLIST -> TrackedMediaConstant.CATEGORY_WATCHLIST
         }
+
+private fun SelectUpcomingTrackedMedia.toUpcomingMediaItem(): UpcomingMediaItem =
+    UpcomingMediaItem(
+        id = id.toInt(),
+        mediaType = MediaTypeConstant.MOVIE,
+        title = title,
+        posterPath = posterPath,
+        // Guaranteed non-null here: selectUpcomingTrackedMedia's WHERE clause only admits rows
+        // where releaseDate is non-null and >= today - upcomingDate is only String? because it's
+        // aliased in the SELECT rather than selected as the plain (non-null) column directly.
+        date = LocalDate.parse(upcomingDate!!),
+        dateKind = UpcomingDateKind.MOVIE_RELEASE,
+    )
 
 private fun TrackedMedia.toSearchResultItem(): SearchResultItem =
     if (mediaType == MediaTypeConstant.TV) {

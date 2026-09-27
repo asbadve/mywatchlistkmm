@@ -31,19 +31,6 @@ import kotlin.test.assertNotEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalMaterial3Api::class)
 class AutoScrollCarouselEffectUiTest {
-    private companion object {
-        // Wide enough, with enough items, that the carousel genuinely overflows the test
-        // window's viewport - a carousel that already fits entirely on screen has nowhere to
-        // scroll into, and animateScrollToItem is then a no-op regardless of what item it targets.
-        const val ITEM_COUNT = 10
-        const val ITEM_WIDTH_DP = 400
-
-        // +3s beyond the interval, not just past it - animateScrollToItem's own spring animation
-        // needs real virtual time on top of the delay to settle at the new page.
-        const val ADVANCE_PAST_INTERVAL_MS = AutoScrollCarouselConstant.INTERVAL_MS + 3000L
-        const val CAROUSEL_TAG = "carousel"
-    }
-
     @Composable
     private fun resumedLifecycleOwner(): LifecycleOwner =
         remember {
@@ -132,4 +119,17 @@ class AutoScrollCarouselEffectUiTest {
 
             dragJob.cancel()
         }
+
+    private companion object {
+        // Wide enough, with enough items, that the carousel genuinely overflows the test
+        // window's viewport - a carousel that already fits entirely on screen has nowhere to
+        // scroll into, and animateScrollToItem is then a no-op regardless of what item it targets.
+        const val ITEM_COUNT = 10
+        const val ITEM_WIDTH_DP = 400
+
+        // +3s beyond the interval, not just past it - animateScrollToItem's own spring animation
+        // needs real virtual time on top of the delay to settle at the new page.
+        const val ADVANCE_PAST_INTERVAL_MS = AutoScrollCarouselConstant.INTERVAL_MS + 3000L
+        const val CAROUSEL_TAG = "carousel"
+    }
 }

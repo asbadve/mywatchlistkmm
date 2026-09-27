@@ -358,3 +358,31 @@ Do **not** reach for an actual SQLDelight `.sqm` migration file or manual `PRAGM
 tracking to fix this pre-release - that was tried and reverted the same day this rule was added; it
 directly contradicts the "not a concern for this initial branch" decision above and is real
 migration work due only once there's a first release with real user data to preserve.
+
+## 11. `companion object` goes at the end of the class, not the start (agreed 2026-09-28)
+
+A class's own properties/methods are what a reader opens the file for; a `companion object` (test
+constants, factory functions) is supporting detail. Put it last, after every instance member, in
+every class - production and test alike - rather than leading with it.
+
+```kotlin
+// WRONG - companion object first
+class TrackedMediaRepositoryImplTest {
+    private companion object {
+        const val ACCOUNT_ID = 1L
+    }
+
+    @Test
+    fun testSomething() { ... }
+}
+
+// RIGHT - companion object last
+class TrackedMediaRepositoryImplTest {
+    @Test
+    fun testSomething() { ... }
+
+    private companion object {
+        const val ACCOUNT_ID = 1L
+    }
+}
+```

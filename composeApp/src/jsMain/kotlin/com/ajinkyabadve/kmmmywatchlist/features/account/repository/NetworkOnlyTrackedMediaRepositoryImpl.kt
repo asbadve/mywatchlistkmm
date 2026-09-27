@@ -8,6 +8,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 private object NetworkOnlyTrackedMediaConstant {
     // TMDB's page size is fixed (not configurable via the API).
@@ -87,6 +88,12 @@ internal class NetworkOnlyTrackedMediaRepositoryImpl(
         mediaType: String,
         category: AccountMediaCategory,
     ) = Unit
+
+    // No local table to enumerate on web - same reasoning as trackedTvForPolling above.
+    override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> = flowOf(emptyList())
+
+    // No local table to enumerate on web - same reasoning as trackedTvForPolling above.
+    override fun observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>> = flowOf(emptyList())
 
     private suspend fun fetchPage(
         category: AccountMediaCategory,

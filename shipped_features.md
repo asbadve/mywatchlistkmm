@@ -942,4 +942,81 @@ None - purely a presentation-layer change on top of data the Trending tab alread
   `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` all green. Manual on-device confirmation of
   motion feel (interval, easing) not yet done - per this project's verification-preference memory,
   the user runs/launches the app themselves.
+
+## 15. Upcoming Releases List for Favorites & Watchlist (Movies + Episodes, Date-Sorted) — DONE (2026-09-28)
+**Goal**: A single date-sorted list of everything the user is favorited/watchlisted that hasn't
+released yet - unreleased movies by their release date, and every unreleased episode of every
+favorited/watchlisted TV show - soonest first. Distinct from item 16 (still open in
+`future_features_checklist.md`): that item is about *notifying* the user when a date arrives; this
+one is a browsable **list view** answering "what's coming up across everything I'm tracking," with
+no notification involved.
+
+**Design changed mid-implementation**: the original plan sourced TV dates from
+`trackedMedia.lastKnownNextEpisodeAirDate` - a single "next episode" date per show. Caught in manual
+review 2026-09-28 against a real favorited series with several unaired episodes in its current
+season ("Lanterns"): a single next-episode date can only ever produce one row per show, never the
+full remaining-episode list the goal actually promises. Fixed by dropping TV entirely from the
+`trackedMedia`-only query and instead combining every tracked show with its cached season data.
+
+### Relevant OAS endpoints
+None - a read/sort layer over data already fetched by items 2 and 3a, plus already-cached season
+detail data (`tvSeasonDetailCache`, populated whenever a show's season screen has been opened).
+
+### Implementation Checklist:
+- [x] **Query**: `selectUpcomingTrackedMedia(today: String)` in `MyDatabase.sq` - movie-only now
+  (`mediaType = 'movie' AND isDeleted = 0 AND releaseDate >= :today`, DISTINCT for a title tracked
+  under both favorite and watchlist). A second query, `selectTrackedTvShows`, lists every tracked TV
+  show (id/title/posterPath) regardless of poll state, for combining with season data at the
+  ScreenModel layer. Both pure `SELECT`s over existing columns - no schema change, no
+  `LocalSchemaVersion` bump needed.
+- [x] **Data layer**: `TrackedMediaRepository.observeUpcoming(): Flow<List<UpcomingMediaItem>>`
+  (movies only) and `observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>>`, both
+  `.asFlow().mapToList(Dispatchers.Default)`-backed, same reactive pattern
+  `FavoritePersonRepository.observeFavoritePeople()` already uses. `UpcomingMediaItem(id, mediaType,
+  title, posterPath, date: LocalDate, dateKind, seasonNumber: Int?, episodeNumber: Int?)` -
+  `dateKind` an **enum** (`MOVIE_RELEASE` / `NEXT_EPISODE`) per code-conventions §9's closed-set
+  rule; `seasonNumber`/`episodeNumber` null for movies, set for one specific unreleased episode.
+  Empty on the web target (no local table) - matches `NetworkOnlyTrackedMediaRepositoryImpl`'s
+  existing pattern for every other method here.
+- [x] **Business logic**: `UpcomingReleasesScreenModel` combines `observeUpcoming()` (movies) with
+  `observeTrackedTvShows()` `flatMapLatest`'d into a `combine()` over each tracked show's
+  `TvDetailCacheRepository.observeSeasons(tvId)` (already-cached, no network call) - one
+  `UpcomingMediaItem` per unreleased episode, not one per show. The episode-extraction logic
+  (`buildUpcomingEpisodeItems`) is a pure top-level function, unit-testable without a Flow/Compose
+  harness. No paging, no `Loading`/`Error` `UiState` - both sources are purely local/reactive, same
+  reasoning as `PersonFavoritesTab`.
+- [x] **UI**: new first tab "Upcoming" on `MyFavTabs` (ahead of Favorites/Watchlist/Lists/
+  Collections, per explicit request - `selectedIndex` already defaulted to `0`). Each row shows
+  poster, title, and a relative-date subtitle ("Today"/"Tomorrow"/"In N days"/plain date beyond a
+  week, via `Res.string.*`); an episode row additionally shows "S{season} E{episode} · {date}"
+  (`upcoming_episode_subtitle`). `resolveUpcomingDateLabel` is a pure function separated from its
+  `stringResource` lookups for the same unit-testability reason as the episode extraction.
+- [x] **Tests**: `TrackedMediaRepositoryImplTest` (real in-memory DB) covers `observeUpcoming`
+  (movie sort/filter/dedup/isDeleted) and `observeTrackedTvShows` (tracked-show enumeration,
+  excludes movies/deleted rows, dedups favorite+watchlist). `BuildUpcomingEpisodeItemsTest` (pure
+  unit) covers the episode-extraction logic directly (multiple unreleased episodes per show, missing/
+  unparsable air dates excluded, multiple shows combined). `UpcomingDateLabelTest` covers the
+  relative-date resolver. `UpcomingReleasesTabUiTest` (Compose UI, `FakeTrackedMediaRepository` +
+  `FakeTvDetailCacheRepository`) covers empty state, a show with multiple unreleased episodes
+  rendering one row each, and tap-to-navigate for both a movie and an episode row.
+- [x] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` all green.
+
+### Known limitation (2026-09-28)
+**A show's episodes only appear once its season screen has been opened at least once in this app.**
+Episode-level dates come entirely from `tvSeasonDetailCache` (populated by
+`TvDetailCacheRepository.getTvDetail`/`observeSeasons`, i.e. by visiting that show's detail/episode
+screen) - there is no on-demand or background fetch feeding this list directly. A show favorited/
+watchlisted whose season has never been viewed contributes zero episode rows until it is, even
+though the show itself would otherwise qualify. This was a deliberate scope choice (reuse cached
+data, no new network calls per the user's explicit direction) rather than an oversight - the
+alternative, a live cache-then-network fetch per tracked show when the Upcoming tab opens (mirroring
+`NetworkBoundResource`'s existing pattern), was considered and deferred. Revisit if this gap proves
+disruptive in practice.
+
+### Deliberately out of scope
+- **Date-grouped headings on this list** (Today/Tomorrow/Later) - a nice follow-up once item 17
+  (still open in `future_features_checklist.md`) exists to share the bucketing logic with.
+- **A live on-demand refresh** that force-fetches every tracked show's current season on Upcoming-tab
+  open - see "Known limitation" above; deferred, not ruled out.
 ---
