@@ -825,6 +825,7 @@ This is the one genuine design question, and getting it wrong makes the feature 
 ---
 
 ## 15. Autoscroll the Trending Media Carousels
+## 15. Autoscroll the Trending Media Carousels — DONE (2026-09-27)
 **Goal**: Auto-advance `TrendingScreenTab`'s three `TrendingMediaCarousel`s (Trending Movies/Tv
 show/People, each a Material3 `HorizontalMultiBrowseCarousel` + `rememberCarouselState` today - see
 `TrendingScreenTab.kt`) on a timer, like a typical media-app hero carousel, instead of requiring a
@@ -835,39 +836,47 @@ load via `TrendingScreenTabViewModel`).
 None - purely a presentation-layer change on top of data the Trending tab already fetches.
 
 ### Implementation Checklist:
-- [ ] **Core autoscroll loop**: a `LaunchedEffect(state)` per carousel that calls
-  `CarouselState.animateScrollToItem` on an interval (e.g. every 4-5s), wrapping back to index 0
-  after the last item. Needs its own small helper (e.g. `rememberAutoScrollCarouselState` or a
-  `Modifier.autoScroll(state, intervalMs)`) shared across all three sections rather than
-  copy-pasted three times, since `TrendingMediaCarousel` is already one function called for all
-  three `mediaType`s.
-- [ ] **Pause on user interaction**: must stop auto-advancing while the user is actively dragging/
-  flinging the carousel (`CarouselState`/the underlying `LazyListState` exposes
-  `isScrollInProgress` - check what `rememberCarouselState` surfaces for this in the resolved
-  Material3 version per `gradle/libs.versions.toml`) and resume after a short idle delay, so it
-  never fights a manual swipe mid-gesture.
-- [ ] **Pause when off-screen / app backgrounded**: only run the timer while `TrendingScreenTab` is
-  the visible tab and the app is foregrounded - an off-screen `LaunchedEffect` still ticking wastes
-  battery and can cause a jarring jump when the user returns. Tie the effect's key/lifecycle to
-  whatever visibility signal this app already has for the bottom-tab navigation (check how other
-  tab-scoped effects in this codebase, if any, handle this) rather than inventing a new one.
-- [ ] **Accessibility**: respect a "reduce motion" style preference if this app or the platform
-  exposes one; at minimum, don't auto-scroll while TalkBack/VoiceOver is active, since a moving
-  carousel under a screen reader is actively hostile to navigate. Needs research into what's
-  actually available per-platform (`expect`/`actual` territory, similar to other platform-capability
-  checks elsewhere in this file) before deciding the exact mechanism.
-- [ ] **Per-section independence**: three carousels means three independent timers/states - verify
-  scrolling one manually doesn't pause or reset the other two, and that all three don't drift into
-  visually synchronized advancement (some jitter/stagger is preferable to all three jumping at
-  once).
-- [ ] **Tests**: a Compose UI test asserting the carousel's selected index advances after
-  `mainClock.advanceTimeBy(...)` with no interaction, and does *not* advance while a drag gesture is
-  in progress (`ComposeTestRule`'s fake clock + `performTouchInput` pattern) - same tier as this
-  project's other new-feature UI tests per `.claude/skills/testing-conventions/SKILL.md`.
-- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
-  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` - then manually confirm on-device (per the
-  `run-app` skill) that the motion feels right (interval, easing) rather than trusting the numbers
-  alone, since this is a pure-feel UX addition.
+- [x] **Core autoscroll loop**: `AutoScrollCarouselEffect` (`TrendingScreenTab.kt`) - a
+  `LaunchedEffect` that calls `CarouselState.animateScrollToItem` every
+  `AutoScrollCarouselConstant.INTERVAL_MS` (4.5s), wrapping back to index 0 after the last item.
+  Called once from `TrendingMediaCarousel`, which is already the single function all three
+  `mediaType`s share, so one call site covers all three sections rather than three copies.
+- [x] **Pause on user interaction**: `CarouselState` implements `ScrollableState` directly (verified
+  by decompiling the resolved `material3-desktop:1.9.0` jar - `libs.versions.toml`'s `compose` entry
+  tracks Compose Multiplatform, not Material3 1:1), so `state.isScrollInProgress` is checked before
+  each tick fires - no custom drag-detection needed. A tick skipped this way is retried on the next
+  interval, which doubles as the "resume after a short idle delay" the checklist asked for.
+- [x] **Pause when off-screen / app backgrounded**: two mechanisms, no new visibility plumbing
+  needed. Leaving the Trending tab disposes `TrendingScreenTab` from composition (Navigation3's
+  `NavDisplay`/`entryProvider`), which cancels the effect via structured concurrency for free.
+  App backgrounding is covered by `LocalLifecycleOwner.current.lifecycle.currentStateAsState()`
+  (`lifecycle-runtime-compose`, newly added to `commonMain` - it was only in `commonTest` before);
+  `isAutoScrollAllowed` requires `Lifecycle.State.STARTED` or above.
+- [x] **Accessibility**: `isReducedMotionEnabled()` (already existed in `PlatformUtil.kt` for the
+  splash screen - reused rather than duplicated, per code-conventions §2c/§2e) and a new
+  `isScreenReaderActive()` sibling (Android `AccessibilityManager.isTouchExplorationEnabled`/
+  TalkBack, iOS `UIAccessibilityIsVoiceOverRunning()`; Desktop/JS have no such API and return `false`
+  - documented in both functions' KDoc, per code-conventions §2e's "say what the platform equivalent
+  was and why it did not fit"). Both gate `isAutoScrollAllowed`.
+- [x] **Per-section independence**: each `TrendingMediaCarousel` call gets its own `CarouselState`
+  and its own `AutoScrollCarouselEffect`/`LaunchedEffect` instance - no shared timer. Different
+  item counts per section (movies/TV/people) mean their wrap-around cycles naturally desync rather
+  than staying in lockstep; not verified against a live TMDB result set beyond the desktop compile/
+  test/lint pass below.
+- [x] **Tests**: `AutoScrollCarouselLogicTest` (5 cases, `kotlin.test`) covers the extracted
+  `isAutoScrollAllowed` gate (item count, reduce-motion, screen-reader, lifecycle state) without a
+  Compose harness. `AutoScrollCarouselEffectUiTest` (Compose UI, `mainClock.advanceTimeBy`) asserts
+  the carousel advances with no interaction and does not advance while `ScrollableState.scroll{}` is
+  held open (a real `CarouselState`/`HorizontalMultiBrowseCarousel` had to be rendered in the test,
+  not a bare `Modifier.scrollable` - `animateScrollToItem` needs the actual Pager layout to move
+  `currentItem` against; a real synthetic `down()+moveBy()` touch gesture was also tried for the
+  drag-pause case, but `isScrollInProgress` only pulses `true` for the instant an event is
+  dispatched, not for as long as the pointer is nominally held, and lined up unreliably with the
+  virtual clock in a `runComposeUiTest`).
+- [x] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck` all green. Manual on-device confirmation of
+  motion feel (interval, easing) not yet done - per this project's verification-preference memory,
+  the user runs/launches the app themselves.
 
 ---
 

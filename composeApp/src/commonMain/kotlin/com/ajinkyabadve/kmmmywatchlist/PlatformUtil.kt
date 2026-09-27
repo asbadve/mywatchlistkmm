@@ -15,6 +15,12 @@ expect fun isDebugBuild(): Boolean
  *  JVM/OS-wide equivalent to read. */
 expect fun isReducedMotionEnabled(): Boolean
 
+/** True while a screen reader is actively narrating the UI - Android's
+ *  `AccessibilityManager.isTouchExplorationEnabled` (TalkBack) or iOS's
+ *  `UIAccessibility.isVoiceOverRunning`. Unconditionally `false` on desktop and JS: AWT/Swing expose
+ *  no such signal, and browsers deliberately don't let page script detect assistive technology. */
+expect fun isScreenReaderActive(): Boolean
+
 /** True only on Android, where the native splash (`Theme.MyWatchList.Splash`,
  *  `splash_icon_animated.xml`) already plays the full "3b" icon reveal itself - `App()` skips
  *  `core.ui.splash.SplashScreen` entirely there instead of showing it as a second animation after

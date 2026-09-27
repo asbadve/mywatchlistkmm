@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 import com.russhwolf.settings.SharedPreferencesSettings
 
 actual fun getPlatformName(): String = "Android"
@@ -20,5 +21,11 @@ actual fun isDebugBuild(): Boolean = AndroidApp.instance.applicationInfo.flags a
 // including the 0.5x/2x speed-up/slow-down options - leaves animations on, just at a different rate.
 actual fun isReducedMotionEnabled(): Boolean =
     Settings.Global.getFloat(AndroidApp.instance.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+
+actual fun isScreenReaderActive(): Boolean {
+    val accessibilityManager =
+        AndroidApp.instance.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+    return accessibilityManager.isEnabled && accessibilityManager.isTouchExplorationEnabled
+}
 
 actual fun usesNativeAnimatedSplash(): Boolean = true

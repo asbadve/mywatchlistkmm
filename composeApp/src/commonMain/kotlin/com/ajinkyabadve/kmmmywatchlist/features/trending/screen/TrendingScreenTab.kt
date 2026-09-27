@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.constant.FeatureFlags
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.ui.carousel.AutoScrollCarouselEffect
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
@@ -244,6 +245,7 @@ private fun TrendingMediaCarousel(
     onPersonSelected: (Long) -> Unit,
 ) {
     val state = rememberCarouselState { mediaTrendResult.count() }
+    AutoScrollCarouselEffect(state = state, itemCount = mediaTrendResult.count())
     HorizontalMultiBrowseCarousel(
         state = state,
         modifier = Modifier.fillMaxWidth(),
@@ -269,7 +271,7 @@ private fun TrendingMediaCarousel(
                 density = density,
             )
         when (mediaType) {
-            MediaTypeConstant.TV ->
+            MediaTypeConstant.TV -> {
                 mediaTvShowRow(
                     imageUrl = imageUrl,
                     title = item.title,
@@ -279,7 +281,9 @@ private fun TrendingMediaCarousel(
                         onTvShowSelected(item.id.toLong())
                     },
                 )
-            MediaTypeConstant.PERSON ->
+            }
+
+            MediaTypeConstant.PERSON -> {
                 mediaPersonRow(
                     imageUrl = imageUrl,
                     name = item.title,
@@ -289,7 +293,9 @@ private fun TrendingMediaCarousel(
                         onPersonSelected(item.id.toLong())
                     },
                 )
-            else ->
+            }
+
+            else -> {
                 mediaMovieRow(
                     imageUrl = imageUrl,
                     title = item.title,
@@ -299,6 +305,7 @@ private fun TrendingMediaCarousel(
                         onMovieSelected(item.id.toLong())
                     },
                 )
+            }
         }
     }
 }

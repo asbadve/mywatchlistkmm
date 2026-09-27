@@ -13,4 +13,8 @@ actual fun isDebugBuild(): Boolean = true
 
 actual fun isReducedMotionEnabled(): Boolean = window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
+// Browsers deliberately don't expose assistive-technology presence to page script - see
+// PlatformUtil.kt's kdoc.
+actual fun isScreenReaderActive(): Boolean = false
+
 actual fun usesNativeAnimatedSplash(): Boolean = false

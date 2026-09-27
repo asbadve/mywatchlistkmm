@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist
 import com.russhwolf.settings.NSUserDefaultsSettings
 import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIAccessibilityIsReduceMotionEnabled
+import platform.UIKit.UIAccessibilityIsVoiceOverRunning
 
 actual fun getPlatformName(): String = "iOS"
 
@@ -13,5 +14,7 @@ actual fun createSettings(): com.russhwolf.settings.Settings = NSUserDefaultsSet
 actual fun isDebugBuild(): Boolean = true
 
 actual fun isReducedMotionEnabled(): Boolean = UIAccessibilityIsReduceMotionEnabled()
+
+actual fun isScreenReaderActive(): Boolean = UIAccessibilityIsVoiceOverRunning()
 
 actual fun usesNativeAnimatedSplash(): Boolean = false

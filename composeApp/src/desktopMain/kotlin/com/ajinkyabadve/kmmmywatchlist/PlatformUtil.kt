@@ -17,4 +17,7 @@ actual fun isDebugBuild(): Boolean = true
 // No JVM/desktop-wide "reduce motion" setting to read - see PlatformUtil.kt's kdoc.
 actual fun isReducedMotionEnabled(): Boolean = false
 
+// AWT/Swing expose no screen-reader-presence API - see PlatformUtil.kt's kdoc.
+actual fun isScreenReaderActive(): Boolean = false
+
 actual fun usesNativeAnimatedSplash(): Boolean = false
