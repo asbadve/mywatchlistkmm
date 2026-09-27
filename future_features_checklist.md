@@ -930,3 +930,68 @@ modeled).
   `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`, then confirm on-device that pagination and
   scroll performance still feel right with headings interleaved (per the `run-app` skill) - the
   grid's item count/shape changes more than a typical UI tweak here.
+
+---
+
+## 18. Upcoming Releases List for Favorites & Watchlist (Movies + Episodes, Date-Sorted)
+**Goal**: A single date-sorted list of everything the user is favorited/watchlisted that hasn't
+released yet - unreleased movies by their release date, and favorited/watchlisted TV shows' next
+episode by its air date - soonest first. Distinct from [item 16](#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts):
+that item is about *notifying* the user when a date arrives; this item is a browsable **list view**
+answering "what's coming up across everything I'm tracking," with no notification involved.
+
+### What this reuses (no new network calls needed)
+- **`trackedMedia.releaseDate`** (`MyDatabase.sq`) already holds the unified
+  `Movie.releaseDate ?: Tv.firstAirDate` for every favorited/watchlisted row, synced by
+  `TrackedMediaRemoteMediator` ([item 2](shipped_features.md#2-local-sqlite-database-for-favoriteswatchlist-local-notification-data-source--done))
+  as the grid is paged - a movie's release date is already sitting locally with zero extra calls.
+- **`trackedMedia.lastKnownNextEpisodeAirDate`** already holds each favorited/watchlisted TV show's
+  next episode date, kept current by `TvEpisodeNotificationPoller`'s 6-hour poll
+  ([item 3a](shipped_features.md#3a-returning-series---newupcoming-episode--done-2026-08-26)) -
+  regardless of whether the user has episode notifications turned on, since the poller runs off the
+  tracked-media set, not the notification toggle.
+- **`Movie.isUpcoming(today)`**'s existing date-parsing/comparison pattern
+  ([item 17](#17-date-grouped-headings-for-now-playing-style-tabs-today--tomorrow-)'s grouping logic,
+  if that ships first, is the same shape again here and could share a common date-bucketing helper).
+
+### Relevant OAS endpoints
+None new - this is a read/sort layer over data already fetched by items 2 and 3a.
+
+### Implementation Checklist:
+- [ ] **Query**: `selectUpcomingTrackedMedia(today: String)` in `MyDatabase.sq` - rows where
+  `pendingDelete = 0` and either (`mediaType = 'movie' AND releaseDate >= :today`) or
+  (`mediaType = 'tv' AND lastKnownNextEpisodeAirDate >= :today`), ordered by
+  `COALESCE(lastKnownNextEpisodeAirDate, releaseDate) ASC`. A pure `SELECT` over existing columns -
+  no schema change, so no `LocalSchemaVersion` bump needed.
+- [ ] **Data layer**: `TrackedMediaRepository.observeUpcoming(): Flow<List<UpcomingMediaItem>>`
+  (`Query<T>.asFlow()`, same reactive pattern the repository already uses elsewhere) so a poller
+  writing a new `lastKnownNextEpisodeAirDate` updates this list live, not just on next screen visit.
+  New model `UpcomingMediaItem(id, mediaType, title, posterPath, date: LocalDate, dateKind)` with
+  `dateKind` an **enum** (`MOVIE_RELEASE` / `NEXT_EPISODE`) per code-conventions §9's closed-set rule,
+  driving which label/copy a row shows.
+- [ ] **Business logic**: `UpcomingReleasesScreenModel` - no paging needed (a tracked-media set is
+  small), just collects the repository `Flow` into a `StateFlow<UiState>` mirroring this codebase's
+  usual `sealed class UiState` shape (`Loading`/`Content`/`Empty`).
+- [ ] **UI**: new tab on `MyFavTabs` (alongside Favorites/Watchlist/Lists/Collections) or a compact
+  "Upcoming" section at the top of the Favorites tab with a "See all" - decide based on how long the
+  list typically is once real data is seen; each row shows poster, title, and a relative label
+  ("Releases Fri", "New episode Tue") via `Res.string.*`, not inlined strings.
+- [ ] **Never-polled TV rows**: a show favorited/watchlisted since the last 6-hour poll cycle has
+  `lastKnownNextEpisodeAirDate IS NULL` and won't appear yet. Documented as an accepted v1 gap (it
+  self-heals within one poll interval) rather than adding a lazy on-demand detail fetch just for this
+  list - matches this app's existing "poll interval is the freshness bound" behavior elsewhere.
+- [ ] **Tests**: unit test for `selectUpcomingTrackedMedia`'s ordering/filtering (a movie past its
+  release date is excluded; a TV row with `NULL` next-episode date is excluded; sort order across
+  mixed movie/TV rows; `pendingDelete` rows never appear) plus a Compose UI test for the screen
+  (empty state, populated ordering, tapping a row navigates to the right detail screen), per
+  `.claude/skills/testing-conventions/SKILL.md`.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`.
+
+### Deliberately out of scope
+- **Date-grouped headings on this list** (Today/Tomorrow/Later) - a nice follow-up once
+  [item 17](#17-date-grouped-headings-for-now-playing-style-tabs-today--tomorrow-) exists to share
+  the bucketing logic with, not a reason to block this item on that one shipping first.
+- **A live on-demand refresh button** that force-fetches every tracked show's next-episode date on
+  screen open - defeats the point of reusing the poller's already-cached state or a network call this
+  screen is meant to avoid needing.
