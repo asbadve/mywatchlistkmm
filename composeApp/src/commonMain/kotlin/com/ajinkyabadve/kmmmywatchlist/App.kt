@@ -469,6 +469,7 @@ private fun MainAppScaffoldContent(
                     }
                     entry<MyFavKey> {
                         MyFavScreenTab(
+                            windowSize = windowSize,
                             authRepository = authRepository,
                             onMovieSelected = { movieId ->
                                 topLevelBackStack.add(MovieDetailKey(movieId))

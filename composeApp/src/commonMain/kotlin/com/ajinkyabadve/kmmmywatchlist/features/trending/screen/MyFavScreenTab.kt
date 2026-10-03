@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
@@ -31,6 +32,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthUiState
 
 @Composable
 fun MyFavScreenTab(
+    windowSize: WindowSize,
     modifier: Modifier = Modifier,
     onMovieSelected: (movieId: Long) -> Unit = {},
     onTvSelected: (tvId: Long) -> Unit = {},
@@ -71,6 +73,7 @@ fun MyFavScreenTab(
             is AuthUiState.LoggedIn -> {
                 MyFavTabs(
                     session = state.session,
+                    windowSize = windowSize,
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
                     onListSelected = onListSelected,

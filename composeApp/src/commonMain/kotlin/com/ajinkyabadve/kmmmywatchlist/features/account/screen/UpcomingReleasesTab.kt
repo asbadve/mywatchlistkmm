@@ -3,7 +3,6 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -13,24 +12,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -39,8 +45,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
+import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.design.calendar.MonthCalendarCard
+import com.ajinkyabadve.kmmmywatchlist.design.calendar.monthNameRes
+import com.ajinkyabadve.kmmmywatchlist.design.calendar.weekdayNameRes
+import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
+import com.ajinkyabadve.kmmmywatchlist.design.pill.StatusPill
+import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineEntryCard
+import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineSectionHeader
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
+import com.ajinkyabadve.kmmmywatchlist.features.search.screen.MediaTypeBadge
+import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -49,38 +66,68 @@ import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_upcoming_empty_message
 import mywatchlist.composeapp.generated.resources.account_upcoming_empty_title
+import mywatchlist.composeapp.generated.resources.upcoming_calendar_legend_release
+import mywatchlist.composeapp.generated.resources.upcoming_calendar_legend_today
 import mywatchlist.composeapp.generated.resources.upcoming_episode_label
+import mywatchlist.composeapp.generated.resources.upcoming_filter_all
+import mywatchlist.composeapp.generated.resources.upcoming_filter_movie
+import mywatchlist.composeapp.generated.resources.upcoming_filter_tv
 import mywatchlist.composeapp.generated.resources.upcoming_in_days
+import mywatchlist.composeapp.generated.resources.upcoming_next_up_label
+import mywatchlist.composeapp.generated.resources.upcoming_remind_me_button
+import mywatchlist.composeapp.generated.resources.upcoming_remind_me_content_description
 import mywatchlist.composeapp.generated.resources.upcoming_today
 import mywatchlist.composeapp.generated.resources.upcoming_tomorrow
+import mywatchlist.composeapp.generated.resources.upcoming_view_details_button
 import org.jetbrains.compose.resources.stringResource
 
 private object UpcomingReleasesTabConstant {
+    // Matches AccountMediaGridConstant - the poster width the Favorites/Watchlist grid (the tabs
+    // right next to this one) already uses - for the Next-up spotlight, which is meant to be the
+    // single focal point of the screen.
+    const val NEXT_UP_POSTER_TARGET_WIDTH_DP = 150
+    val NEXT_UP_POSTER_WIDTH = 150.dp
+    val NEXT_UP_POSTER_HEIGHT = 225.dp
+
+    // Deliberately smaller than the Next-up poster above - a timeline row is a secondary, repeated
+    // element, and matching the spotlight's size here would compete with it instead of the row
+    // list reading as a scannable list underneath the one thing in focus. Same 2:3 poster ratio.
     const val POSTER_TARGET_WIDTH_DP = 92
     val POSTER_WIDTH = 64.dp
     val POSTER_HEIGHT = 96.dp
 
-    // POSTER_HEIGHT plus the row's own 4dp top/bottom padding - the row needs this as an explicit,
-    // bounded height (not intrinsic) for TimelineIndicator's fillMaxHeight()/weight() to work.
-    val ROW_HEIGHT = POSTER_HEIGHT + 8.dp
     val EMPTY_STATE_ICON_SIZE = 48.dp
     const val DAYS_UNTIL_PLAIN_DATE_FALLBACK = 7
-    val TIMELINE_INDICATOR_WIDTH = 24.dp
-    val TIMELINE_DOT_SIZE = 10.dp
-    val TIMELINE_LINE_WIDTH = 2.dp
+    val WEEKDAY_COLUMN_WIDTH = 44.dp
+    val RIGHT_COLUMN_MAX_WIDTH = 360.dp
+    const val TIMELINE_WEIGHT = 1.45f
+    const val RIGHT_COLUMN_WEIGHT = 1f
+    const val NEXT_UP_GRADIENT_ALPHA = 0.35f
+}
+
+/** All / Movie / TV - a closed set, driving [scrollableChips] over the already-loaded list. */
+internal enum class UpcomingFilter {
+    ALL,
+    MOVIE,
+    TV,
 }
 
 /**
- * MyFavTabs' "Upcoming" tab (future_features_checklist.md item 18) - a timeline of every tracked
- * movie not yet released and every unreleased episode of every tracked TV show (from cached season
- * data - see [UpcomingReleasesScreenModel]'s kdoc), grouped under one date header per group rather
- * than repeating the date on every row - [upcomingItems] is already date-sorted, so
- * [Iterable.groupBy] preserves that order into ascending-date groups for free. Purely local, no
- * network call, so there's no loading/error state to render - see `PersonFavoritesTab`'s identical
- * reasoning.
+ * MyFavTabs' "Upcoming" tab (future_features_checklist.md item 18/15) - a timeline of every
+ * tracked movie not yet released and every unreleased episode of every tracked TV show (from
+ * cached season data - see [UpcomingReleasesScreenModel]'s kdoc), grouped by month with one header
+ * per month rather than repeating it on every row - [upcomingItems] is already date-sorted, so
+ * [Iterable.groupBy] preserves that order into ascending-month groups for free.
+ *
+ * On an expanded [windowSize] (desktop/tablet-landscape width), the extra space is used for a
+ * "Next up" spotlight card and a release calendar alongside the timeline, per the Claude Design
+ * mockup this screen implements - on compact/medium widths those collapse into a single scrolling
+ * column with a compact "Next up" card above the timeline. Purely local, no network call, so
+ * there's no loading/error state to render - see `PersonFavoritesTab`'s identical reasoning.
  */
 @Composable
 fun UpcomingReleasesTab(
+    windowSize: WindowSize,
     modifier: Modifier = Modifier,
     viewModel: UpcomingReleasesScreenModel = viewModel { UpcomingReleasesScreenModel() },
     lazyListState: LazyListState = rememberLazyListState(),
@@ -93,32 +140,85 @@ fun UpcomingReleasesTab(
         if (upcomingItems.isEmpty()) {
             UpcomingReleasesEmptyState()
         } else {
+            var selectedFilter by remember { mutableStateOf(UpcomingFilter.ALL) }
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-            val groupedByDate = upcomingItems.groupBy { it.date }
-            LazyColumn(state = lazyListState) {
-                groupedByDate.forEach { (date, itemsForDate) ->
-                    item(key = "header:$date") {
-                        UpcomingDateHeader(date = date, today = today)
+            val nextUpItem = remember(upcomingItems) { upcomingItems.minByOrNull { it.date } }
+            val filteredItems =
+                remember(upcomingItems, selectedFilter) {
+                    when (selectedFilter) {
+                        UpcomingFilter.ALL -> upcomingItems
+                        UpcomingFilter.MOVIE -> upcomingItems.filter { it.mediaType == MediaTypeConstant.MOVIE }
+                        UpcomingFilter.TV -> upcomingItems.filter { it.mediaType == MediaTypeConstant.TV }
                     }
-                    itemsIndexed(
-                        itemsForDate,
-                        // Includes season/episode: a show with several unreleased episodes
-                        // produces multiple rows sharing the same mediaType/id.
-                        key = { _, item -> "${item.mediaType}:${item.id}:${item.seasonNumber}:${item.episodeNumber}" },
-                    ) { index, item ->
-                        UpcomingMediaRow(
-                            item = item,
-                            isFirstInGroup = index == 0,
-                            isLastInGroup = index == itemsForDate.lastIndex,
-                            onClick = {
-                                if (item.mediaType == MediaTypeConstant.TV) {
-                                    onTvSelected(item.id.toLong())
-                                } else {
-                                    onMovieSelected(item.id.toLong())
-                                }
-                            },
+                }
+            val groupedByMonth = remember(filteredItems) { filteredItems.groupBy { monthGroupKey(it.date) } }
+            val onItemClick: (UpcomingMediaItem) -> Unit = { item ->
+                if (item.mediaType == MediaTypeConstant.TV) onTvSelected(item.id.toLong()) else onMovieSelected(item.id.toLong())
+            }
+            // A local reminder notification can only ever fire on Android/iOS - desktop/browser
+            // have nothing to schedule it against, so the not-yet-built reminder UI (item 16)
+            // never renders there, not even as a disabled placeholder.
+            val showReminderControls = remember { isMobilePlatform() }
+
+            if (windowSize.isExpanded()) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.weight(UpcomingReleasesTabConstant.TIMELINE_WEIGHT).fillMaxHeight()) {
+                        UpcomingFilterChips(selectedFilter = selectedFilter, onSelect = { selectedFilter = it })
+                        UpcomingTimelineList(
+                            groupedByMonth = groupedByMonth,
+                            today = today,
+                            nextUpItem = nextUpItem,
+                            lazyListState = lazyListState,
+                            showBell = showReminderControls,
+                            modifier = Modifier.weight(1f),
+                            onMovieSelected = onMovieSelected,
+                            onTvSelected = onTvSelected,
                         )
                     }
+                    Column(
+                        modifier =
+                            Modifier
+                                .weight(UpcomingReleasesTabConstant.RIGHT_COLUMN_WEIGHT)
+                                .widthIn(max = UpcomingReleasesTabConstant.RIGHT_COLUMN_MAX_WIDTH)
+                                .fillMaxHeight()
+                                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        nextUpItem?.let { item ->
+                            NextUpCard(
+                                item = item,
+                                today = today,
+                                expanded = true,
+                                showReminderControls = showReminderControls,
+                                onClick = { onItemClick(item) },
+                            )
+                        }
+                        UpcomingCalendarCard(upcomingItems = upcomingItems, today = today)
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    nextUpItem?.let { item ->
+                        NextUpCard(
+                            item = item,
+                            today = today,
+                            expanded = false,
+                            showReminderControls = showReminderControls,
+                            onClick = { onItemClick(item) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+                    UpcomingFilterChips(selectedFilter = selectedFilter, onSelect = { selectedFilter = it })
+                    UpcomingTimelineList(
+                        groupedByMonth = groupedByMonth,
+                        today = today,
+                        nextUpItem = nextUpItem,
+                        lazyListState = lazyListState,
+                        showBell = showReminderControls,
+                        modifier = Modifier.weight(1f),
+                        onMovieSelected = onMovieSelected,
+                        onTvSelected = onTvSelected,
+                    )
                 }
             }
         }
@@ -126,57 +226,80 @@ fun UpcomingReleasesTab(
 }
 
 @Composable
-private fun UpcomingDateHeader(
-    date: LocalDate,
-    today: LocalDate,
+private fun UpcomingFilterChips(
+    selectedFilter: UpcomingFilter,
+    onSelect: (UpcomingFilter) -> Unit,
 ) {
-    Text(
-        text = formatUpcomingDateLabel(date, today),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 4.dp),
+    val filters = remember { UpcomingFilter.entries }
+    val labels =
+        filters.map { filter ->
+            when (filter) {
+                UpcomingFilter.ALL -> stringResource(Res.string.upcoming_filter_all)
+                UpcomingFilter.MOVIE -> stringResource(Res.string.upcoming_filter_movie)
+                UpcomingFilter.TV -> stringResource(Res.string.upcoming_filter_tv)
+            }
+        }
+    scrollableChips(
+        selectedChip = filters.indexOf(selectedFilter),
+        chipItemList = labels,
+        onClick = { index -> onSelect(filters[index]) },
     )
 }
 
-/** The dot-and-line timeline rail to the left of a row - the line only spans between rows sharing
- *  the same date group, not above the group's first row or below its last. */
 @Composable
-private fun TimelineIndicator(
-    isFirstInGroup: Boolean,
-    isLastInGroup: Boolean,
+private fun UpcomingTimelineList(
+    groupedByMonth: Map<Pair<Int, Int>, List<UpcomingMediaItem>>,
+    today: LocalDate,
+    nextUpItem: UpcomingMediaItem?,
+    lazyListState: LazyListState,
+    showBell: Boolean,
+    modifier: Modifier = Modifier,
+    onMovieSelected: (Long) -> Unit = {},
+    onTvSelected: (Long) -> Unit = {},
 ) {
-    Column(
-        modifier = Modifier.width(UpcomingReleasesTabConstant.TIMELINE_INDICATOR_WIDTH).fillMaxHeight(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .width(UpcomingReleasesTabConstant.TIMELINE_LINE_WIDTH)
-                    .background(if (isFirstInGroup) Color.Transparent else MaterialTheme.colorScheme.outlineVariant),
-        )
-        Box(
-            modifier =
-                Modifier
-                    .size(UpcomingReleasesTabConstant.TIMELINE_DOT_SIZE)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-        )
-        Box(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .width(UpcomingReleasesTabConstant.TIMELINE_LINE_WIDTH)
-                    .background(if (isLastInGroup) Color.Transparent else MaterialTheme.colorScheme.outlineVariant),
-        )
+    LazyColumn(state = lazyListState, modifier = modifier.fillMaxWidth()) {
+        groupedByMonth.forEach { (monthKey, itemsForMonth) ->
+            item(key = "month:${monthKey.first}-${monthKey.second}") {
+                UpcomingMonthHeader(year = monthKey.first, monthNumber = monthKey.second)
+            }
+            items(
+                itemsForMonth,
+                // Includes season/episode: a show with several unreleased episodes
+                // produces multiple rows sharing the same mediaType/id.
+                key = { item -> "${item.mediaType}:${item.id}:${item.seasonNumber}:${item.episodeNumber}" },
+            ) { item ->
+                UpcomingMediaRow(
+                    item = item,
+                    today = today,
+                    isNextUp = item == nextUpItem,
+                    showBell = showBell,
+                    onClick = {
+                        if (item.mediaType == MediaTypeConstant.TV) {
+                            onTvSelected(item.id.toLong())
+                        } else {
+                            onMovieSelected(item.id.toLong())
+                        }
+                    },
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun UpcomingMonthHeader(
+    year: Int,
+    monthNumber: Int,
+) {
+    TimelineSectionHeader(title = "${stringResource(monthNameRes(monthNumber))} $year")
 }
 
 @Composable
 private fun UpcomingMediaRow(
     item: UpcomingMediaItem,
-    isFirstInGroup: Boolean,
-    isLastInGroup: Boolean,
+    today: LocalDate,
+    isNextUp: Boolean,
+    showBell: Boolean,
     onClick: () -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -187,24 +310,28 @@ private fun UpcomingMediaRow(
             targetWidthDp = UpcomingReleasesTabConstant.POSTER_TARGET_WIDTH_DP,
             density = density,
         )
-
-    Row(
-        // A definite height here, not intrinsic, is required: TimelineIndicator's
-        // fillMaxHeight()+weight() below need a bounded height constraint to distribute, which an
-        // intrinsically-sized Row (one whose height is derived from its own children, including
-        // the very child asking to fill it) cannot provide - crashed on real layout
-        // (RowColumnMeasurePolicy/MeasurePassDelegate) despite passing Compose UI tests, since the
-        // test harness's synthetic measurement didn't hit the same unbounded-constraint path a real
-        // window does.
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(UpcomingReleasesTabConstant.ROW_HEIGHT)
-                .clickable(onClick = onClick)
-                .padding(end = 16.dp, top = 4.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    TimelineEntryCard(
+        contentHeight = UpcomingReleasesTabConstant.POSTER_HEIGHT,
+        highlighted = isNextUp,
+        onClick = onClick,
     ) {
-        TimelineIndicator(isFirstInGroup = isFirstInGroup, isLastInGroup = isLastInGroup)
+        Column(
+            modifier = Modifier.width(UpcomingReleasesTabConstant.WEEKDAY_COLUMN_WIDTH),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(weekdayNameRes(item.date.dayOfWeek)).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text =
+                    item.date.dayOfMonth
+                        .toString()
+                        .padStart(2, '0'),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
         AsyncImage(
             model = imageUrl,
             contentDescription = null,
@@ -212,6 +339,7 @@ private fun UpcomingMediaRow(
             filterQuality = FilterQuality.Medium,
             modifier =
                 Modifier
+                    .padding(start = 12.dp)
                     // Modifier.size(dp) sets both dimensions - a trailing .size(POSTER_HEIGHT)
                     // after .width(POSTER_WIDTH) silently overrode the width, squaring the poster
                     // instead of the intended portrait shape.
@@ -219,7 +347,8 @@ private fun UpcomingMediaRow(
                     .height(UpcomingReleasesTabConstant.POSTER_HEIGHT)
                     .clip(RoundedCornerShape(8.dp)),
         )
-        Column(modifier = Modifier.padding(start = 12.dp)) {
+        Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+            MediaTypeBadge(mediaType = item.toSearchMediaType(), modifier = Modifier.padding(bottom = 4.dp))
             Text(text = item.title, style = MaterialTheme.typography.titleSmall)
             val seasonNumber = item.seasonNumber
             val episodeNumber = item.episodeNumber
@@ -231,8 +360,167 @@ private fun UpcomingMediaRow(
                 )
             }
         }
+        UpcomingCountdownPill(date = item.date, today = today, highlighted = isNextUp)
+        if (showBell) {
+            // Decorative only - future_features_checklist.md item 16 (Release-Date Reminders)
+            // wires this up for real; it doesn't exist yet.
+            IconButton(onClick = {}) {
+                Icon(
+                    imageVector = Icons.Filled.Notifications,
+                    contentDescription = stringResource(Res.string.upcoming_remind_me_content_description),
+                    tint = if (isNextUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
+
+@Composable
+private fun UpcomingCountdownPill(
+    date: LocalDate,
+    today: LocalDate,
+    highlighted: Boolean,
+) {
+    StatusPill(
+        text = formatUpcomingDateLabel(date, today),
+        highlighted = highlighted,
+        modifier = Modifier.padding(start = 8.dp),
+    )
+}
+
+/** The "what's releasing next" focal point - a bigger spotlight card with action buttons on an
+ *  expanded [windowSize] (desktop right column), a compact single-row card otherwise (top of the
+ *  mobile timeline). Reuses a gradient [Brush] scrim rather than [Modifier.blur] - this codebase
+ *  has no existing blur usage and the gradient achieves the same "moody backdrop" effect using the
+ *  same primitive `BackdropSection`/`HeroScrimStops` already rely on. */
+@Composable
+private fun NextUpCard(
+    item: UpcomingMediaItem,
+    today: LocalDate,
+    expanded: Boolean,
+    showReminderControls: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current.density
+    val imageUrl =
+        ImageConfigResolver.resolve(
+            path = item.posterPath,
+            type = ImageConfigResolver.ImageType.POSTER,
+            targetWidthDp = UpcomingReleasesTabConstant.NEXT_UP_POSTER_TARGET_WIDTH_DP,
+            density = density,
+        )
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = UpcomingReleasesTabConstant.NEXT_UP_GRADIENT_ALPHA),
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        ),
+                    ),
+                ).clickable(onClick = onClick)
+                .padding(16.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            filterQuality = FilterQuality.Medium,
+            modifier =
+                Modifier
+                    .width(UpcomingReleasesTabConstant.NEXT_UP_POSTER_WIDTH)
+                    .height(UpcomingReleasesTabConstant.NEXT_UP_POSTER_HEIGHT)
+                    .clip(RoundedCornerShape(12.dp)),
+        )
+        Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+            Text(
+                text = stringResource(Res.string.upcoming_next_up_label).uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = item.title,
+                style = if (expanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+            )
+            val seasonNumber = item.seasonNumber
+            val episodeNumber = item.episodeNumber
+            if (seasonNumber != null && episodeNumber != null) {
+                Text(
+                    text = stringResource(Res.string.upcoming_episode_label, seasonNumber, episodeNumber),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = formatUpcomingDateLabel(item.date, today),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            if (expanded) {
+                Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onClick) {
+                        Text(stringResource(Res.string.upcoming_view_details_button))
+                    }
+                    if (showReminderControls) {
+                        // Decorative only - item 16 (Release-Date Reminders) wires this up for real.
+                        OutlinedButton(onClick = {}) {
+                            Text(stringResource(Res.string.upcoming_remind_me_button))
+                        }
+                    }
+                }
+            }
+        }
+        if (!expanded && showReminderControls) {
+            // Decorative only - item 16 (Release-Date Reminders) wires this up for real.
+            IconButton(onClick = {}, modifier = Modifier.align(Alignment.CenterVertically)) {
+                Icon(
+                    imageVector = Icons.Filled.Notifications,
+                    contentDescription = stringResource(Res.string.upcoming_remind_me_content_description),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+/** Desktop-only release calendar for the current month - static (no prev/next navigation) by
+ *  deliberate initial scope cut; see the Upcoming Timeline redesign plan. */
+@Composable
+private fun UpcomingCalendarCard(
+    upcomingItems: List<UpcomingMediaItem>,
+    today: LocalDate,
+) {
+    val releaseDays =
+        remember(upcomingItems, today) {
+            upcomingItems
+                .filter { it.date.year == today.year && it.date.monthNumber == today.monthNumber }
+                .map { it.date.dayOfMonth }
+                .toSet()
+        }
+    MonthCalendarCard(
+        year = today.year,
+        monthNumber = today.monthNumber,
+        markedDays = releaseDays,
+        today = today,
+        markedLabel = stringResource(Res.string.upcoming_calendar_legend_release),
+        todayLabel = stringResource(Res.string.upcoming_calendar_legend_today),
+    )
+}
+
+private fun UpcomingMediaItem.toSearchMediaType(): SearchMediaType =
+    if (mediaType == MediaTypeConstant.TV) SearchMediaType.TV else SearchMediaType.MOVIE
+
+/** (year, monthNumber) grouping key - pure so the grouping itself is unit-testable without a
+ *  Compose test harness. [upcomingItems] is already date-sorted, so grouping preserves ascending
+ *  month order for free. */
+internal fun monthGroupKey(date: LocalDate): Pair<Int, Int> = date.year to date.monthNumber
 
 /** Which relative-date label a header should show - a closed set resolved from a pure day-count
  *  comparison, kept separate from [formatUpcomingDateLabel]'s [stringResource] lookups so the

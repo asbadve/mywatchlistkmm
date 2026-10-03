@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.ui.PillTabRow
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.CustomListRepositoryImpl
@@ -47,6 +48,7 @@ private sealed interface MyFavTab {
 @Composable
 fun MyFavTabs(
     session: UserSession,
+    windowSize: WindowSize,
     onMovieSelected: (movieId: Long) -> Unit,
     onTvSelected: (tvId: Long) -> Unit,
     onListSelected: (listId: Long) -> Unit,
@@ -105,6 +107,7 @@ fun MyFavTabs(
         when (tabs[selectedIndex]) {
             MyFavTab.Upcoming ->
                 UpcomingReleasesTab(
+                    windowSize = windowSize,
                     viewModel =
                         viewModel(key = "UpcomingReleases:${session.accountId}") {
                             UpcomingReleasesScreenModel(trackedMediaRepository ?: TrackedMediaRepositoryImpl())

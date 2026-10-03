@@ -5,6 +5,8 @@ import java.util.prefs.Preferences
 
 actual fun getPlatformName(): String = "Desktop"
 
+actual fun isMobilePlatform(): Boolean = false
+
 actual fun createSettings(): com.russhwolf.settings.Settings {
     val delegate = Preferences.userRoot().node("com.ajinkyabadve.kmmmywatchlist")
     return PreferencesSettings(delegate)

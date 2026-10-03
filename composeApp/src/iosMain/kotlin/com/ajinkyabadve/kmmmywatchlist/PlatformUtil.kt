@@ -7,6 +7,8 @@ import platform.UIKit.UIAccessibilityIsVoiceOverRunning
 
 actual fun getPlatformName(): String = "iOS"
 
+actual fun isMobilePlatform(): Boolean = true
+
 actual fun createSettings(): com.russhwolf.settings.Settings = NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults)
 
 // This project has no TestFlight/App Store release pipeline yet - every iOS build today is a dev

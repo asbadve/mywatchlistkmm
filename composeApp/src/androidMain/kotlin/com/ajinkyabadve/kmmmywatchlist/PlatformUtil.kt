@@ -8,6 +8,8 @@ import com.russhwolf.settings.SharedPreferencesSettings
 
 actual fun getPlatformName(): String = "Android"
 
+actual fun isMobilePlatform(): Boolean = true
+
 actual fun createSettings(): com.russhwolf.settings.Settings {
     val sharedPrefs = AndroidApp.instance.getSharedPreferences("watchlist_settings", Context.MODE_PRIVATE)
     return SharedPreferencesSettings(sharedPrefs)

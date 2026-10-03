@@ -21,6 +21,12 @@ expect fun isReducedMotionEnabled(): Boolean
  *  no such signal, and browsers deliberately don't let page script detect assistive technology. */
 expect fun isScreenReaderActive(): Boolean
 
+/** True on Android/iOS, where a local notification can actually fire - false on desktop/web, which
+ *  have no equivalent the app can schedule against yet. Gates UI for a not-yet-built feature
+ *  (future_features_checklist.md item 16, Release-Date Reminders) so it never shows where it
+ *  couldn't work even once that feature ships. */
+expect fun isMobilePlatform(): Boolean
+
 /** True only on Android, where the native splash (`Theme.MyWatchList.Splash`,
  *  `splash_icon_animated.xml`) already plays the full "3b" icon reveal itself - `App()` skips
  *  `core.ui.splash.SplashScreen` entirely there instead of showing it as a second animation after

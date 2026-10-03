@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
+import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeCustomListRepository
@@ -45,6 +46,7 @@ class MyFavScreenTabUiTest {
             val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
             setContent {
                 MyFavScreenTab(
+                    windowSize = WindowSize.COMPACT,
                     webAuthLauncher = fakeWebAuthLauncher,
                     screenModel = screenModel,
                 )
@@ -69,6 +71,7 @@ class MyFavScreenTabUiTest {
 
             setContent {
                 MyFavScreenTab(
+                    windowSize = WindowSize.COMPACT,
                     webAuthLauncher = fakeWebAuthLauncher,
                     screenModel = screenModel,
                     listsRepository = FakeListsRepository(),
