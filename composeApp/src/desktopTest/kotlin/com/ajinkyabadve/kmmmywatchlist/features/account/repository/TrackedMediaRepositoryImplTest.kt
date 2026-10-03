@@ -226,6 +226,23 @@ class TrackedMediaRepositoryImplTest {
         }
 
     @Test
+    fun testObserveUpcoming_collapsesDuplicateIdEvenWhenTitleOrPosterPathDisagree() =
+        runTest {
+            // Reproduces a real crash (confirmed 2026-09-28, desktop): a movie tracked under both
+            // favorite and watchlist whose two rows had drifted out of sync (synced at different
+            // times) so title/posterPath differ between them - SQL's DISTINCT only collapses rows
+            // that match on every selected column, so this pair survives it as two rows with the
+            // same id, which then crashed LazyColumn's duplicate-key check. observeUpcoming must
+            // still collapse to one item by id alone, regardless of this drift.
+            val database = createTestDatabase()
+            seedMovie(database, id = 1, title = "Drifted Movie", releaseDate = NEAR_FUTURE_DATE, category = "favorite")
+            seedMovie(database, id = 1, title = "Drifted Movie (stale)", releaseDate = NEAR_FUTURE_DATE, category = "watchlist")
+            val repository = repository(database)
+
+            assertEquals(1, repository.observeUpcoming().first().size)
+        }
+
+    @Test
     fun testObserveUpcoming_excludesDeletedRows() =
         runTest {
             val database = createTestDatabase()

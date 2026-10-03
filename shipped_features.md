@@ -1037,4 +1037,36 @@ on further here. Revisit once there's real seeded data to look at on-device acro
 ### Deliberately out of scope
 - **A live on-demand refresh** that force-fetches every tracked show's current season on Upcoming-tab
   open - see "Known limitation" above; deferred, not ruled out.
+
+### Fixed 2026-10-03: two real bugs found only by running the app, not by the test suite
+Both only showed up against the user's real account data on desktop, despite `desktopTest` (unit +
+Compose UI tests) staying green through every step that introduced them - a reminder that this
+feature's own tests exercise the *logic*, not real on-screen layout/data behavior.
+- **Crash: "Key ... was already used" on the Upcoming tab** (`LazyColumn`/`itemsIndexed`'s key
+  function). A movie tracked under both favorite and watchlist produced two `trackedMedia` rows
+  that had drifted out of sync (synced at different times, so `title`/`posterPath` differ between
+  them) - SQL's `DISTINCT` in `selectUpcomingTrackedMedia` only collapses rows that match on every
+  selected column, so this pair survived it as two rows sharing one `id`. Fixed in
+  `TrackedMediaRepositoryImpl.observeUpcoming()` by deduping the mapped list on `id` directly
+  (`.distinctBy { it.id }`), not relying on SQL `DISTINCT` to have already done so. Covered by a new
+  regression test seeding exactly this drifted-row shape (same id, different title, both still
+  resolving to one `UpcomingMediaItem`).
+- **Crash: `TimelineIndicator`'s dot-and-line rail threw on real layout**
+  (`RowColumnMeasurePolicy`/`MeasurePassDelegate`, an `IllegalStateException` about an unready
+  layout state) - its `Column` used `Modifier.fillMaxHeight()` plus two `Modifier.weight(1f)` boxes,
+  which need a *bounded* height constraint from the parent to distribute. The containing `Row` had
+  no definite height of its own (intrinsic, derived from its children, which is exactly what was
+  asking to fill it) - a circular/unbounded constraint that Compose's UI-test harness's synthetic
+  measurement never reproduced, but a real window's layout pass does. Fixed by giving the row an
+  explicit `Modifier.height(ROW_HEIGHT)` (poster height + the row's own vertical padding) before its
+  padding, so `TimelineIndicator` always measures against a real, bounded height. Caught a second,
+  unrelated bug in the same `Row` while fixing this: `AsyncImage`'s modifier chain was
+  `.width(POSTER_WIDTH).size(POSTER_HEIGHT)` - `Modifier.size(dp)` sets *both* dimensions, so the
+  trailing `.size()` silently overrode the preceding `.width()`, rendering every poster as a square
+  instead of the intended portrait shape. Changed to `.width(POSTER_WIDTH).height(POSTER_HEIGHT)`.
+  Neither bug has a desktopTest regression test (a real bounded-vs-unbounded constraint difference
+  and a visual aspect-ratio defect aren't things the Compose UI test harness's `runComposeUiTest`
+  reproduces) - verified instead by building the real packaged desktop app
+  (`:composeApp:createDistributable`) and driving it with Appium/Mac2Driver against the user's real
+  signed-in account data, per the `run-app` skill.
 ---

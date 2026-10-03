@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,6 +59,10 @@ private object UpcomingReleasesTabConstant {
     const val POSTER_TARGET_WIDTH_DP = 92
     val POSTER_WIDTH = 64.dp
     val POSTER_HEIGHT = 96.dp
+
+    // POSTER_HEIGHT plus the row's own 4dp top/bottom padding - the row needs this as an explicit,
+    // bounded height (not intrinsic) for TimelineIndicator's fillMaxHeight()/weight() to work.
+    val ROW_HEIGHT = POSTER_HEIGHT + 8.dp
     val EMPTY_STATE_ICON_SIZE = 48.dp
     const val DAYS_UNTIL_PLAIN_DATE_FALLBACK = 7
     val TIMELINE_INDICATOR_WIDTH = 24.dp
@@ -184,9 +189,17 @@ private fun UpcomingMediaRow(
         )
 
     Row(
+        // A definite height here, not intrinsic, is required: TimelineIndicator's
+        // fillMaxHeight()+weight() below need a bounded height constraint to distribute, which an
+        // intrinsically-sized Row (one whose height is derived from its own children, including
+        // the very child asking to fill it) cannot provide - crashed on real layout
+        // (RowColumnMeasurePolicy/MeasurePassDelegate) despite passing Compose UI tests, since the
+        // test harness's synthetic measurement didn't hit the same unbounded-constraint path a real
+        // window does.
         modifier =
             Modifier
                 .fillMaxWidth()
+                .height(UpcomingReleasesTabConstant.ROW_HEIGHT)
                 .clickable(onClick = onClick)
                 .padding(end = 16.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -199,8 +212,11 @@ private fun UpcomingMediaRow(
             filterQuality = FilterQuality.Medium,
             modifier =
                 Modifier
+                    // Modifier.size(dp) sets both dimensions - a trailing .size(POSTER_HEIGHT)
+                    // after .width(POSTER_WIDTH) silently overrode the width, squaring the poster
+                    // instead of the intended portrait shape.
                     .width(UpcomingReleasesTabConstant.POSTER_WIDTH)
-                    .size(UpcomingReleasesTabConstant.POSTER_HEIGHT)
+                    .height(UpcomingReleasesTabConstant.POSTER_HEIGHT)
                     .clip(RoundedCornerShape(8.dp)),
         )
         Column(modifier = Modifier.padding(start = 12.dp)) {

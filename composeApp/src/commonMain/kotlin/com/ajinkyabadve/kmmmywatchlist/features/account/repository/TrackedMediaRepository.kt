@@ -330,7 +330,13 @@ internal class SqliteTrackedMediaRepositoryImpl(
                     .selectUpcomingTrackedMedia(today)
                     .asFlow()
                     .mapToList(Dispatchers.Default)
-                    .map { rows -> rows.map { it.toUpcomingMediaItem() } },
+                    // SQL's DISTINCT only collapses a favorite+watchlist pair when every selected
+                    // column matches exactly - a stale title/posterPath from a sync that ran at a
+                    // different time for the two rows defeats that and produces a genuine duplicate
+                    // id (confirmed 2026-09-28: a real "movie:<id>:null:null" key collision on
+                    // desktop). id alone is the real identity for a movie row here, so dedup on it
+                    // explicitly rather than trusting DISTINCT to have already done so.
+                    .map { rows -> rows.map { it.toUpcomingMediaItem() }.distinctBy { it.id } },
             )
         }
 
