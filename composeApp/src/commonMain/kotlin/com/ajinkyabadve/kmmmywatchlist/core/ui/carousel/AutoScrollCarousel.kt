@@ -80,8 +80,28 @@ internal fun AutoScrollCarouselEffect(
         while (isActive) {
             delay(AutoScrollCarouselConstant.INTERVAL_MS)
             if (!state.isScrollInProgress) {
-                state.animateScrollToItem((state.currentItem + 1) % itemCount)
+                val itemBefore = state.currentItem
+                val target = (itemBefore + 1) % itemCount
+                state.animateScrollToItem(target)
+                if (shouldWrapToStart(itemBefore = itemBefore, itemAfter = state.currentItem, target = target)) {
+                    state.animateScrollToItem(0)
+                }
             }
         }
     }
 }
+
+/**
+ * True when an auto-advance to [target] didn't move the carousel, so it should go back to item 0.
+ *
+ * A multi-browse carousel shows several items at once, so the last few can never become
+ * [CarouselState.currentItem] - it runs out of room to scroll first. Advancing from there is a
+ * no-op, and the `% itemCount` wrap never triggers because `currentItem + 1` never reaches
+ * `itemCount`, leaving the carousel stuck at the end. [CarouselState] doesn't override
+ * `canScrollForward` (it's always `true`), so "the advance didn't move it" is the only signal.
+ */
+internal fun shouldWrapToStart(
+    itemBefore: Int,
+    itemAfter: Int,
+    target: Int,
+): Boolean = target != 0 && itemAfter == itemBefore
