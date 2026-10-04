@@ -32,6 +32,8 @@ fun StatusPill(
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
+        // A pill is a single-line label; wrapping breaks its shape.
+        maxLines = 1,
         color = if (highlighted) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier =
             modifier

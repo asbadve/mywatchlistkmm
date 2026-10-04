@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -43,6 +45,8 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
@@ -58,6 +62,7 @@ import com.ajinkyabadve.kmmmywatchlist.design.pill.StatusPill
 import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineEntryCard
 import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineSectionHeader
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.formatFullReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.MediaTypeBadge
@@ -89,27 +94,92 @@ import mywatchlist.composeapp.generated.resources.upcoming_view_details_button
 import org.jetbrains.compose.resources.stringResource
 
 private object UpcomingReleasesTabConstant {
-    // Matches AccountMediaGridConstant - the poster width the Favorites/Watchlist grid (the tabs
-    // right next to this one) already uses - for the Next-up spotlight, which is meant to be the
-    // single focal point of the screen.
-    const val NEXT_UP_POSTER_TARGET_WIDTH_DP = 150
-    val NEXT_UP_POSTER_WIDTH = 150.dp
-    val NEXT_UP_POSTER_HEIGHT = 225.dp
-
-    // Deliberately smaller than the Next-up poster above - a timeline row is a secondary, repeated
-    // element, and matching the spotlight's size here would compete with it instead of the row
-    // list reading as a scannable list underneath the one thing in focus. Same 2:3 poster ratio.
-    const val POSTER_TARGET_WIDTH_DP = 92
-    val POSTER_WIDTH = 64.dp
-    val POSTER_HEIGHT = 96.dp
+    const val NEXT_UP_TITLE_MAX_LINES = 2
 
     val EMPTY_STATE_ICON_SIZE = 48.dp
     const val DAYS_UNTIL_PLAIN_DATE_FALLBACK = 7
     val WEEKDAY_COLUMN_WIDTH = 44.dp
+    const val ROW_TITLE_MAX_LINES = 2
+    const val HEADER_ITEM_KEY = "header"
+
+    /** formatFullReleaseDate's "Oct 14, 2026" splits into day and year here. */
+    const val FULL_DATE_YEAR_SEPARATOR = ","
+
     val RIGHT_COLUMN_MAX_WIDTH = 360.dp
     const val TIMELINE_WEIGHT = 1.45f
     const val RIGHT_COLUMN_WEIGHT = 1f
     const val NEXT_UP_GRADIENT_ALPHA = 0.35f
+}
+
+/**
+ * Poster sizes and row shape per [WindowSize]. A phone keeps small posters and stacks each row's
+ * badge, title and countdown pill in one column, so the title isn't squeezed. Wider windows have
+ * room for bigger posters and the pill beside the title. Every poster is 2:3; [rowTargetWidthDp]
+ * and [nextUpTargetWidthDp] pick the TMDB image size to download.
+ */
+internal data class UpcomingLayoutSizes(
+    val rowPosterWidth: Dp,
+    val rowPosterHeight: Dp,
+    val rowTargetWidthDp: Int,
+    val nextUpPosterWidth: Dp,
+    val nextUpPosterHeight: Dp,
+    val nextUpTargetWidthDp: Int,
+    val stackedRows: Boolean,
+) {
+    /** A stacked row (badge+episode, title, pill) needs slightly more height than a phone's
+     *  poster alone; a side-by-side row is exactly as tall as its poster. */
+    val rowContentHeight: Dp
+        get() = if (stackedRows) maxOf(rowPosterHeight, STACKED_ROW_MIN_HEIGHT) else rowPosterHeight
+
+    companion object {
+        private val STACKED_ROW_MIN_HEIGHT = 104.dp
+
+        // Phone: the Next-up poster sits between the grid's 150dp and a row's - the full grid
+        // size made the card take most of a small screen.
+        private val COMPACT =
+            UpcomingLayoutSizes(
+                rowPosterWidth = 64.dp,
+                rowPosterHeight = 96.dp,
+                rowTargetWidthDp = 92,
+                nextUpPosterWidth = 96.dp,
+                nextUpPosterHeight = 144.dp,
+                nextUpTargetWidthDp = 96,
+                stackedRows = true,
+            )
+
+        // Unfolded foldable / small tablet: still a single column, but wide enough for bigger
+        // posters and the countdown pill beside the title.
+        private val MEDIUM =
+            UpcomingLayoutSizes(
+                rowPosterWidth = 80.dp,
+                rowPosterHeight = 120.dp,
+                rowTargetWidthDp = 120,
+                nextUpPosterWidth = 128.dp,
+                nextUpPosterHeight = 192.dp,
+                nextUpTargetWidthDp = 150,
+                stackedRows = false,
+            )
+
+        // Tablet / desktop: the Next-up spotlight matches the Favorites/Watchlist grid's 150dp
+        // poster (AccountMediaGridConstant); rows stay smaller so the spotlight stays the focus.
+        private val EXPANDED =
+            UpcomingLayoutSizes(
+                rowPosterWidth = 88.dp,
+                rowPosterHeight = 132.dp,
+                rowTargetWidthDp = 132,
+                nextUpPosterWidth = 150.dp,
+                nextUpPosterHeight = 225.dp,
+                nextUpTargetWidthDp = 150,
+                stackedRows = false,
+            )
+
+        fun forWindowSize(windowSize: WindowSize): UpcomingLayoutSizes =
+            when (windowSize) {
+                WindowSize.COMPACT -> COMPACT
+                WindowSize.MEDIUM -> MEDIUM
+                WindowSize.EXPANDED -> EXPANDED
+            }
+    }
 }
 
 /** All / Movie / TV - a closed set, driving [scrollableChips] over the already-loaded list. */
@@ -146,8 +216,10 @@ fun UpcomingReleasesTab(
     showReminderControls: Boolean = isMobilePlatform(),
 ) {
     val upcomingItems by viewModel.upcomingItems.collectAsState(initial = emptyList())
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     Column(modifier = modifier.fillMaxSize()) {
+        if (isRefreshing) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         if (upcomingItems.isEmpty()) {
             UpcomingReleasesEmptyState()
         } else {
@@ -186,6 +258,7 @@ fun UpcomingReleasesTab(
                 }
             }
 
+            val sizes = UpcomingLayoutSizes.forWindowSize(windowSize)
             if (windowSize.isExpanded()) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(modifier = Modifier.weight(UpcomingReleasesTabConstant.TIMELINE_WEIGHT).fillMaxHeight()) {
@@ -198,6 +271,7 @@ fun UpcomingReleasesTab(
                             showBell = showReminderControls,
                             remindedKeys = remindedKeys,
                             onToggleReminder = onToggleReminder,
+                            sizes = sizes,
                             modifier = Modifier.weight(1f),
                             onMovieSelected = onMovieSelected,
                             onTvSelected = onTvSelected,
@@ -217,6 +291,7 @@ fun UpcomingReleasesTab(
                                 item = item,
                                 today = today,
                                 expanded = true,
+                                sizes = sizes,
                                 showReminderControls = showReminderControls,
                                 isReminderSet = item.reminderKey() in remindedKeys,
                                 onToggleReminder = { onToggleReminder(item) },
@@ -228,20 +303,25 @@ fun UpcomingReleasesTab(
                 }
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    nextUpItem?.let { item ->
-                        NextUpCard(
-                            item = item,
-                            today = today,
-                            expanded = false,
-                            showReminderControls = showReminderControls,
-                            isReminderSet = item.reminderKey() in remindedKeys,
-                            onToggleReminder = { onToggleReminder(item) },
-                            onClick = { onItemClick(item) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        )
-                    }
-                    UpcomingFilterChips(selectedFilter = selectedFilter, onSelect = { selectedFilter = it })
                     UpcomingTimelineList(
+                        // Scrolls away with the rows rather than staying pinned above them: on a
+                        // small phone a pinned card + chips left room for about one and a half rows.
+                        header = {
+                            nextUpItem?.let { item ->
+                                NextUpCard(
+                                    item = item,
+                                    today = today,
+                                    expanded = false,
+                                    sizes = sizes,
+                                    showReminderControls = showReminderControls,
+                                    isReminderSet = item.reminderKey() in remindedKeys,
+                                    onToggleReminder = { onToggleReminder(item) },
+                                    onClick = { onItemClick(item) },
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            }
+                            UpcomingFilterChips(selectedFilter = selectedFilter, onSelect = { selectedFilter = it })
+                        },
                         groupedByMonth = groupedByMonth,
                         today = today,
                         nextUpItem = nextUpItem,
@@ -249,6 +329,7 @@ fun UpcomingReleasesTab(
                         showBell = showReminderControls,
                         remindedKeys = remindedKeys,
                         onToggleReminder = onToggleReminder,
+                        sizes = sizes,
                         modifier = Modifier.weight(1f),
                         onMovieSelected = onMovieSelected,
                         onTvSelected = onTvSelected,
@@ -289,11 +370,16 @@ private fun UpcomingTimelineList(
     showBell: Boolean,
     remindedKeys: Set<ReminderKey>,
     onToggleReminder: (UpcomingMediaItem) -> Unit,
+    sizes: UpcomingLayoutSizes,
     modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
     onMovieSelected: (Long) -> Unit = {},
     onTvSelected: (Long) -> Unit = {},
 ) {
     LazyColumn(state = lazyListState, modifier = modifier.fillMaxWidth()) {
+        if (header != null) {
+            item(key = UpcomingReleasesTabConstant.HEADER_ITEM_KEY) { Column { header() } }
+        }
         groupedByMonth.forEach { (monthKey, itemsForMonth) ->
             item(key = "month:${monthKey.first}-${monthKey.second}") {
                 UpcomingMonthHeader(year = monthKey.first, monthNumber = monthKey.second)
@@ -311,6 +397,7 @@ private fun UpcomingTimelineList(
                     showBell = showBell,
                     isReminderSet = item.reminderKey() in remindedKeys,
                     onToggleReminder = { onToggleReminder(item) },
+                    sizes = sizes,
                     onClick = {
                         if (item.mediaType == MediaTypeConstant.TV) {
                             onTvSelected(item.id.toLong())
@@ -340,6 +427,7 @@ private fun UpcomingMediaRow(
     showBell: Boolean,
     isReminderSet: Boolean,
     onToggleReminder: () -> Unit,
+    sizes: UpcomingLayoutSizes,
     onClick: () -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -347,11 +435,11 @@ private fun UpcomingMediaRow(
         ImageConfigResolver.resolve(
             path = item.posterPath,
             type = ImageConfigResolver.ImageType.POSTER,
-            targetWidthDp = UpcomingReleasesTabConstant.POSTER_TARGET_WIDTH_DP,
+            targetWidthDp = sizes.rowTargetWidthDp,
             density = density,
         )
     TimelineEntryCard(
-        contentHeight = UpcomingReleasesTabConstant.POSTER_HEIGHT,
+        contentHeight = sizes.rowContentHeight,
         highlighted = isNextUp,
         onClick = onClick,
     ) {
@@ -383,24 +471,62 @@ private fun UpcomingMediaRow(
                     // Modifier.size(dp) sets both dimensions - a trailing .size(POSTER_HEIGHT)
                     // after .width(POSTER_WIDTH) silently overrode the width, squaring the poster
                     // instead of the intended portrait shape.
-                    .width(UpcomingReleasesTabConstant.POSTER_WIDTH)
-                    .height(UpcomingReleasesTabConstant.POSTER_HEIGHT)
+                    .width(sizes.rowPosterWidth)
+                    .height(sizes.rowPosterHeight)
                     .clip(RoundedCornerShape(8.dp)),
         )
-        Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-            MediaTypeBadge(mediaType = item.toSearchMediaType(), modifier = Modifier.padding(bottom = 4.dp))
-            Text(text = item.title, style = MaterialTheme.typography.titleSmall)
-            val seasonNumber = item.seasonNumber
-            val episodeNumber = item.episodeNumber
+        val seasonNumber = item.seasonNumber
+        val episodeNumber = item.episodeNumber
+        val episodeLabel =
             if (seasonNumber != null && episodeNumber != null) {
-                Text(
-                    text = stringResource(Res.string.upcoming_episode_label, seasonNumber, episodeNumber),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                stringResource(Res.string.upcoming_episode_label, seasonNumber, episodeNumber)
+            } else {
+                null
             }
+        if (sizes.stackedRows) {
+            // A phone is too narrow for poster + title + a trailing pill + bell side by side (the
+            // title column shrank to one letter per line), so the pill moves under the title and
+            // the episode label beside the badge.
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MediaTypeBadge(mediaType = item.toSearchMediaType())
+                    if (episodeLabel != null) {
+                        Text(
+                            text = episodeLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = UpcomingReleasesTabConstant.ROW_TITLE_MAX_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
+                StatusPill(text = formatUpcomingDateLabel(item.date, today), highlighted = isNextUp)
+            }
+        } else {
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                MediaTypeBadge(mediaType = item.toSearchMediaType(), modifier = Modifier.padding(bottom = 4.dp))
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = UpcomingReleasesTabConstant.ROW_TITLE_MAX_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (episodeLabel != null) {
+                    Text(
+                        text = episodeLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            UpcomingCountdownPill(date = item.date, today = today, highlighted = isNextUp)
         }
-        UpcomingCountdownPill(date = item.date, today = today, highlighted = isNextUp)
         if (showBell) {
             ReminderBellButton(isSet = isReminderSet, emphasized = isNextUp, onClick = onToggleReminder)
         }
@@ -451,6 +577,7 @@ private fun NextUpCard(
     item: UpcomingMediaItem,
     today: LocalDate,
     expanded: Boolean,
+    sizes: UpcomingLayoutSizes,
     showReminderControls: Boolean,
     isReminderSet: Boolean,
     onToggleReminder: () -> Unit,
@@ -462,11 +589,11 @@ private fun NextUpCard(
         ImageConfigResolver.resolve(
             path = item.posterPath,
             type = ImageConfigResolver.ImageType.POSTER,
-            targetWidthDp = UpcomingReleasesTabConstant.NEXT_UP_POSTER_TARGET_WIDTH_DP,
+            targetWidthDp = sizes.nextUpTargetWidthDp,
             density = density,
         )
 
-    Row(
+    Column(
         modifier =
             modifier
                 .fillMaxWidth()
@@ -479,67 +606,77 @@ private fun NextUpCard(
                         ),
                     ),
                 ).clickable(onClick = onClick)
-                .padding(16.dp),
-        verticalAlignment = Alignment.Top,
+                .padding(if (expanded) 16.dp else 12.dp),
     ) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            filterQuality = FilterQuality.Medium,
-            modifier =
-                Modifier
-                    .width(UpcomingReleasesTabConstant.NEXT_UP_POSTER_WIDTH)
-                    .height(UpcomingReleasesTabConstant.NEXT_UP_POSTER_HEIGHT)
-                    .clip(RoundedCornerShape(12.dp)),
-        )
-        Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
-            Text(
-                text = stringResource(Res.string.upcoming_next_up_label).uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+        Row(verticalAlignment = Alignment.Top) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                filterQuality = FilterQuality.Medium,
+                modifier =
+                    Modifier
+                        .width(sizes.nextUpPosterWidth)
+                        .height(sizes.nextUpPosterHeight)
+                        .clip(RoundedCornerShape(12.dp)),
             )
-            Text(
-                text = item.title,
-                style = if (expanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
-            )
-            val seasonNumber = item.seasonNumber
-            val episodeNumber = item.episodeNumber
-            if (seasonNumber != null && episodeNumber != null) {
+            Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
                 Text(
-                    text = stringResource(Res.string.upcoming_episode_label, seasonNumber, episodeNumber),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = stringResource(Res.string.upcoming_next_up_label).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
                 )
-            }
-            Text(
-                text = formatUpcomingDateLabel(item.date, today),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            if (expanded) {
-                Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onClick) {
-                        Text(stringResource(Res.string.upcoming_view_details_button))
-                    }
-                    if (showReminderControls) {
-                        OutlinedButton(onClick = onToggleReminder) {
-                            Text(
-                                stringResource(if (isReminderSet) Res.string.action_reminder_set else Res.string.upcoming_remind_me_button),
-                            )
-                        }
+                Text(
+                    text = item.title,
+                    style = if (expanded) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+                    maxLines = UpcomingReleasesTabConstant.NEXT_UP_TITLE_MAX_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val seasonNumber = item.seasonNumber
+                val episodeNumber = item.episodeNumber
+                if (seasonNumber != null && episodeNumber != null) {
+                    Text(
+                        text = stringResource(Res.string.upcoming_episode_label, seasonNumber, episodeNumber),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // The compact card's bell sits on the date's line rather than in a trailing column of
+                // its own, which would take width the title needs on a phone.
+                Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = formatUpcomingDateLabel(item.date, today),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (!expanded && showReminderControls) {
+                        ReminderBellButton(isSet = isReminderSet, emphasized = true, onClick = onToggleReminder)
                     }
                 }
             }
         }
-        if (!expanded && showReminderControls) {
-            ReminderBellButton(
-                isSet = isReminderSet,
-                emphasized = true,
-                onClick = onToggleReminder,
-                modifier = Modifier.align(Alignment.CenterVertically),
-            )
+        if (expanded) {
+            // Below the poster at the card's full width, not in the text column beside it: next
+            // to a 150dp poster that column is too narrow for both buttons at the smallest
+            // expanded width, and their labels were cut off.
+            FlowRow(
+                modifier = Modifier.padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = onClick) {
+                    Text(stringResource(Res.string.upcoming_view_details_button), maxLines = 1)
+                }
+                if (showReminderControls) {
+                    OutlinedButton(onClick = onToggleReminder) {
+                        Text(
+                            stringResource(if (isReminderSet) Res.string.action_reminder_set else Res.string.upcoming_remind_me_button),
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -615,7 +752,12 @@ private fun formatUpcomingDateLabel(
         UpcomingDateLabel.Today -> stringResource(Res.string.upcoming_today)
         UpcomingDateLabel.Tomorrow -> stringResource(Res.string.upcoming_tomorrow)
         is UpcomingDateLabel.InDays -> stringResource(Res.string.upcoming_in_days, label.days)
-        is UpcomingDateLabel.PlainDate -> label.date.toString()
+        // "Oct 14", plus the year only when it isn't this year - the raw ISO date was too wide for
+        // a phone row's pill and wrapped onto two lines.
+        is UpcomingDateLabel.PlainDate -> {
+            val full = formatFullReleaseDate(label.date.toString())
+            if (label.date.year == today.year) full.substringBefore(UpcomingReleasesTabConstant.FULL_DATE_YEAR_SEPARATOR) else full
+        }
     }
 
 @Composable

@@ -1,11 +1,18 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeReminderScheduler
@@ -25,6 +32,7 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class UpcomingReleasesTabUiTest {
@@ -410,10 +418,98 @@ class UpcomingReleasesTabUiTest {
             waitUntil { onAllNodesWithContentDescription(REMINDER_SET_DESCRIPTION).fetchSemanticsNodes().isNotEmpty() }
         }
 
+    @Test
+    fun testCompactPhoneWidth_titlesKeepAReadableWidthWithBellsShown() =
+        runComposeUiTest {
+            val fakeTrackedMediaRepository =
+                FakeTrackedMediaRepository().apply {
+                    seedUpcoming(
+                        listOf(
+                            UpcomingMediaItem(
+                                id = BELL_MOVIE_ID,
+                                mediaType = MediaTypeConstant.MOVIE,
+                                title = LONG_TITLE,
+                                posterPath = null,
+                                date = LocalDate(2099, 1, 1),
+                                dateKind = UpcomingDateKind.MOVIE_RELEASE,
+                            ),
+                        ),
+                    )
+                }
+            val releaseReminderRepository = FakeReleaseReminderRepository()
+            val viewModel =
+                UpcomingReleasesScreenModel(
+                    trackedMediaRepository = fakeTrackedMediaRepository,
+                    tvDetailCacheRepository = FakeTvDetailCacheRepository(),
+                    releaseReminderRepository = releaseReminderRepository,
+                    releaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository, FakeReminderScheduler()),
+                    notificationJobSync =
+                        NotificationJobSync(
+                            notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                            releaseReminderRepository = releaseReminderRepository,
+                            scheduleJob = {},
+                            cancelJob = {},
+                        ),
+                )
+
+            setContent {
+                // A 360dp phone - the width at which the old row squeezed its title to one letter
+                // per line beside the trailing countdown pill and bell.
+                Box(modifier = Modifier.width(PHONE_WIDTH)) {
+                    UpcomingReleasesTab(windowSize = WindowSize.COMPACT, viewModel = viewModel, showReminderControls = true)
+                }
+            }
+
+            val titles = onAllNodesWithText(LONG_TITLE)
+            titles.assertCountEquals(2) // Next-up card + timeline row
+            repeat(2) { index -> assertTrue(titles[index].getBoundsInRoot().width >= MIN_TITLE_WIDTH) }
+            // A date more than a week out reads "Jan 1, 2099" (year shown: not this year), not raw ISO.
+            onAllNodesWithText(FAR_DATE_LABEL).assertCountEquals(2) // Next-up card + timeline row
+        }
+
+    @Test
+    fun testMediumWidth_putsTheCountdownPillBesideTheTitle() =
+        runComposeUiTest {
+            val fakeTrackedMediaRepository =
+                FakeTrackedMediaRepository().apply {
+                    seedUpcoming(
+                        listOf(
+                            UpcomingMediaItem(
+                                id = BELL_MOVIE_ID,
+                                mediaType = MediaTypeConstant.MOVIE,
+                                title = LONG_TITLE,
+                                posterPath = null,
+                                date = LocalDate(2099, 1, 1),
+                                dateKind = UpcomingDateKind.MOVIE_RELEASE,
+                            ),
+                        ),
+                    )
+                }
+
+            setContent {
+                Box(modifier = Modifier.width(MEDIUM_WIDTH)) {
+                    UpcomingReleasesTab(
+                        windowSize = WindowSize.MEDIUM,
+                        viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, FakeTvDetailCacheRepository()),
+                    )
+                }
+            }
+
+            // Index 1: the timeline row (index 0 is the Next-up card).
+            val title = onAllNodesWithText(LONG_TITLE, useUnmergedTree = true)[1].getBoundsInRoot()
+            val pill = onAllNodesWithText(FAR_DATE_LABEL, useUnmergedTree = true)[1].getBoundsInRoot()
+            assertTrue(pill.left >= title.right)
+        }
+
     private companion object {
         const val BELL_MOVIE_ID = 77
         const val BELL_MOVIE_TITLE = "Bell Movie"
         const val REMIND_ME_DESCRIPTION = "Remind me"
         const val REMINDER_SET_DESCRIPTION = "Reminder set - tap to remove"
+        const val LONG_TITLE = "Slow Horses"
+        const val FAR_DATE_LABEL = "Jan 1, 2099"
+        val PHONE_WIDTH = 360.dp
+        val MEDIUM_WIDTH = 700.dp
+        val MIN_TITLE_WIDTH = 80.dp
     }
 }

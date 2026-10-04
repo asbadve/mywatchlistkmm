@@ -22,17 +22,33 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+
+private object UpcomingReleasesScreenModelConstant {
+    /** Season fetches run at most this many at a time, so a big watchlist doesn't fire dozens of
+     *  TMDB requests at once. */
+    const val MAX_PARALLEL_SEASON_REFRESHES = 4
+}
 
 /**
  * MyFavTabs' "Upcoming" tab (future_features_checklist.md item 18) - lists every tracked movie not
@@ -48,13 +64,49 @@ import kotlinx.datetime.todayIn
  * accepted v1 gap, not a bug.
  */
 class UpcomingReleasesScreenModel(
-    trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
-    tvDetailCacheRepository: TvDetailCacheRepository = TvDetailCacheRepositoryImpl(),
+    private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
+    private val tvDetailCacheRepository: TvDetailCacheRepository = TvDetailCacheRepositoryImpl(),
     releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
     private val releaseReminderCoordinator: ReleaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository),
     private val notificationJobSync: NotificationJobSync = NotificationJobSync(releaseReminderRepository = releaseReminderRepository),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
+    private var refreshJob: Job? = null
+
+    private val _isRefreshing = MutableStateFlow(false)
+
+    /** True while [refresh] is syncing from TMDB - the list itself updates live as rows land. */
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    /**
+     * Pulls fresh data from TMDB so the tab reflects the account without the user first opening
+     * the Favorites/Watchlist grids or each show's page: re-syncs favorites/watchlist, then the
+     * newest seasons of every tracked show. Everything this tab renders is a live database read,
+     * so it simply re-renders as the sync writes rows. A refresh already in flight is not started
+     * again.
+     */
+    fun refresh(
+        accountId: Long,
+        sessionId: String,
+    ) {
+        if (refreshJob?.isActive == true) return
+        refreshJob =
+            viewModelScope.launch {
+                _isRefreshing.value = true
+                try {
+                    trackedMediaRepository.refreshAll(accountId, sessionId)
+                    val shows = trackedMediaRepository.observeTrackedTvShows().first()
+                    val limit = Semaphore(UpcomingReleasesScreenModelConstant.MAX_PARALLEL_SEASON_REFRESHES)
+                    coroutineScope {
+                        shows
+                            .map { show -> async { limit.withPermit { tvDetailCacheRepository.refreshLatestSeasons(show.id.toLong()) } } }
+                            .awaitAll()
+                    }
+                } finally {
+                    _isRefreshing.value = false
+                }
+            }
+    }
 
     /** Which rows have a release reminder set (checklist item 16), for the bells' set state. */
     val remindedKeys: Flow<Set<ReminderKey>> = releaseReminderRepository.observeReminderKeys()

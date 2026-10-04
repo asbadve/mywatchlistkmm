@@ -1,10 +1,14 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.repository
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.createTestDatabase
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
+import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchPageResult
+import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
+import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -253,9 +257,48 @@ class TrackedMediaRepositoryImplTest {
             assertTrue(repository.observeUpcoming().first().isEmpty())
         }
 
+    @Test
+    fun testRefreshAll_writesEverySliceAndDropsTitlesRemovedOnTmdb() =
+        runTest {
+            val database = createTestDatabase()
+            seedMovie(database, id = REMOVED_ID, title = "Unfavorited elsewhere", releaseDate = NEAR_FUTURE_DATE)
+            val fake =
+                FakeAccountMediaRepository().apply {
+                    favoriteMoviesResult = Result.success(page(SearchResultItem(id = FAVORITE_MOVIE_ID, title = "New favorite")))
+                    watchlistTvResult = Result.success(page(SearchResultItem(id = WATCHLIST_TV_ID, title = "New show")))
+                }
+
+            repository(database, fake).refreshAll(ACCOUNT_ID, SESSION_ID)
+
+            val queries = database.myDatabaseQueries
+            val favoriteMovies = queries.selectByCategoryPaged("favorite", MediaTypeConstant.MOVIE, PAGE_LIMIT, 0).awaitAsList()
+            assertEquals(listOf(FAVORITE_MOVIE_ID.toLong()), favoriteMovies.map { it.id })
+            val watchlistTv = queries.selectByCategoryPaged("watchlist", MediaTypeConstant.TV, PAGE_LIMIT, 0).awaitAsList()
+            assertEquals(listOf(WATCHLIST_TV_ID.toLong()), watchlistTv.map { it.id })
+        }
+
+    @Test
+    fun testRefreshAll_networkFailureKeepsTheCachedRows() =
+        runTest {
+            val database = createTestDatabase()
+            seedMovie(database, id = REMOVED_ID, title = "Cached favorite", releaseDate = NEAR_FUTURE_DATE)
+            val fake = FakeAccountMediaRepository().apply { favoriteMoviesResult = Result.failure(IOException("offline")) }
+
+            repository(database, fake).refreshAll(ACCOUNT_ID, SESSION_ID)
+
+            val rows = database.myDatabaseQueries.selectByCategoryPaged("favorite", MediaTypeConstant.MOVIE, PAGE_LIMIT, 0).awaitAsList()
+            assertEquals(listOf(REMOVED_ID), rows.map { it.id })
+        }
+
+    private fun page(item: SearchResultItem) = SearchPageResult(page = 1, list = listOf(item), totalPages = 1)
+
     private companion object {
         const val ACCOUNT_ID = 1L
         const val SESSION_ID = "session"
+        const val REMOVED_ID = 7L
+        const val FAVORITE_MOVIE_ID = 11
+        const val WATCHLIST_TV_ID = 22
+        const val PAGE_LIMIT = 100L
 
         // Comfortably past/future relative to whenever this test actually runs, so
         // observeUpcoming's real Clock.System.todayIn(...) comparison never flakes.

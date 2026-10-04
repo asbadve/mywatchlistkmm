@@ -140,4 +140,13 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
     }
 
     override fun observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>> = trackedTvShowsFlow
+
+    val refreshAllCalls = mutableListOf<Pair<Long, String>>()
+
+    override suspend fun refreshAll(
+        accountId: Long,
+        sessionId: String,
+    ) {
+        refreshAllCalls.add(accountId to sessionId)
+    }
 }

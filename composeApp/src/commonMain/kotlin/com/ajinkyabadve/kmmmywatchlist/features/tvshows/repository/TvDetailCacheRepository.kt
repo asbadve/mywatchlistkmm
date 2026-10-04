@@ -31,6 +31,10 @@ import mywatchlist.composeapp.generated.resources.error_unexpected_tv_details
 
 private object TvDetailCacheRepositoryConstant {
     const val TAG = "TvDetailCacheRepository"
+
+    /** The latest season, plus the one before it - a new season is sometimes listed (with dates)
+     *  while the previous one is still airing. */
+    const val UPCOMING_SEASON_COUNT = 2
 }
 
 /**
@@ -51,6 +55,14 @@ interface TvDetailCacheRepository {
     /** Cache-first, network-backed - see [NetworkBoundResource]'s kdoc for the Loading/Success/
      *  Error shape and its "keep showing cached data through a failed refresh" behavior. */
     fun getTvDetail(tvId: Long): Flow<Resource<Pair<TvDetail, Map<Int, TvSeasonDetail>>>>
+
+    /**
+     * Fetches the show plus only its newest seasons and writes them to the cache - where every
+     * not-yet-aired episode lives - for screens that list upcoming episodes without the user having
+     * opened the show (the "Upcoming" tab). Far cheaper than [getTvDetail]'s every-season fetch for
+     * a long-running show. Network failures are logged and leave the cache as it was.
+     */
+    suspend fun refreshLatestSeasons(tvId: Long)
 }
 
 class TvDetailCacheRepositoryImpl(
@@ -110,21 +122,68 @@ class TvDetailCacheRepositoryImpl(
 
             override suspend fun saveCallResult(item: Pair<TvDetail, Map<Int, TvSeasonDetail>>) {
                 val (detail, seasons) = item
-                val queries = databaseProvider().myDatabaseQueries
-                val now = Clock.System.now().toEpochMilliseconds()
-                queries.upsertTvDetailCache(id = tvId, json = Json.encodeToString(TvDetail.serializer(), detail), lastSyncedAt = now)
-                seasons.forEach { (seasonNumber, season) ->
-                    queries.upsertTvSeasonDetailCache(
-                        tvId = tvId,
-                        seasonNumber = seasonNumber.toLong(),
-                        json = Json.encodeToString(TvSeasonDetail.serializer(), season),
-                        lastSyncedAt = now,
-                    )
-                }
+                saveToCache(tvId, detail, seasons)
             }
 
             override fun malformedResponseMessage(): UiText = UiText.Resource(Res.string.error_unexpected_tv_details)
         }.asFlow()
+
+    override suspend fun refreshLatestSeasons(tvId: Long) {
+        val detail =
+            try {
+                tvRepository.getTvDetails(tvId)
+            } catch (e: HttpExceptions) {
+                logDetailFailure(tvId, e)
+                return
+            } catch (e: IOException) {
+                logDetailFailure(tvId, e)
+                return
+            } catch (e: ContentConvertException) {
+                logDetailFailure(tvId, e)
+                return
+            } catch (e: SerializationException) {
+                logDetailFailure(tvId, e)
+                return
+            }
+        // Season 0 is "Specials" - never where a show's next episodes are.
+        val latestSeasonNumbers =
+            detail.seasons
+                ?.map { it.seasonNumber }
+                ?.filter { it > 0 }
+                ?.sortedDescending()
+                ?.take(TvDetailCacheRepositoryConstant.UPCOMING_SEASON_COUNT)
+                .orEmpty()
+        val seasons = latestSeasonNumbers.mapNotNull { seasonNumber -> fetchSeason(tvId, seasonNumber)?.let { seasonNumber to it } }.toMap()
+        saveToCache(tvId, detail, seasons)
+    }
+
+    private suspend fun saveToCache(
+        tvId: Long,
+        detail: TvDetail,
+        seasons: Map<Int, TvSeasonDetail>,
+    ) {
+        val queries = databaseProvider().myDatabaseQueries
+        val now = Clock.System.now().toEpochMilliseconds()
+        queries.upsertTvDetailCache(id = tvId, json = Json.encodeToString(TvDetail.serializer(), detail), lastSyncedAt = now)
+        seasons.forEach { (seasonNumber, season) ->
+            queries.upsertTvSeasonDetailCache(
+                tvId = tvId,
+                seasonNumber = seasonNumber.toLong(),
+                json = Json.encodeToString(TvSeasonDetail.serializer(), season),
+                lastSyncedAt = now,
+            )
+        }
+    }
+
+    private fun logDetailFailure(
+        tvId: Long,
+        throwable: Throwable,
+    ) {
+        Napier.e(
+            tag = TvDetailCacheRepositoryConstant.TAG,
+            throwable = throwable,
+        ) { "Failed to refresh tvId: $tvId - keeping any cached value" }
+    }
 
     /** A season that fails to fetch is simply absent from [fetchFromNetwork]'s result map, so
      *  [saveCallResult] never overwrites (or deletes) whatever was already cached for it -

@@ -43,6 +43,12 @@ class FakeTvDetailCacheRepository : TvDetailCacheRepository {
 
     override fun observeSeasons(tvId: Long): Flow<Map<Int, TvSeasonDetail>> = seasonsFlowFor(tvId)
 
+    val refreshLatestSeasonsCalls = mutableListOf<Long>()
+
+    override suspend fun refreshLatestSeasons(tvId: Long) {
+        refreshLatestSeasonsCalls.add(tvId)
+    }
+
     override fun getTvDetail(tvId: Long): Flow<Resource<Pair<TvDetail, Map<Int, TvSeasonDetail>>>> =
         flow {
             getTvDetailCalls.add(tvId)

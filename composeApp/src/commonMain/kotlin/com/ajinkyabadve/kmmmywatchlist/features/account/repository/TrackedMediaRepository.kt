@@ -12,11 +12,16 @@ import app.cash.sqldelight.paging3.QueryPagingSource
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.db.AppDatabaseProvider
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
+import com.ajinkyabadve.kmmmywatchlist.db.MyDatabaseQueries
 import com.ajinkyabadve.kmmmywatchlist.db.SelectUpcomingTrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
+import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
+import io.github.aakira.napier.Napier
+import io.ktor.serialization.ContentConvertException
+import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -26,6 +31,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import kotlinx.serialization.SerializationException
 
 private object TrackedMediaConstant {
     const val CATEGORY_FAVORITE = "favorite"
@@ -34,6 +40,10 @@ private object TrackedMediaConstant {
     // TMDB's page size is fixed (not configurable via the API) - matching it exactly means each
     // RemoteMediator fetch lines up with one local Paging window instead of a partial one.
     const val PAGE_SIZE = 20
+
+    /** How many pages per favorites/watchlist slice [TrackedMediaRepository.refreshAll] fetches -
+     *  enough for any real account (20 per page), bounded so one visit can't fan out unbounded. */
+    const val REFRESH_MAX_PAGES = 10
 }
 
 /** One TV show's poll-relevant state, as read by [TrackedMediaRepository.trackedTvForPolling]. */
@@ -179,6 +189,18 @@ interface TrackedMediaRepository {
      * `NetworkOnlyTrackedMediaRepositoryImpl`'s kdoc.
      */
     fun observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>>
+
+    /**
+     * Re-syncs every favorites/watchlist slice from TMDB into the local table, so screens that only
+     * read the table (the "Upcoming" tab) see changes without the user first opening the paged
+     * Favorites/Watchlist grids. Writes exactly what the grids' `TrackedMediaRemoteMediator` writes.
+     * A slice is only pruned of removed titles when all its pages were fetched; on any network
+     * failure the slice keeps whatever it already had.
+     */
+    suspend fun refreshAll(
+        accountId: Long,
+        sessionId: String,
+    )
 }
 
 /**
@@ -351,6 +373,99 @@ internal class SqliteTrackedMediaRepositoryImpl(
                     .map { rows -> rows.map { TrackedTvShowSummary(id = it.id.toInt(), title = it.title, posterPath = it.posterPath) } },
             )
         }
+
+    override suspend fun refreshAll(
+        accountId: Long,
+        sessionId: String,
+    ) {
+        val queries = databaseProvider().myDatabaseQueries
+        AccountMediaCategory.entries.forEach { category ->
+            listOf(SearchMediaType.MOVIE, SearchMediaType.TV).forEach { mediaType ->
+                refreshSlice(queries, category, mediaType, accountId, sessionId)
+            }
+        }
+    }
+
+    private suspend fun refreshSlice(
+        queries: MyDatabaseQueries,
+        category: AccountMediaCategory,
+        mediaType: SearchMediaType,
+        accountId: Long,
+        sessionId: String,
+    ) {
+        val items = mutableListOf<SearchResultItem>()
+        var page = 1
+        var totalPages: Int
+        try {
+            do {
+                val response = fetchAccountPage(category, mediaType, accountId, sessionId, page)
+                items += response.list.orEmpty()
+                totalPages = response.totalPages ?: page
+                page++
+            } while (page <= totalPages && page <= TrackedMediaConstant.REFRESH_MAX_PAGES)
+        } catch (e: HttpExceptions) {
+            logRefreshFailure(category, mediaType, e)
+            return
+        } catch (e: IOException) {
+            logRefreshFailure(category, mediaType, e)
+            return
+        } catch (e: ContentConvertException) {
+            logRefreshFailure(category, mediaType, e)
+            return
+        } catch (e: SerializationException) {
+            logRefreshFailure(category, mediaType, e)
+            return
+        }
+        val fetchedEverything = page > totalPages
+        val now = Clock.System.now().toEpochMilliseconds()
+        queries.transaction {
+            if (fetchedEverything) queries.deleteTrackedMediaPagedRefresh(category.storageValue, mediaType.apiValue)
+            items.forEach { item ->
+                queries.upsertTrackedMedia(
+                    id = item.id.toLong(),
+                    mediaType = mediaType.apiValue,
+                    category = category.storageValue,
+                    title = item.displayTitle,
+                    posterPath = item.imagePath,
+                    releaseDate = item.releaseDate ?: item.firstAirDate,
+                    voteAverage = item.voteAverage,
+                    addedAt = now,
+                    lastSyncedAt = now,
+                )
+            }
+        }
+    }
+
+    private suspend fun fetchAccountPage(
+        category: AccountMediaCategory,
+        mediaType: SearchMediaType,
+        accountId: Long,
+        sessionId: String,
+        page: Int,
+    ) = when (category) {
+        AccountMediaCategory.FAVORITES ->
+            if (mediaType == SearchMediaType.TV) {
+                accountMediaRepository.getFavoriteTv(accountId, sessionId, page)
+            } else {
+                accountMediaRepository.getFavoriteMovies(accountId, sessionId, page)
+            }
+        AccountMediaCategory.WATCHLIST ->
+            if (mediaType == SearchMediaType.TV) {
+                accountMediaRepository.getWatchlistTv(accountId, sessionId, page)
+            } else {
+                accountMediaRepository.getWatchlistMovies(accountId, sessionId, page)
+            }
+    }
+
+    private fun logRefreshFailure(
+        category: AccountMediaCategory,
+        mediaType: SearchMediaType,
+        throwable: Throwable,
+    ) {
+        Napier.e(tag = TRACKED_MEDIA_REFRESH_TAG, throwable = throwable) {
+            "Failed to refresh ${category.storageValue}/${mediaType.apiValue} - keeping the cached rows"
+        }
+    }
 }
 
 internal val AccountMediaCategory.storageValue: String
@@ -393,3 +508,5 @@ private fun TrackedMedia.toSearchResultItem(): SearchResultItem =
             voteAverage = voteAverage,
         )
     }
+
+private const val TRACKED_MEDIA_REFRESH_TAG = "TrackedMediaRefresh"

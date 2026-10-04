@@ -95,6 +95,12 @@ internal class NetworkOnlyTrackedMediaRepositoryImpl(
     // No local table to enumerate on web - same reasoning as trackedTvForPolling above.
     override fun observeTrackedTvShows(): Flow<List<TrackedTvShowSummary>> = flowOf(emptyList())
 
+    // No local table to refresh into on the web target.
+    override suspend fun refreshAll(
+        accountId: Long,
+        sessionId: String,
+    ) = Unit
+
     private suspend fun fetchPage(
         category: AccountMediaCategory,
         mediaType: SearchMediaType,

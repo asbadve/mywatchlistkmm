@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -105,17 +106,23 @@ fun MyFavTabs(
             onTabSelected = onTabSelected,
         )
         when (tabs[selectedIndex]) {
-            MyFavTab.Upcoming ->
+            MyFavTab.Upcoming -> {
+                val upcomingViewModel =
+                    viewModel(key = "UpcomingReleases:${session.accountId}") {
+                        UpcomingReleasesScreenModel(trackedMediaRepository ?: TrackedMediaRepositoryImpl())
+                    }
+                // Every time the tab is shown: favorites/watchlist changes made elsewhere (another
+                // device, the TMDB site, a title favorited from a detail screen) aren't in the
+                // local table until something syncs it, and this tab only reads that table.
+                LaunchedEffect(upcomingViewModel) { upcomingViewModel.refresh(session.accountId, session.sessionId) }
                 UpcomingReleasesTab(
                     windowSize = windowSize,
-                    viewModel =
-                        viewModel(key = "UpcomingReleases:${session.accountId}") {
-                            UpcomingReleasesScreenModel(trackedMediaRepository ?: TrackedMediaRepositoryImpl())
-                        },
+                    viewModel = upcomingViewModel,
                     lazyListState = upcomingListState,
                     onMovieSelected = onMovieSelected,
                     onTvSelected = onTvSelected,
                 )
+            }
 
             MyFavTab.Favorites ->
                 AccountFavoritesWatchlistTab(

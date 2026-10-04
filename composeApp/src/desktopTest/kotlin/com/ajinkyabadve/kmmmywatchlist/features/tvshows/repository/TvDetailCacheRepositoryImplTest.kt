@@ -124,4 +124,46 @@ class TvDetailCacheRepositoryImplTest {
 
             assertEquals(UiText.Resource(Res.string.error_unexpected_tv_details), error.message)
         }
+
+    @Test
+    fun testRefreshLatestSeasons_fetchesOnlyTheNewestTwoSeasonsAndCachesThem() =
+        runTest {
+            val fakeTvRepository =
+                FakeTvRepository().apply {
+                    getTvDetailsResult =
+                        Result.success(
+                            TvDetail(
+                                id = SHOW_ID,
+                                title = SHOW_TITLE,
+                                seasons = (0..LATEST_SEASON).map { SeasonSummary(seasonNumber = it) },
+                            ),
+                        )
+                    (0..LATEST_SEASON).forEach { number ->
+                        getSeasonDetailsResultsByNumber[number] = Result.success(TvSeasonDetail(seasonNumber = number))
+                    }
+                }
+            val repository = repository(fakeTvRepository)
+
+            repository.refreshLatestSeasons(SHOW_ID)
+
+            assertEquals(listOf(LATEST_SEASON, LATEST_SEASON - 1), fakeTvRepository.getSeasonDetailsCalls.map { it.second })
+            assertEquals(setOf(LATEST_SEASON, LATEST_SEASON - 1), repository.observeSeasons(SHOW_ID).first().keys)
+        }
+
+    @Test
+    fun testRefreshLatestSeasons_detailFailureLeavesTheCacheUntouched() =
+        runTest {
+            val fakeTvRepository = FakeTvRepository().apply { getTvDetailsResult = Result.failure(IOException("offline")) }
+            val repository = repository(fakeTvRepository)
+
+            repository.refreshLatestSeasons(SHOW_ID)
+
+            assertNull(repository.observe(SHOW_ID).first())
+        }
+
+    private companion object {
+        const val SHOW_ID = 1L
+        const val SHOW_TITLE = "Fixture Show"
+        const val LATEST_SEASON = 6
+    }
 }
