@@ -332,4 +332,19 @@
     <string name="privacy_consent_checkbox_label">I have read and accept the Privacy Policy</string>
     <string name="privacy_consent_accept_button">Accept &amp; Continue</string>
     <string name="settings_privacy_policy_label">Privacy Policy</string>
+    <!-- Backup & restore (future_features_checklist.md item 15) -->
+    <string name="settings_backup_label">Backup &amp; restore</string>
+    <string name="settings_backup_description">Move followed people, collections, reminders and settings to another device</string>
+    <string name="backup_dialog_title">Backup &amp; restore</string>
+    <string name="backup_dialog_message">Followed people and collections, release reminders and your settings are stored only on this device. Save them to a file, then restore that file on your other device. Favorites, watchlist and lists come back on their own when you sign in.</string>
+    <string name="backup_export_action">Export backup</string>
+    <string name="backup_restore_action">Restore from file</string>
+    <string name="backup_restore_confirm_title">Restore this backup?</string>
+    <string name="backup_restore_confirm_message">People: %1$d\nCollections: %2$d\nRelease reminders: %3$d\nSettings: %4$d\n\nAnything already on this device is kept; the backup's settings replace the current ones.</string>
+    <string name="backup_restore_confirm_action">Restore</string>
+    <string name="backup_export_success">Backup saved.</string>
+    <string name="backup_export_failed">Couldn't save the backup.</string>
+    <string name="backup_restore_result">Restored.\nPeople added: %1$d\nCollections added: %2$d\nRelease reminders added: %3$d\nSettings restored: %4$d\n\nAnything already on this device was kept.</string>
+    <string name="backup_error_unsupported_format">This backup was made by a newer version of MyWatchList (format %1$d; this version reads up to %2$d). Update the app and try again.</string>
+    <string name="backup_error_malformed">This file isn't a MyWatchList backup, or it was edited and has invalid data. Nothing was changed.</string>
 </resources>

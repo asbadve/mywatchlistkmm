@@ -84,6 +84,10 @@ interface ReleaseReminderRepository {
 
     suspend fun allReminders(): List<ReleaseReminder>
 
+    /** Backup restore (item 15): adds the reminders not already set on this device and leaves the
+     *  rest untouched. Returns how many were added. The caller reschedules the OS requests. */
+    suspend fun restore(reminders: List<ReleaseReminder>): Int
+
     suspend fun updateReleaseDate(
         key: ReminderKey,
         releaseDate: LocalDate,
@@ -166,6 +170,36 @@ class ReleaseReminderRepositoryImpl(
             .selectAllReleaseReminders()
             .awaitAsList()
             .map { it.toReleaseReminder() }
+
+    override suspend fun restore(reminders: List<ReleaseReminder>): Int {
+        val queries = databaseProvider().myDatabaseQueries
+        val existing =
+            queries
+                .selectAllReleaseReminders()
+                .awaitAsList()
+                .map {
+                    reminderKey(it.mediaId, it.mediaType, it.seasonNumber, it.episodeNumber)
+                }.toSet()
+        val added = reminders.filter { it.key !in existing }
+        val addedAt = now()
+        queries.transaction {
+            added.forEach { reminder ->
+                val key = reminder.key
+                queries.restoreReleaseReminder(
+                    mediaId = key.mediaId,
+                    mediaType = key.mediaType,
+                    seasonNumber = key.seasonColumn(),
+                    episodeNumber = key.episodeColumn(),
+                    title = reminder.title,
+                    posterPath = reminder.posterPath,
+                    releaseDate = reminder.releaseDate.toString(),
+                    releaseSource = reminder.releaseSource,
+                    addedAt = addedAt,
+                )
+            }
+        }
+        return added.size
+    }
 
     override suspend fun updateReleaseDate(
         key: ReminderKey,

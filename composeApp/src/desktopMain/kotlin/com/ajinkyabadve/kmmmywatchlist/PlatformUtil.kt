@@ -25,3 +25,5 @@ actual fun isReducedMotionEnabled(): Boolean = false
 actual fun isScreenReaderActive(): Boolean = false
 
 actual fun usesNativeAnimatedSplash(): Boolean = false
+
+actual fun supportsLocalBackup(): Boolean = true

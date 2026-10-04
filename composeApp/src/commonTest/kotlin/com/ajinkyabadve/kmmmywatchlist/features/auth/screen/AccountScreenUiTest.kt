@@ -10,8 +10,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.file.FakeBackupFileLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupTestFixture
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
@@ -231,7 +233,8 @@ class AccountScreenUiTest {
             onNodeWithText("Log out").performScrollTo().performClick()
 
             assertTrue(backClicked)
-            onNodeWithText("Sign in to TMDB").assertIsDisplayed()
+            // The list is still scrolled down to where "Log out" was; the sign-in prompt is at the top.
+            onNodeWithText("Sign in to TMDB").performScrollTo().assertIsDisplayed()
         }
 
     @Test
@@ -389,7 +392,49 @@ class AccountScreenUiTest {
             onNodeWithText(DEBUG_FIRE_TEST_REMINDER).assertDoesNotExist()
         }
 
+    @Test
+    fun testBackupRowOpensTheBackupDialog() =
+        runComposeUiTest {
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    showBackupSettings = true,
+                    backupFileLauncher = FakeBackupFileLauncher(),
+                    backupScreenModel = BackupTestFixture().screenModel,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNodeWithText(BACKUP_ROW_LABEL).performScrollTo().performClick()
+
+            onNodeWithText(BACKUP_EXPORT_ACTION).assertIsDisplayed()
+        }
+
+    @Test
+    fun testBackupRowIsHiddenWhereBackupIsUnsupported() =
+        runComposeUiTest {
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    showBackupSettings = false,
+                    backupFileLauncher = FakeBackupFileLauncher(),
+                    backupScreenModel = BackupTestFixture().screenModel,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNodeWithText(BACKUP_ROW_LABEL).assertDoesNotExist()
+        }
+
     private companion object {
+        const val BACKUP_ROW_LABEL = "Backup & restore"
+        const val BACKUP_EXPORT_ACTION = "Export backup"
         const val RELEASE_REMINDERS_LABEL = "Release reminders"
         const val REMINDER_TIME_LABEL = "Reminder time"
 

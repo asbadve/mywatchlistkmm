@@ -22,3 +22,5 @@ actual fun isReducedMotionEnabled(): Boolean = window.matchMedia("(prefers-reduc
 actual fun isScreenReaderActive(): Boolean = false
 
 actual fun usesNativeAnimatedSplash(): Boolean = false
+
+actual fun supportsLocalBackup(): Boolean = false

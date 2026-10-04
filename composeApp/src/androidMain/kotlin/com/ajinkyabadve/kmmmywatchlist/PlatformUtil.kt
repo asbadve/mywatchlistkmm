@@ -34,3 +34,5 @@ actual fun isScreenReaderActive(): Boolean {
 }
 
 actual fun usesNativeAnimatedSplash(): Boolean = true
+
+actual fun supportsLocalBackup(): Boolean = true

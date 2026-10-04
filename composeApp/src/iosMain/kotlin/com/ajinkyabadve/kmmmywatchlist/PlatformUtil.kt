@@ -30,3 +30,5 @@ actual fun isReducedMotionEnabled(): Boolean = UIAccessibilityIsReduceMotionEnab
 actual fun isScreenReaderActive(): Boolean = UIAccessibilityIsVoiceOverRunning()
 
 actual fun usesNativeAnimatedSplash(): Boolean = false
+
+actual fun supportsLocalBackup(): Boolean = true

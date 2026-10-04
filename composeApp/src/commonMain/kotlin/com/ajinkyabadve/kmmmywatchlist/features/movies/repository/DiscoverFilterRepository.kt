@@ -69,7 +69,7 @@ class DiscoverFilterRepositoryImpl(
     }
 }
 
-private object DiscoverFilterConstant {
+internal object DiscoverFilterConstant {
     const val KEY_MOVIE_FILTERS = "discover_movie_filters_json"
     const val KEY_TV_FILTERS = "discover_tv_filters_json"
 }

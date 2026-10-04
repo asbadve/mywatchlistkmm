@@ -17,6 +17,7 @@ class FakeFavoriteCollectionRepository : FavoriteCollectionRepository {
     private val favoritesFlow = MutableStateFlow<Map<Long, Row>>(emptyMap())
     val setFavoriteCalls = mutableListOf<Pair<Long, Boolean>>()
     val updateLastKnownPartIdsCalls = mutableListOf<Pair<Long, String>>()
+    private val addedAtById = mutableMapOf<Long, Long>()
 
     fun seedFavorite(
         collectionId: Long,
@@ -59,5 +60,17 @@ class FakeFavoriteCollectionRepository : FavoriteCollectionRepository {
         favoritesFlow.value[collectionId]?.let {
             favoritesFlow.value = favoritesFlow.value + (collectionId to it.copy(lastKnownPartIds = partIds))
         }
+    }
+
+    override suspend fun allForBackup(): List<FavoriteCollectionRecord> =
+        favoritesFlow.value.values.map { FavoriteCollectionRecord(it.id, it.name, it.posterPath, addedAtById[it.id] ?: 0L) }
+
+    override suspend fun restore(records: List<FavoriteCollectionRecord>): Int {
+        val added = records.filter { it.id !in favoritesFlow.value }
+        added.forEach { record ->
+            addedAtById[record.id] = record.addedAt
+            seedFavorite(collectionId = record.id, name = record.name, posterPath = record.posterPath)
+        }
+        return added.size
     }
 }

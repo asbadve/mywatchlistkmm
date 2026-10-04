@@ -26,6 +26,10 @@ expect fun isScreenReaderActive(): Boolean
  *  (checklist item 16) so it never appears where a reminder couldn't actually fire. */
 expect fun isMobilePlatform(): Boolean
 
+/** False on the web target only: its database is in-memory per page load, so a backup there would
+ *  hold almost nothing (future_features_checklist.md item 15). Gates the "Backup & restore" row. */
+expect fun supportsLocalBackup(): Boolean
+
 /** True when the device shows times in 24-hour format (Android's system setting, iOS's locale /
  *  "24-Hour Time" toggle). Used to format the release-reminder time and configure its picker.
  *  Always `false` on desktop/JS, where reminder UI isn't shown. */

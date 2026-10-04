@@ -477,6 +477,34 @@ a new phone, or hit "Clear data" and every one of those is gone with nothing to 
 entry in this file, there is no OAS section here: the data being backed up is precisely the data
 TMDB will never return.
 
+### Decisions (2026-10-04, after platform research)
+- **Stage 1 (file export/restore) shipped 2026-10-04** - `features/backup/`; verified on an Android emulator (export through the system save dialog, restore through the picker).
+- **Two stages, file first.** Stage 1 is the file export/restore below. Stage 2 is a QR-code
+  transfer that sends the *same* backup envelope device-to-device (see "Stage 2" below), so the
+  format, allow-list and merge rules are written once.
+- **QR scanning uses QRKit** (`Chaintech-Network/QRKitComposeMultiplatform`), not hand-rolled camera
+  code per platform.
+- **Hidden on the web target.** Its database is in-memory per page load, so there is almost nothing
+  to back up; the row is gated off on JS (resolves the open question under "Risks"). Web support
+  waits for [item 18](#18-own-backend-server-cross-device-sync-and-backup-incl-web)'s backend.
+- **Platform backup research (2026-10-04)**, recorded so it isn't redone:
+  - *Android Auto Backup is already on*: the manifest sets no `allowBackup`, so the default (on)
+    copies `watchlist_settings` SharedPreferences - including `auth_session_id` - and the whole
+    SQLite file (caches too) to Google Drive daily and in device-to-device transfers. Exclusions are
+    per file (`data_extraction_rules.xml`: `<cloud-backup>`, `<device-transfer>`, and since Android
+    16 QPR2 `<cross-platform-transfer platform="ios">`), never per table. Decide this deliberately
+    rather than inheriting the default.
+  - *Google Play Restore Credentials*: from April 2027, apps with sign-in must restore the session
+    automatically on a new Android device via the Restore Credentials API. This app has TMDB
+    sign-in, so that is a separate, dated requirement - not part of this item's file/QR work.
+  - *iOS*: iCloud backup / Quick Start already copy the app container (`NSUserDefaults` + the
+    database; only Caches/tmp skipped), so iPhone-to-iPhone already carries everything.
+  - *Android <-> iPhone*: Apple's AppMigrationKit (iOS 26.1+, **beta**, runs only during new-device
+    setup) pairs with Android's `<cross-platform-transfer>`. Too new for this app's iOS 16.2 /
+    minSdk 24 floor to rely on; worth adding later as an extra path, not instead of this item.
+  - The gap this item fills: cross-platform moves on today's OS versions, moves after the new phone
+    is already set up, and desktop.
+
 ### Exact scope: what goes in the file
 Decided by "would this come back on its own after a reinstall?" - if yes, it stays out.
 
@@ -515,16 +543,16 @@ nobody "fixes" them later:
   user-editable file would let a fresh install skip its consent gate.
 
 ### Format: one versioned JSON file, not a copy of the database
-- [ ] A single `.json` file, `kotlinx.serialization` (the app's only serializer already), named
+- [x] A single `.json` file, `kotlinx.serialization` (the app's only serializer already), named
   `mywatchlist-backup-YYYY-MM-DD.json`. The payload is at most a few hundred short rows, so a
   human-readable, diff-able text file costs nothing.
-- [ ] Envelope: `{ "format": 1, "exportedAt": <epochMillis>, "people": [...], "collections": [...],
+- [x] Envelope: `{ "format": 1, "exportedAt": <epochMillis>, "people": [...], "collections": [...],
   "settings": { ... } }`. `format` is the **backup contract's** own integer and is deliberately
   *not* `LocalSchemaVersion.CURRENT` - a `MyDatabase.sq` migration that doesn't change what's
   exported must not invalidate old backups, and a change to the exported shape must bump something
   even when the schema is untouched. Say exactly this in its KDoc, since the two look
   interchangeable at a glance.
-- [ ] Decode with `Json { ignoreUnknownKeys = true }` (the same setting every other decode in this
+- [x] Decode with `Json { ignoreUnknownKeys = true }` (the same setting every other decode in this
   app uses), so a file written by a newer build restores its known parts on an older one instead of
   failing outright. A `format` *greater* than the build knows is still refused explicitly, with a
   typed result - silently half-restoring a future format is worse than declining.
@@ -533,20 +561,20 @@ nobody "fixes" them later:
   user an opaque blob instead of something they can read.
 
 ### Restore semantics (decide these before writing code)
-- [ ] **Merge by default, never wipe-and-replace.** A restore adds the people/collections that
+- [x] **Merge by default, never wipe-and-replace.** A restore adds the people/collections that
   aren't already followed and leaves existing ones alone. Both repositories' `setFavorite` is
   already backed by `INSERT OR REPLACE`, so merge is the cheap path; a destructive "replace
   everything" mode is the one that would need extra code, and it isn't worth shipping in the first
   cut.
-- [ ] **Preserve `addedAt` from the file.** `selectAllFavoritePeople` / `selectAllFavoriteCollections`
+- [x] **Preserve `addedAt` from the file.** `selectAllFavoritePeople` / `selectAllFavoriteCollections`
   order by `addedAt DESC` ("most-recently-followed first"), so restoring with `now()` would scramble
   the user's ordering into "whatever order the JSON array happened to be in". Today's
   `setFavorite(...)` signature takes no `addedAt`, so this needs a new repository method (e.g.
   `restoreFavoritePeople(List<BackupPerson>)`) rather than the backup layer reaching past the
   repositories into SQLDelight directly.
-- [ ] **Settings restore is per-key and only for keys present in the file** - a backup written
+- [x] **Settings restore is per-key and only for keys present in the file** - a backup written
   before a setting existed must not reset that setting to a default.
-- [ ] Restore never touches `trackedMedia` / `customList` / `customListItem` / the caches.
+- [x] Restore never touches `trackedMedia` / `customList` / `customListItem` / the caches.
 
 ### The real cost: this app has no file picker on any platform
 Checked before designing anything, per `.claude/skills/code-conventions/SKILL.md`'s "check the
@@ -557,7 +585,7 @@ a fixed location per platform (Android MediaStore/Pictures, iOS Photos album, de
 a JS anchor-click download), with no user-chosen destination and no read counterpart at all. Restore
 needs a *read* from a user-picked file, which is genuinely new on all four targets.
 
-Two ways to get it - **pick one before starting**:
+Two ways to get it - **option A chosen (2026-10-04)**: `core/file/BackupFileLauncher.kt`, `rememberBackupFileLauncher()` with Android/iOS/desktop actuals and a JS stub:
 - **A. Hand-rolled `expect`/`actual`, no new dependency (recommended).** Android:
   `ActivityResultContracts.CreateDocument` / `OpenDocument` (SAF - no storage permission needed).
   iOS: `UIDocumentPickerViewController`. Desktop: `java.awt.FileDialog` via `AwtWindow`. JS: the
@@ -576,35 +604,35 @@ Two ways to get it - **pick one before starting**:
   didn't fit (the convention's requirement) - here: "CMP has no common file dialog as of 1.11.1".
 
 ### Implementation Checklist
-- [ ] **Models** (`features/settings/model/Backup.kt`): `@Serializable` `BackupEnvelope`,
+- [x] **Models** (`features/settings/model/Backup.kt`): `@Serializable` `BackupEnvelope`,
   `BackupPerson(id, name, profilePath, addedAt)`, `BackupCollection(id, name, posterPath, addedAt)`,
   `BackupSettings(...)` - one nullable field per allow-listed key, so "absent" and "set to false"
   stay distinguishable.
-- [ ] **Repository** (`features/settings/repository/BackupRepository.kt` + `Impl`):
+- [x] **Repository** (`features/settings/repository/BackupRepository.kt` + `Impl`):
   `suspend fun exportToJson(): String` and `suspend fun restoreFromJson(json: String): RestoreResult`.
   It composes the existing repositories (`FavoritePersonRepository`, `FavoriteCollectionRepository`,
   `Settings`) - no raw SQLDelight access, same layering every other repository here follows.
-- [ ] **Typed outcomes, no bare `Exception`** (per `.claude/skills/code-conventions/SKILL.md`): a
+- [x] **Typed outcomes, no bare `Exception`** (per `.claude/skills/code-conventions/SKILL.md`): a
   `sealed interface RestoreResult` with `Restored(peopleCount, collectionsCount, settingsCount)`,
   `UnsupportedFormat(found, supported)` and `Malformed`. Catch `SerializationException` and
   `IllegalArgumentException` specifically - the exact pair `DiscoverFilterRepositoryImpl` already
   catches around its own JSON decode.
-- [ ] **Platform IO**: the picker/writer chosen above, plus an in-memory fake for tests.
-- [ ] **Business logic**: `BackupScreenModel` - idle / exporting / restoring / result states, and an
+- [x] **Platform IO**: the picker/writer chosen above, plus an in-memory fake for tests.
+- [x] **Business logic**: `BackupScreenModel` - idle / exporting / restoring / result states, and an
   explicit confirm step before a restore runs.
-- [ ] **UI**: a "Backup & restore" row on `AccountScreen`
+- [x] **UI**: a "Backup & restore" row on `AccountScreen`
   (`features/auth/screen/AccountScreen.kt`), alongside the existing Region / Restricted mode /
   Privacy policy rows, opening a small screen or dialog with "Export backup" and "Restore from
   file". Result reporting goes in a dialog or inline text, **not** a snackbar - this app has no
   snackbar host anywhere (established in [item 13.2](shipped_features.md#132-imdb-link-on-every-detail-screen--long-press-to-copy-on-detail-titles--done)),
   and adding one app-wide is out of scope here.
-- [ ] **Strings**: every user-facing string via `Res.string.*` in
+- [x] **Strings**: every user-facing string via `Res.string.*` in
   `composeApp/src/commonMain/composeResources/values/strings.xml` (`settings_backup_label`,
   `backup_export_action`, `backup_restore_action`, `backup_restore_confirm_message`,
   `backup_restore_result_message`, `backup_error_unsupported_format`, …). No magic strings; the
   settings keys the exporter allow-lists are `private const val`s referencing the existing
   `*Constant` objects, not re-typed literals.
-- [ ] **Tests** (both tiers required, per `.claude/skills/testing-conventions/SKILL.md`):
+- [x] **Tests** (both tiers required, per `.claude/skills/testing-conventions/SKILL.md`):
   - Unit: export→restore round-trip preserves people, collections and their `addedAt` ordering;
     merge keeps pre-existing follows; a `format` from the future returns `UnsupportedFormat`;
     malformed JSON returns `Malformed` and writes nothing; unknown extra fields decode fine; and -
@@ -612,11 +640,36 @@ Two ways to get it - **pick one before starting**:
     a standing regression test for the leak this design exists to prevent.
   - Compose UI: the Account row renders and opens the screen, the restore confirm dialog appears and
     its confirm action calls through, and the error result renders its message.
-- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+- [x] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
   `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`.
 
+### Stage 2: QR-code transfer between devices (after stage 1 ships)
+WhatsApp/Signal model: the QR code is a short-lived pairing ticket, and the data moves over the
+local network, encrypted. Putting the data itself in the QR code was rejected: a typical backup
+(~40 people, ~20 collections, ~30 reminders, settings) is ~8-12 KB of JSON / ~3 KB gzipped, over a
+single QR code's ~2.9 KB ceiling and unscannable at that density.
+- [ ] **Sender** (old device): starts a temporary Ktor server (`ktor-server-cio` - the only engine
+  Kotlin/Native supports, and it does support iOS) on a random port, and shows a QR code (rendered
+  with QRKit) encoding `{ip, port, one-time 256-bit key, expiry ~5 min}`. One transfer per code;
+  the server stops after it or on expiry.
+- [ ] **Receiver** (new device): scans with QRKit, fetches the envelope, decrypts it (AES-GCM, key
+  from the QR code - e.g. `cryptography-kotlin`), then runs stage 1's exact restore path, merge
+  semantics and validation included.
+- [ ] **Authentication**: possession of a fresh QR code is the credential (no TMDB login needed);
+  both screens show a 4-digit confirmation code derived from the key, and the sender asks
+  "Send to this device?" before anything leaves it.
+- [ ] **Platform costs**: iOS `NSLocalNetworkUsageDescription` in Info.plist (one-time local-network
+  prompt) and `NSCameraUsageDescription`; Android `CAMERA` permission. Both devices must be on the
+  same Wi-Fi - guest networks with client isolation will fail, and the error copy should say so.
+- [ ] **Targets**: Android/iOS/desktop as sender and receiver (desktop can show a code and, with a
+  webcam, scan one). Hidden on JS, like stage 1.
+- [ ] **Tests**: unit-test the ticket encode/decode, expiry, one-time use, wrong-key decrypt failure
+  and the confirmation-code derivation; Compose UI test the show-code / scan / confirm screens with a
+  fake transport.
+
 ### Deliberately out of scope
-- **Cloud sync / cross-device backup.** Same conclusion as
+- **Cloud sync / cross-device backup.** Now tracked as its own item,
+  [item 18](#18-own-backend-server-cross-device-sync-and-backup-incl-web). Same conclusion as
   [item 3b](shipped_features.md#3b-favorite-actorperson---new-credit-announced--done-2026-08-26)'s sync note and
   [item 14](#14-ai-powered-for-you-recommendations-taste-profile-from-favorites--watchlist--lists)'s:
   it needs this app's own backend. A file the user moves themselves needs none.
@@ -631,7 +684,7 @@ Two ways to get it - **pick one before starting**:
   don't give.
 
 ### Risks / open questions
-- **JS barely has anything to back up.** Its SQLDelight driver is in-memory per page load
+- **JS barely has anything to back up.** *Resolved 2026-10-04: hidden on JS until item 18.* Its SQLDelight driver is in-memory per page load
   (`jsMain/db/DatabaseDriverFactory.kt` - never persisted to IndexedDB/OPFS), so on web an export
   captures only the current session's follows plus the `Settings`-backed preferences. Either ship it
   there as-is with that caveat, or hide the row on JS - decide, don't leave it accidental.
@@ -985,3 +1038,51 @@ modeled).
 
 ---
 
+## 18. Own Backend Server (cross-device sync and backup, incl. web)
+**Goal**: A server of our own that holds a user's device-only data - followed people and
+collections, release reminders and reminder time, settings - so it syncs across every device they
+use and survives losing all of them. This is what finally brings the **web target** in: today its
+database is in-memory per page load, so [item 15](#15-backup--restore-for-device-only-data-the-data-tmdb-does-not-hold)'s
+file and QR backup are hidden there, and only a server can give it a durable copy.
+
+### Why it is its own item
+Every "cross-device" note in this file ends at the same blocker - [item 3b](shipped_features.md#3b-favorite-actorperson---new-credit-announced--done-2026-08-26)'s
+sync for followed people, item 15's "out of scope: cloud sync", and
+[item 14](#14-ai-powered-for-you-recommendations-taste-profile-from-favorites--watchlist--lists)'s
+server-side model call. TMDB has no API for any of this data, by construction.
+
+### Builds on
+- [Item 1](#1-secure-the-tmdb-api-key-via-a-server-side-proxy)'s gateway: the same deployment, App
+  Check and request-signing story. Do item 1 first; this item adds routes and storage to it rather
+  than standing up a second server.
+- Item 15's backup envelope: the sync payload is that same versioned JSON (`format` field, allow-
+  listed settings, no auth session), so the server stores what the file already proves safe.
+
+### Decisions to make first
+- [ ] **Identity**: key the user's data to their TMDB account id (verified server-side by
+  calling TMDB's `GET /3/account` with their session - never trust a client-sent id), or a separate
+  account system (Sign in with Apple / Google). TMDB-id is zero extra sign-in, but signed-out users
+  get no sync.
+- [ ] **Sync model**: whole-envelope last-write-wins (simple, fine for a few KB) vs per-record merge
+  with tombstones (needed if two devices edit offline and both edits must survive). Start with
+  envelope + `updatedAt`, and record the upgrade path.
+- [ ] **Hosting / storage**: serverless + managed DB (Firebase/Firestore, Cloudflare Workers + D1,
+  Supabase) vs a Ktor server (shares Kotlin models with `commonMain`). Weigh cost at zero users.
+- [ ] **Privacy**: this is the first time the app stores user data on its own infrastructure - the
+  privacy policy, Play data-safety form and App Store privacy labels all need updating, plus an
+  in-app "delete my synced data" control.
+
+### Implementation Checklist
+- [ ] **Server**: `GET/PUT /sync` for the envelope (authenticated, size-capped, validated with the
+  same rules as item 15's restore), `DELETE /sync` for account data deletion.
+- [ ] **Client**: `SyncRepository` behind an interface - push after local changes (debounced),
+  pull on start and sign-in, merge with item 15's merge semantics; works offline and catches up.
+- [ ] **Web target**: give JS a persisted local store (IndexedDB/OPFS driver) or treat the server
+  as its source of truth; then un-hide item 15's rows there.
+- [ ] **Settings UI**: a "Sync across devices" toggle on `AccountScreen` with last-synced time.
+- [ ] **Tests**: server route tests; client unit tests for push/pull/merge/conflict and offline
+  catch-up with a fake transport; Compose UI test for the toggle and status row.
+- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
+  `:composeApp:assembleDebug`, `:composeApp:compileKotlinJs`, `:composeApp:ktlintCheck`.
+
+---

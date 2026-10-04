@@ -5,9 +5,10 @@ import com.russhwolf.settings.Settings
 class FakeSettings : Settings {
     private val stringMap = mutableMapOf<String, String>()
     private val longMap = mutableMapOf<String, Long>()
+    private val booleanMap = mutableMapOf<String, Boolean>()
     val removedKeys = mutableListOf<String>()
 
-    override val keys: Set<String> get() = stringMap.keys + longMap.keys
+    override val keys: Set<String> get() = stringMap.keys + longMap.keys + booleanMap.keys
     override val size: Int get() = keys.size
 
     override fun hasKey(key: String): Boolean = keys.contains(key)
@@ -15,20 +16,22 @@ class FakeSettings : Settings {
     override fun clear() {
         stringMap.clear()
         longMap.clear()
+        booleanMap.clear()
     }
 
     override fun remove(key: String) {
         removedKeys.add(key)
         stringMap.remove(key)
         longMap.remove(key)
+        booleanMap.remove(key)
     }
 
     override fun getBoolean(
         key: String,
         defaultValue: Boolean,
-    ): Boolean = defaultValue
+    ): Boolean = booleanMap[key] ?: defaultValue
 
-    override fun getBooleanOrNull(key: String): Boolean? = null
+    override fun getBooleanOrNull(key: String): Boolean? = booleanMap[key]
 
     override fun getDouble(
         key: String,
@@ -68,7 +71,9 @@ class FakeSettings : Settings {
     override fun putBoolean(
         key: String,
         value: Boolean,
-    ) {}
+    ) {
+        booleanMap[key] = value
+    }
 
     override fun putDouble(
         key: String,

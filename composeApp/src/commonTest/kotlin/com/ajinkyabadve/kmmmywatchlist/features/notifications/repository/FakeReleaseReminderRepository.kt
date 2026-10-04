@@ -40,6 +40,12 @@ class FakeReleaseReminderRepository(
 
     override suspend fun allReminders(): List<ReleaseReminder> = reminders.value.values.sortedBy { it.releaseDate }
 
+    override suspend fun restore(reminders: List<ReleaseReminder>): Int {
+        val added = reminders.filter { it.key !in this.reminders.value }
+        this.reminders.value = this.reminders.value + added.associateBy { it.key }
+        return added.size
+    }
+
     override suspend fun updateReleaseDate(
         key: ReminderKey,
         releaseDate: LocalDate,

@@ -14,6 +14,15 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 
+/** One followed person as a backup file carries it (item 15) - [addedAt] is kept so a restore
+ *  preserves the "most-recently-followed first" order. */
+data class FavoritePersonRecord(
+    val id: Long,
+    val name: String,
+    val profilePath: String?,
+    val addedAt: Long,
+)
+
 /** One favorited person's poll-relevant state, as read by
  *  [FavoritePersonRepository.favoritePeopleForPolling]. */
 data class FavoritePersonPollCandidate(
@@ -52,6 +61,13 @@ interface FavoritePersonRepository {
         personId: Long,
         creditIds: String,
     )
+
+    /** Every followed person with its follow time, for a backup export. */
+    suspend fun allForBackup(): List<FavoritePersonRecord>
+
+    /** Backup restore: adds the people not already followed and leaves the rest untouched - see
+     *  `MyDatabase.sq`'s `restoreFavoritePerson`. Returns how many were added. */
+    suspend fun restore(records: List<FavoritePersonRecord>): Int
 }
 
 class FavoritePersonRepositoryImpl(
@@ -109,5 +125,27 @@ class FavoritePersonRepositoryImpl(
         creditIds: String,
     ) {
         databaseProvider().myDatabaseQueries.updateFavoritePersonCreditIds(creditIds, personId)
+    }
+
+    override suspend fun allForBackup(): List<FavoritePersonRecord> =
+        databaseProvider()
+            .myDatabaseQueries
+            .selectAllFavoritePeople()
+            .awaitAsList()
+            .map { FavoritePersonRecord(id = it.id, name = it.name, profilePath = it.profilePath, addedAt = it.addedAt) }
+
+    override suspend fun restore(records: List<FavoritePersonRecord>): Int {
+        val queries = databaseProvider().myDatabaseQueries
+        val existing =
+            queries
+                .selectAllFavoritePeople()
+                .awaitAsList()
+                .map { it.id }
+                .toSet()
+        val added = records.filter { it.id !in existing }
+        queries.transaction {
+            added.forEach { queries.restoreFavoritePerson(it.id, it.name, it.profilePath, it.addedAt) }
+        }
+        return added.size
     }
 }

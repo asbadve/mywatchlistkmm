@@ -51,6 +51,8 @@ import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.constant.PrivacyConsentConstant
+import com.ajinkyabadve.kmmmywatchlist.core.file.BackupFileLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.file.rememberBackupFileLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
 import com.ajinkyabadve.kmmmywatchlist.core.formatClockTime
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingReminder
@@ -63,6 +65,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupRestoreDialogs
+import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.CollectionNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
@@ -87,6 +91,7 @@ import com.ajinkyabadve.kmmmywatchlist.is24HourClock
 import com.ajinkyabadve.kmmmywatchlist.isDebugBuild
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
 import com.ajinkyabadve.kmmmywatchlist.openUrl
+import com.ajinkyabadve.kmmmywatchlist.supportsLocalBackup
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_screen_title
@@ -113,6 +118,8 @@ import mywatchlist.composeapp.generated.resources.debug_show_pending_reminders_d
 import mywatchlist.composeapp.generated.resources.debug_show_pending_reminders_label
 import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
 import mywatchlist.composeapp.generated.resources.region_picker_title
+import mywatchlist.composeapp.generated.resources.settings_backup_description
+import mywatchlist.composeapp.generated.resources.settings_backup_label
 import mywatchlist.composeapp.generated.resources.settings_episode_notifications_description
 import mywatchlist.composeapp.generated.resources.settings_episode_notifications_title
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_description
@@ -166,6 +173,10 @@ fun AccountScreen(
     // Release reminders can only be delivered on Android/iOS - a parameter rather than a direct
     // isMobilePlatform() call so the UI test (which runs on desktop) can render these rows.
     showReleaseReminderSettings: Boolean = isMobilePlatform(),
+    // Hidden on the web target (item 15) - a parameter for the same UI-test reason as above.
+    showBackupSettings: Boolean = supportsLocalBackup(),
+    backupFileLauncher: BackupFileLauncher = rememberBackupFileLauncher(),
+    backupScreenModel: BackupScreenModel = viewModel { BackupScreenModel() },
     screenModel: AuthScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
 ) {
@@ -373,6 +384,15 @@ fun AccountScreen(
                             )
                         }
                     },
+                    backupRows = {
+                        if (showBackupSettings) {
+                            SettingsRow(
+                                label = stringResource(Res.string.settings_backup_label),
+                                description = stringResource(Res.string.settings_backup_description),
+                                onClick = backupScreenModel::open,
+                            )
+                        }
+                    },
                     releaseReminderDebugRows = {
                         if (showReleaseReminderSettings) {
                             SettingsRow(
@@ -478,6 +498,18 @@ fun AccountScreen(
             onDismiss = { showReminderTimePicker = false },
         )
     }
+
+    BackupRestoreDialogs(
+        screenModel = backupScreenModel,
+        fileLauncher = backupFileLauncher,
+        onRestored = {
+            // A restore may have changed any of these, and the rows above show remembered copies.
+            selectedRegionCode = regionRepository.getSelectedRegion()
+            fallbackRegionCode = regionRepository.getFallbackRegion()
+            restrictedModeEnabled = restrictedModeRepository.isRestrictedModeEnabled()
+            episodeNotificationsEnabled = notificationSettingsRepository.isEpisodeNotificationsEnabled()
+        },
+    )
 
     pendingReminders?.let { pending ->
         PendingRemindersDialog(pending = pending, onDismiss = { pendingReminders = null })
@@ -597,6 +629,7 @@ private fun SettingsList(
     onDebugPollCollectionNotificationsNowClicked: () -> Unit,
     onDebugResetEpisodeAlertPromptClicked: () -> Unit,
     releaseReminderRows: @Composable () -> Unit,
+    backupRows: @Composable () -> Unit,
     releaseReminderDebugRows: @Composable () -> Unit,
     onLogoutClicked: (() -> Unit)?,
     onPrivacyPolicyClicked: () -> Unit,
@@ -626,6 +659,7 @@ private fun SettingsList(
             onCheckedChange = onEpisodeNotificationsChanged,
         )
         releaseReminderRows()
+        backupRows()
         if (showDebugPollNowRow) {
             SettingsRow(
                 label = stringResource(Res.string.debug_poll_notifications_now_label),

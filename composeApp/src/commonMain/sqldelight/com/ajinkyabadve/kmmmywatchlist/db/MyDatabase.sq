@@ -396,6 +396,12 @@ INSERT OR REPLACE INTO favoritePerson (id, name, profilePath, addedAt) VALUES (?
 deleteFavoritePerson:
 DELETE FROM favoritePerson WHERE id = ?;
 
+-- Backup restore (item 15): merge, never overwrite - a person already followed keeps its own
+-- addedAt and poll state. lastKnownCreditIds is left NULL on purpose, so the first poll after a
+-- restore only baselines and fires nothing.
+restoreFavoritePerson:
+INSERT OR IGNORE INTO favoritePerson (id, name, profilePath, addedAt) VALUES (?, ?, ?, ?);
+
 updateFavoritePersonCreditIds:
 UPDATE favoritePerson SET lastKnownCreditIds = ? WHERE id = ?;
 
@@ -429,6 +435,10 @@ INSERT OR REPLACE INTO favoriteCollection (id, name, posterPath, addedAt) VALUES
 
 deleteFavoriteCollection:
 DELETE FROM favoriteCollection WHERE id = ?;
+
+-- Backup restore (item 15) - same merge rule and NULL poll state as restoreFavoritePerson.
+restoreFavoriteCollection:
+INSERT OR IGNORE INTO favoriteCollection (id, name, posterPath, addedAt) VALUES (?, ?, ?, ?);
 
 updateFavoriteCollectionPartIds:
 UPDATE favoriteCollection SET lastKnownPartIds = ? WHERE id = ?;
@@ -470,6 +480,12 @@ insertReleaseReminder:
 INSERT OR REPLACE INTO releaseReminder
     (mediaId, mediaType, seasonNumber, episodeNumber, title, posterPath, releaseDate, releaseSource, addedAt, lastCheckedAt)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Backup restore (item 15): merge - a reminder already set on this device is left as it is.
+restoreReleaseReminder:
+INSERT OR IGNORE INTO releaseReminder
+    (mediaId, mediaType, seasonNumber, episodeNumber, title, posterPath, releaseDate, releaseSource, addedAt, lastCheckedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);
 
 deleteReleaseReminder:
 DELETE FROM releaseReminder

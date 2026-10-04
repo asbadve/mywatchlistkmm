@@ -27,6 +27,15 @@ data class FavoriteCollectionPollCandidate(
     val lastKnownPartIds: String?,
 )
 
+/** One followed collection as a backup file carries it (item 15) - same reason as
+ *  `FavoritePersonRecord` for keeping [addedAt]. */
+data class FavoriteCollectionRecord(
+    val id: Long,
+    val name: String,
+    val posterPath: String?,
+    val addedAt: Long,
+)
+
 /**
  * Local-only "favorite collection" concept - see `MyDatabase.sq`'s `favoriteCollection` table
  * kdoc for why: TMDB has no account-level favorite/follow API for collections either (confirmed
@@ -59,6 +68,13 @@ interface FavoriteCollectionRepository {
         collectionId: Long,
         partIds: String,
     )
+
+    /** Every followed collection with its follow time, for a backup export. */
+    suspend fun allForBackup(): List<FavoriteCollectionRecord>
+
+    /** Backup restore: adds the collections not already followed - see `MyDatabase.sq`'s
+     *  `restoreFavoriteCollection`. Returns how many were added. */
+    suspend fun restore(records: List<FavoriteCollectionRecord>): Int
 }
 
 class FavoriteCollectionRepositoryImpl(
@@ -116,5 +132,27 @@ class FavoriteCollectionRepositoryImpl(
         partIds: String,
     ) {
         databaseProvider().myDatabaseQueries.updateFavoriteCollectionPartIds(partIds, collectionId)
+    }
+
+    override suspend fun allForBackup(): List<FavoriteCollectionRecord> =
+        databaseProvider()
+            .myDatabaseQueries
+            .selectAllFavoriteCollections()
+            .awaitAsList()
+            .map { FavoriteCollectionRecord(id = it.id, name = it.name, posterPath = it.posterPath, addedAt = it.addedAt) }
+
+    override suspend fun restore(records: List<FavoriteCollectionRecord>): Int {
+        val queries = databaseProvider().myDatabaseQueries
+        val existing =
+            queries
+                .selectAllFavoriteCollections()
+                .awaitAsList()
+                .map { it.id }
+                .toSet()
+        val added = records.filter { it.id !in existing }
+        queries.transaction {
+            added.forEach { queries.restoreFavoriteCollection(it.id, it.name, it.posterPath, it.addedAt) }
+        }
+        return added.size
     }
 }
