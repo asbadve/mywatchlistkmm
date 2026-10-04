@@ -14,6 +14,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.trendi
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.Trailer
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.latestTrailerVideo
+import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrailerCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrailerCacheRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrendingRepository
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.TrendingRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
@@ -25,11 +27,13 @@ import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import mywatchlist.composeapp.generated.resources.Res
@@ -41,10 +45,9 @@ class TrendingScreenTabViewModel(
     private val trendingRepository: TrendingRepository = TrendingRepositoryImpl(),
     private val movieRepository: MovieRepository = MovieRepositoryImpl(),
     private val tvRepository: TvRepository = TvRepositoryImpl(),
-    // Parked behind a flag: the Latest Trailers rail fans out into ~11 requests (a source list plus
-    // one videos call per title) on load, which starves the rest of the tab on slow networks. See
-    // [FeatureFlags.TRENDING_TRAILERS_ENABLED]. Off => skip the init fetch entirely.
+    // See [FeatureFlags.TRENDING_TRAILERS_ENABLED]. Off => skip the init fetch entirely.
     private val trailersEnabled: Boolean = FeatureFlags.TRENDING_TRAILERS_ENABLED,
+    private val trailerCacheRepository: TrailerCacheRepository = TrailerCacheRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -120,30 +123,25 @@ class TrendingScreenTabViewModel(
     private val _trailerError = MutableStateFlow<UiText?>(null)
     val trailerError = _trailerError
 
-    // Trailers per source are stable within a session; cache so chip switches don't refetch.
+    // In-memory layer over [trailerCacheRepository], so chip switches within a session never even
+    // decode JSON again.
     private val trailerCache = mutableMapOf<TrailerSource, List<Trailer>>()
+
+    // Sources being fetched right now, with the cards found so far - so re-selecting a chip while
+    // its fetch is still running shows the partial rail instead of starting a second fetch.
+    private val trailersInProgress = mutableMapOf<TrailerSource, List<Trailer>>()
 
     init {
         _isScreenLoading.value = true
-        loadTrendingMedia(
-            getSelectedTimeWindow(DEFAULT_SELECTED_CHIP),
-            MediaTypeConstant.MOVIE,
-            true,
-        )
-        loadTrendingMedia(
-            getSelectedTimeWindow(DEFAULT_SELECTED_CHIP),
-            MediaTypeConstant.TV,
-            true,
-        )
-
-        loadTrendingMedia(
-            getSelectedTimeWindow(DEFAULT_SELECTED_CHIP),
-            MediaTypeConstant.PERSON,
-            true,
-        )
+        val trendingLoads =
+            listOf(MediaTypeConstant.MOVIE, MediaTypeConstant.TV, MediaTypeConstant.PERSON).map { mediaType ->
+                loadTrendingMedia(getSelectedTimeWindow(DEFAULT_SELECTED_CHIP), mediaType, true)
+            }
 
         if (trailersEnabled) {
-            loadTrailers(TrailerSource.IN_THEATERS, isFirstLoad = true)
+            // The trailer rail's ~11 requests wait for the trending rows' first load, so they never
+            // compete with what the tab is mainly for. A cached rail still shows immediately.
+            loadTrailers(TrailerSource.IN_THEATERS, isFirstLoad = true, after = trendingLoads)
         }
     }
 
@@ -162,7 +160,7 @@ class TrendingScreenTabViewModel(
         timeWindow: String,
         mediaType: String,
         isFirstLoad: Boolean,
-    ) {
+    ): Job =
         viewModelScope.launch(Dispatchers.Main) {
             setErrorStateByMediaType(mediaType, null)
             if (isFirstLoad) {
@@ -217,7 +215,6 @@ class TrendingScreenTabViewModel(
                 }
             }
         }
-    }
 
     private fun setScreenLoadingStateByMediaType(
         mediaType: String,
@@ -314,48 +311,83 @@ class TrendingScreenTabViewModel(
     private fun loadTrailers(
         source: TrailerSource,
         isFirstLoad: Boolean,
+        after: List<Job> = emptyList(),
     ) {
-        trailerCache[source]?.let {
-            _trailerList.value = it
+        val cached = trailerCache[source] ?: trailerCacheRepository.get(source)?.also { trailerCache[source] = it }
+        if (cached != null) {
+            _trailerList.value = cached
             _trailerError.value = null
+            setTrailerLoading(isFirstLoad, loading = false)
             return
         }
-        viewModelScope.launch(Dispatchers.Main) {
+        trailersInProgress[source]?.let { partial ->
+            _trailerList.value = partial
             _trailerError.value = null
-            if (isFirstLoad) {
-                _isTrailerScreenLoading.value = true
-            } else {
-                _isTrailerLoading.value = true
-            }
+            setTrailerLoading(isFirstLoad, loading = true)
+            return
+        }
+        trailersInProgress[source] = emptyList()
+        _trailerList.value = emptyList()
+        _trailerError.value = null
+        setTrailerLoading(isFirstLoad, loading = true)
+        viewModelScope.launch(Dispatchers.Main) {
             try {
-                val trailers = fetchTrailers(source)
+                after.joinAll()
+                val trailers =
+                    fetchTrailers(source) { partial ->
+                        trailersInProgress[source] = partial
+                        if (_selectedTrailerSource.value == source) _trailerList.value = partial
+                    }
                 trailerCache[source] = trailers
+                trailerCacheRepository.put(source, trailers)
                 if (_selectedTrailerSource.value == source) {
                     _trailerList.value = trailers
                 }
             } catch (e: HttpExceptions) {
                 Napier.d { "HTTP exception fetching trailers: " + e.message }
-                _trailerError.value = UiText.Plain(e.message)
+                showTrailerError(source, UiText.Plain(e.message))
             } catch (e: IOException) {
                 Napier.d { "Network IO exception fetching trailers: " + e.message }
-                _trailerError.value = UiText.Resource(Res.string.error_network)
+                showTrailerError(source, UiText.Resource(Res.string.error_network))
             } catch (e: ContentConvertException) {
                 Napier.d { "Malformed response fetching trailers: " + e.message }
-                _trailerError.value = UiText.Resource(Res.string.error_unexpected_trailers)
+                showTrailerError(source, UiText.Resource(Res.string.error_unexpected_trailers))
             } catch (e: SerializationException) {
                 Napier.d { "Serialization exception fetching trailers: " + e.message }
-                _trailerError.value = UiText.Resource(Res.string.error_unexpected_trailers)
+                showTrailerError(source, UiText.Resource(Res.string.error_unexpected_trailers))
             } finally {
-                _isTrailerScreenLoading.value = false
-                _isTrailerLoading.value = false
+                trailersInProgress.remove(source)
+                if (_selectedTrailerSource.value == source) setTrailerLoading(isFirstLoad, loading = false)
             }
         }
     }
 
-    // List endpoints can't append videos, so mirror the TMDB homepage: take the first page of the
-    // source list, fetch each title's videos in parallel, keep the best trailer per title, newest
-    // first. A single title's failed videos call just drops that title from the rail.
-    private suspend fun fetchTrailers(source: TrailerSource): List<Trailer> {
+    private fun setTrailerLoading(
+        isFirstLoad: Boolean,
+        loading: Boolean,
+    ) {
+        _isTrailerScreenLoading.value = loading && isFirstLoad
+        _isTrailerLoading.value = loading && !isFirstLoad
+    }
+
+    private fun showTrailerError(
+        source: TrailerSource,
+        error: UiText,
+    ) {
+        if (_selectedTrailerSource.value == source) _trailerError.value = error
+    }
+
+    /**
+     * Mirrors the TMDB homepage, since list endpoints can't append videos: the first page of the
+     * source list, then each title's videos, keeping its newest trailer. At most
+     * [MAX_CONCURRENT_VIDEO_REQUESTS] videos calls run at once - the same total, but no burst on a
+     * slow connection - and [onProgress] gets the rail so far after each title, so cards appear as
+     * they arrive instead of after the slowest call. A title whose videos call fails is dropped.
+     */
+    private suspend fun fetchTrailers(
+        source: TrailerSource,
+        onProgress: (List<Trailer>) -> Unit,
+    ): List<Trailer> {
         val candidates: List<TrailerCandidate> =
             when (source) {
                 TrailerSource.IN_THEATERS -> movieCandidates(MoviesConstant.NOW_PLAYING_API_PATH)
@@ -363,29 +395,37 @@ class TrendingScreenTabViewModel(
                 TrailerSource.POPULAR -> movieCandidates(MoviesConstant.POPULAR_API_PATH)
                 TrailerSource.ON_TV -> tvCandidates(TvShowsConstant.ON_THE_AIR_API_PATH)
             }
-        return coroutineScope {
-            candidates
-                .take(MAX_TITLES_PER_SOURCE)
-                .map { candidate ->
-                    async {
-                        val videos = fetchVideosOrNull(candidate) ?: return@async null
-                        latestTrailerVideo(videos)?.let { video ->
-                            Trailer(
-                                mediaId = candidate.mediaId,
-                                isMovie = candidate.isMovie,
-                                mediaTitle = candidate.title,
-                                backdropPath = candidate.backdropPath,
-                                video = video,
-                            )
-                        }
-                    }
-                }.awaitAll()
-        }.filterNotNull()
-            // The trailer row is keyed by video id; a title TMDB lists twice on one page would
-            // otherwise repeat its trailer and crash the row ("Key ... was already used").
-            .distinctBy { it.video.id }
-            .sortedByDescending { it.video.publishedAt }
+        val limit = Semaphore(MAX_CONCURRENT_VIDEO_REQUESTS)
+        // Children inherit this coroutine's Main dispatcher, so these appends never race.
+        val found = mutableListOf<Trailer>()
+        coroutineScope {
+            candidates.take(MAX_TITLES_PER_SOURCE).forEach { candidate ->
+                launch {
+                    val trailer = limit.withPermit { fetchTrailerOrNull(candidate) } ?: return@launch
+                    found += trailer
+                    onProgress(found.orderedForRail())
+                }
+            }
+        }
+        return found.orderedForRail()
     }
+
+    private suspend fun fetchTrailerOrNull(candidate: TrailerCandidate): Trailer? {
+        val videos = fetchVideosOrNull(candidate) ?: return null
+        return latestTrailerVideo(videos)?.let { video ->
+            Trailer(
+                mediaId = candidate.mediaId,
+                isMovie = candidate.isMovie,
+                mediaTitle = candidate.title,
+                backdropPath = candidate.backdropPath,
+                video = video,
+            )
+        }
+    }
+
+    // The trailer row is keyed by video id; a title TMDB lists twice on one page would otherwise
+    // repeat its trailer and crash the row ("Key ... was already used"). Newest first.
+    private fun List<Trailer>.orderedForRail(): List<Trailer> = distinctBy { it.video.id }.sortedByDescending { it.video.publishedAt }
 
     private suspend fun movieCandidates(fetchType: String): List<TrailerCandidate> =
         movieRepository.getMovies(FIRST_PAGE, fetchType).list.orEmpty().map { movie ->
@@ -447,5 +487,8 @@ class TrendingScreenTabViewModel(
         const val DEFAULT_SELECTED_CHIP = 0
         private const val FIRST_PAGE = 1
         private const val MAX_TITLES_PER_SOURCE = 10
+
+        /** Videos calls in flight at once while building the trailer rail. */
+        internal const val MAX_CONCURRENT_VIDEO_REQUESTS = 3
     }
 }

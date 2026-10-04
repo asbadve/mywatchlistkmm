@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
+import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -45,7 +46,12 @@ class TrendingScreenTabUiTest {
                             ),
                         )
                 }
-            val viewModel = TrendingScreenTabViewModel(fakeTrendingRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(
+                    fakeTrendingRepository,
+                    trailersEnabled = false,
+                    trailerCacheRepository = FakeTrailerCacheRepository(),
+                )
 
             setContent {
                 TrendingScreenTab(viewModel = viewModel)

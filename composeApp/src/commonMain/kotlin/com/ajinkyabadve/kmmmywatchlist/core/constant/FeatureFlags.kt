@@ -8,10 +8,13 @@ object FeatureFlags {
     /**
      * The Latest Trailers rail on the Trending tab.
      *
-     * Parked (off) because TMDB has no "list + videos" endpoint: building the rail means fetching a
-     * source list and then one videos call per title (up to 10), i.e. a burst of ~11 requests that
-     * competes with the rest of the tab on a slow connection. Re-enable once a single-request
-     * trailer feed (or a server-side aggregation) is available.
+     * TMDB has no "list + videos" endpoint, so a source costs ~11 requests (its list, then one
+     * videos call per title). Parked 2026-08-04 because that burst starved the rest of the tab on a
+     * slow connection; re-enabled 2026-10-04 once `TrendingScreenTabViewModel` made it cheap: the
+     * fetch waits for the trending rows' first load, runs at most 3 videos calls at once, shows
+     * cards as they arrive, and caches each source on the device for 12 hours
+     * (`TrailerCacheRepository`). Turn off again here if it misbehaves; a server-side aggregation
+     * (future_features_checklist.md items 1 and 18) would replace the per-title calls entirely.
      */
-    const val TRENDING_TRAILERS_ENABLED = false
+    const val TRENDING_TRAILERS_ENABLED = true
 }

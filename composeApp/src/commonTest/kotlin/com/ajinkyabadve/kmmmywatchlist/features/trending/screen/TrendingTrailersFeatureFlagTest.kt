@@ -6,6 +6,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
+import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -67,6 +68,7 @@ class TrendingTrailersFeatureFlagTest {
                     fakeMovieRepository,
                     fakeTvRepository,
                     trailersEnabled = false,
+                    trailerCacheRepository = FakeTrailerCacheRepository(),
                 )
 
             // Trending media still loads; the trailer rail's fan-out (source list + per-title videos) does not.
@@ -85,6 +87,7 @@ class TrendingTrailersFeatureFlagTest {
                     fakeMovieRepository,
                     fakeTvRepository,
                     trailersEnabled = true,
+                    trailerCacheRepository = FakeTrailerCacheRepository(),
                 )
 
             assertEquals(TrailerSource.IN_THEATERS, viewModel.selectedTrailerSource.value)

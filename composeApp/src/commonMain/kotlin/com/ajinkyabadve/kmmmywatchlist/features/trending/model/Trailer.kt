@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.trending.model
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResult
+import kotlinx.serialization.Serializable
 
 /** The source filters the TMDB homepage offers for its Latest Trailers rail. */
 enum class TrailerSource {
@@ -12,6 +13,7 @@ enum class TrailerSource {
 
 // One card in the "Latest Trailers" rail: the newest trailer of one movie or TV show, paired with
 // the media it belongs to so the card can show title/backdrop and link into the app.
+@Serializable
 data class Trailer(
     val mediaId: Long,
     val isMovie: Boolean,

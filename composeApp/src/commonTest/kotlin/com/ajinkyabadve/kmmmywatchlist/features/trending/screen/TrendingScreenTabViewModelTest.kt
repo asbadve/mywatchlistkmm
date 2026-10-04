@@ -6,7 +6,9 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
+import com.ajinkyabadve.kmmmywatchlist.features.trending.model.Trailer
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
+import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
@@ -14,6 +16,7 @@ import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.ktor.http.HttpStatusCode
 import io.ktor.utils.io.errors.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -38,6 +41,7 @@ class TrendingScreenTabViewModelTest {
     private val fakeRepository = FakeTrendingRepository()
     private val fakeMovieRepository = FakeMovieRepository()
     private val fakeTvRepository = FakeTvRepository()
+    private val fakeTrailerCacheRepository = FakeTrailerCacheRepository()
 
     private val testMovieResult =
         MoviePageResult(
@@ -54,10 +58,16 @@ class TrendingScreenTabViewModelTest {
         publishedAt: String,
     ) = VideoResult(id = id, key = "key-$id", site = "YouTube", type = "Trailer", official = true, publishedAt = publishedAt)
 
-    // Trailers are flag-parked (off by default); these tests exercise the still-present trailer
-    // logic, so force it on. See TrendingTrailersFeatureFlagTest for the off-by-default behavior.
+    // Trailers on explicitly, with an in-memory cache, so these tests never depend on the flag's
+    // current value or touch the real settings store. TrendingTrailersFeatureFlagTest covers off.
     private fun createViewModel() =
-        TrendingScreenTabViewModel(fakeRepository, fakeMovieRepository, fakeTvRepository, trailersEnabled = true)
+        TrendingScreenTabViewModel(
+            fakeRepository,
+            fakeMovieRepository,
+            fakeTvRepository,
+            trailersEnabled = true,
+            trailerCacheRepository = fakeTrailerCacheRepository,
+        )
 
     @BeforeTest
     fun setUp() {
@@ -83,7 +93,8 @@ class TrendingScreenTabViewModelTest {
     @Test
     fun testInitializationLoadsAllMediaTypes() =
         runTest(testDispatcher) {
-            val viewModel = TrendingScreenTabViewModel(fakeRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(fakeRepository, trailersEnabled = false, trailerCacheRepository = FakeTrailerCacheRepository())
 
             // Eager dispatcher executes everything during initialization
             assertFalse(viewModel.isScreenLoading.value)
@@ -100,7 +111,8 @@ class TrendingScreenTabViewModelTest {
     @Test
     fun testOnChipSelectedLoadsMovieWithNewTimeWindow() =
         runTest(testDispatcher) {
-            val viewModel = TrendingScreenTabViewModel(fakeRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(fakeRepository, trailersEnabled = false, trailerCacheRepository = FakeTrailerCacheRepository())
 
             // Clear initialization calls
             fakeRepository.getTrendingCalls.clear()
@@ -117,7 +129,8 @@ class TrendingScreenTabViewModelTest {
     @Test
     fun testOnChipSelectedLoadsTvWithNewTimeWindow() =
         runTest(testDispatcher) {
-            val viewModel = TrendingScreenTabViewModel(fakeRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(fakeRepository, trailersEnabled = false, trailerCacheRepository = FakeTrailerCacheRepository())
 
             // Clear initialization calls
             fakeRepository.getTrendingCalls.clear()
@@ -133,7 +146,8 @@ class TrendingScreenTabViewModelTest {
     @Test
     fun testOnChipSelectedLoadsPeopleWithNewTimeWindow() =
         runTest(testDispatcher) {
-            val viewModel = TrendingScreenTabViewModel(fakeRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(fakeRepository, trailersEnabled = false, trailerCacheRepository = FakeTrailerCacheRepository())
 
             // Clear initialization calls
             fakeRepository.getTrendingCalls.clear()
@@ -154,7 +168,8 @@ class TrendingScreenTabViewModelTest {
                     MoviePageResult(page = 1, list = emptyList(), totalResults = 0, totalPages = 0),
                 )
 
-            val viewModel = TrendingScreenTabViewModel(fakeRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(fakeRepository, trailersEnabled = false, trailerCacheRepository = FakeTrailerCacheRepository())
 
             assertTrue(viewModel.trendMovieList.value.isEmpty())
             assertTrue(viewModel.trendTvList.value.isEmpty())
@@ -173,7 +188,8 @@ class TrendingScreenTabViewModelTest {
                         .IOException("Mock network failure"),
                 )
 
-            val viewModel = TrendingScreenTabViewModel(fakeRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(fakeRepository, trailersEnabled = false, trailerCacheRepository = FakeTrailerCacheRepository())
 
             // Eager dispatcher runs setup, catches exception, and executes finally block
             assertFalse(viewModel.isScreenLoading.value)
@@ -188,7 +204,8 @@ class TrendingScreenTabViewModelTest {
                         .IOException("Mock network failure"),
                 )
 
-            val viewModel = TrendingScreenTabViewModel(fakeRepository)
+            val viewModel =
+                TrendingScreenTabViewModel(fakeRepository, trailersEnabled = false, trailerCacheRepository = FakeTrailerCacheRepository())
 
             assertEquals("Network error. Please check your connection.", viewModel.movieTrendError.value)
             assertEquals("Network error. Please check your connection.", viewModel.tvTrendError.value)
@@ -346,7 +363,130 @@ class TrendingScreenTabViewModelTest {
             assertEquals(UiText.Resource(Res.string.error_unexpected_trailers), viewModel.trailerError.value)
         }
 
+    private fun stubMoviesWithTrailers(vararg ids: Int) {
+        fakeMovieRepository.getMoviesResult =
+            Result.success(
+                MoviePageResult(
+                    page = 1,
+                    list = ids.map { Movie(id = it, title = "$TITLE_PREFIX$it") },
+                    totalResults = ids.size,
+                    totalPages = 1,
+                ),
+            )
+        ids.forEachIndexed { index, id ->
+            fakeMovieRepository.getMovieVideosResults[id.toLong()] =
+                Result.success(VideoResponse(results = listOf(trailerVideo("$VIDEO_PREFIX$id", "2026-0${index + 1}-01T00:00:00.000Z"))))
+        }
+    }
+
+    @Test
+    fun testTrailers_waitForTheTrendingRowsFirstLoad() =
+        runTest(testDispatcher) {
+            stubMoviesWithTrailers(FIRST_ID)
+            val trendingGate = CompletableDeferred<Unit>()
+            fakeRepository.gate = trendingGate
+
+            val viewModel = createViewModel()
+
+            assertTrue(fakeMovieRepository.getMoviesCalls.isEmpty(), "No trailer request while the trending rows are loading")
+            assertTrue(viewModel.isTrailerScreenLoading.value)
+            trendingGate.complete(Unit)
+            assertEquals(listOf(1 to "now_playing"), fakeMovieRepository.getMoviesCalls)
+            assertEquals(listOf("$TITLE_PREFIX$FIRST_ID"), viewModel.trailerList.value.map { it.mediaTitle })
+        }
+
+    @Test
+    fun testVideosCalls_runAtMostThreeAtOnce() =
+        runTest(testDispatcher) {
+            val ids = (FIRST_ID until FIRST_ID + MANY_TITLES).toList().toIntArray()
+            stubMoviesWithTrailers(*ids)
+            val gates = ids.associate { it.toLong() to CompletableDeferred<Unit>() }
+            fakeMovieRepository.getMovieVideosGates.putAll(gates)
+
+            val viewModel = createViewModel()
+
+            assertEquals(TrendingScreenTabViewModel.MAX_CONCURRENT_VIDEO_REQUESTS, fakeMovieRepository.getMovieVideosCalls.size)
+            gates.values.forEach { it.complete(Unit) }
+            assertEquals(TrendingScreenTabViewModel.MAX_CONCURRENT_VIDEO_REQUESTS, fakeMovieRepository.maxConcurrentVideosCalls)
+            assertEquals(MANY_TITLES, viewModel.trailerList.value.size)
+        }
+
+    @Test
+    fun testCards_appearAsEachTitleArrives() =
+        runTest(testDispatcher) {
+            stubMoviesWithTrailers(FIRST_ID, SECOND_ID)
+            val firstGate = CompletableDeferred<Unit>()
+            val secondGate = CompletableDeferred<Unit>()
+            fakeMovieRepository.getMovieVideosGates[FIRST_ID.toLong()] = firstGate
+            fakeMovieRepository.getMovieVideosGates[SECOND_ID.toLong()] = secondGate
+
+            val viewModel = createViewModel()
+            secondGate.complete(Unit)
+
+            assertEquals(listOf("$TITLE_PREFIX$SECOND_ID"), viewModel.trailerList.value.map { it.mediaTitle })
+            assertTrue(viewModel.isTrailerScreenLoading.value, "Still loading while the other title is on its way")
+            firstGate.complete(Unit)
+            assertEquals(2, viewModel.trailerList.value.size)
+            assertFalse(viewModel.isTrailerScreenLoading.value)
+        }
+
+    @Test
+    fun testACachedRail_showsWithoutAnyRequest() =
+        runTest(testDispatcher) {
+            val cached =
+                listOf(
+                    Trailer(
+                        mediaId = FIRST_ID.toLong(),
+                        isMovie = true,
+                        mediaTitle = CACHED_TITLE,
+                        backdropPath = null,
+                        video = trailerVideo(CACHED_VIDEO_ID, "2026-01-01T00:00:00.000Z"),
+                    ),
+                )
+            fakeTrailerCacheRepository.stored[TrailerSource.IN_THEATERS] = cached
+
+            val viewModel = createViewModel()
+
+            assertEquals(cached, viewModel.trailerList.value)
+            assertTrue(fakeMovieRepository.getMoviesCalls.isEmpty())
+            assertTrue(fakeMovieRepository.getMovieVideosCalls.isEmpty())
+        }
+
+    @Test
+    fun testAFetchedRail_isCachedForNextTime() =
+        runTest(testDispatcher) {
+            stubMoviesWithTrailers(FIRST_ID)
+
+            val viewModel = createViewModel()
+
+            assertEquals(listOf(TrailerSource.IN_THEATERS), fakeTrailerCacheRepository.putCalls)
+            assertEquals(viewModel.trailerList.value, fakeTrailerCacheRepository.stored[TrailerSource.IN_THEATERS])
+        }
+
+    @Test
+    fun testReselectingAChipMidLoad_doesNotStartASecondFetch() =
+        runTest(testDispatcher) {
+            stubMoviesWithTrailers(FIRST_ID)
+            val gate = CompletableDeferred<Unit>()
+            fakeMovieRepository.getMovieVideosGates[FIRST_ID.toLong()] = gate
+            val viewModel = createViewModel()
+
+            viewModel.onTrailerSourceSelected(TrailerSource.ON_TV)
+            viewModel.onTrailerSourceSelected(TrailerSource.IN_THEATERS)
+            gate.complete(Unit)
+
+            assertEquals(listOf(1 to "now_playing"), fakeMovieRepository.getMoviesCalls)
+            assertEquals(listOf("$TITLE_PREFIX$FIRST_ID"), viewModel.trailerList.value.map { it.mediaTitle })
+        }
+
     private companion object {
+        const val FIRST_ID = 101
+        const val SECOND_ID = 102
+        const val MANY_TITLES = 6
+        const val TITLE_PREFIX = "Title "
+        const val VIDEO_PREFIX = "video-"
+        const val CACHED_TITLE = "Cached Movie"
+        const val CACHED_VIDEO_ID = "cached-video"
         const val DUPLICATE_MOVIE_ID = 986056
         const val DUPLICATE_TITLE = "Listed Twice"
         const val DUPLICATE_VIDEO_ID = "dup-trailer"

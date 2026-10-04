@@ -8,9 +8,13 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import io.ktor.utils.io.errors.IOException
+import kotlinx.coroutines.CompletableDeferred
 
 class FakeMovieRepository : MovieRepository {
     var getMoviesResult: Result<MoviePageResult>? = null
+
+    /** Per-list results (keyed by fetch type, e.g. "now_playing"), checked before [getMoviesResult]. */
+    val getMoviesResultsByFetchType = mutableMapOf<String, Result<MoviePageResult>>()
     var getMovieDetailsResult: Result<MovieDetail>? = null
     var getCollectionDetailsResult: Result<CollectionDetail>? = null
 
@@ -23,6 +27,14 @@ class FakeMovieRepository : MovieRepository {
     val getMovieVideosResults = mutableMapOf<Long, Result<VideoResponse>>()
     val getMovieVideosCalls = mutableListOf<Long>()
 
+    /** Per-movie gates: a videos call for a gated id suspends until its gate completes. */
+    val getMovieVideosGates = mutableMapOf<Long, CompletableDeferred<Unit>>()
+    private var videosInFlight = 0
+
+    /** The most videos calls that were ever suspended at the same time. */
+    var maxConcurrentVideosCalls = 0
+        private set
+
     val getMoviesCalls = mutableListOf<Pair<Int, String>>()
     val getMovieDetailsCalls = mutableListOf<Long>()
 
@@ -32,7 +44,7 @@ class FakeMovieRepository : MovieRepository {
     ): MoviePageResult {
         getMoviesCalls.add(pageNo to moveFetchType)
 
-        getMoviesResult?.let { result ->
+        (getMoviesResultsByFetchType[moveFetchType] ?: getMoviesResult)?.let { result ->
             if (result.isSuccess) {
                 return result.getOrThrow()
             } else {
@@ -121,6 +133,15 @@ class FakeMovieRepository : MovieRepository {
 
     override suspend fun getMovieVideos(movieId: Long): VideoResponse {
         getMovieVideosCalls.add(movieId)
+        getMovieVideosGates[movieId]?.let { gate ->
+            videosInFlight++
+            maxConcurrentVideosCalls = maxOf(maxConcurrentVideosCalls, videosInFlight)
+            try {
+                gate.await()
+            } finally {
+                videosInFlight--
+            }
+        }
 
         getMovieVideosResults[movieId]?.let { result ->
             if (result.isSuccess) {
