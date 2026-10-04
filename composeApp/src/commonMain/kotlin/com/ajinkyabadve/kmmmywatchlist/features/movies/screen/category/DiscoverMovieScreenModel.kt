@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.ajinkyabadve.kmmmywatchlist.core.util.addAllNewBy
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
@@ -90,12 +91,8 @@ class DiscoverMovieScreenModel(
                     val response = discoverRepository.getDiscoverMovies(page, filters, includeAdult)
                     response.list?.let {
                         canPaginate = response.page <= response.totalPages
-                        if (isFirstPage()) {
-                            movieList.clear()
-                            movieList.addAll(it)
-                        } else {
-                            movieList.addAll(it)
-                        }
+                        if (isFirstPage()) movieList.clear()
+                        movieList.addAllNewBy(it) { movie -> movie.id }
                     }
                     listState =
                         if (canPaginate) {

@@ -380,7 +380,11 @@ class TrendingScreenTabViewModel(
                         }
                     }
                 }.awaitAll()
-        }.filterNotNull().sortedByDescending { it.video.publishedAt }
+        }.filterNotNull()
+            // The trailer row is keyed by video id; a title TMDB lists twice on one page would
+            // otherwise repeat its trailer and crash the row ("Key ... was already used").
+            .distinctBy { it.video.id }
+            .sortedByDescending { it.video.publishedAt }
     }
 
     private suspend fun movieCandidates(fetchType: String): List<TrailerCandidate> =

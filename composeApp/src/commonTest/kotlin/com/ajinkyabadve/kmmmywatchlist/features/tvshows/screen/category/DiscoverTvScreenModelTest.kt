@@ -43,6 +43,25 @@ class DiscoverTvScreenModelTest {
     ) = DiscoverTvScreenModel(fakeDiscoverRepository, fakeGenreRepository, discoverFilterRepository, restrictedModeRepository)
 
     @Test
+    fun testAPageRepeatingAShow_doesNotDuplicateIt() =
+        runTest(testDispatcher) {
+            fakeDiscoverRepository.discoverTvShowsResult =
+                Result.success(
+                    TvPageResult(page = 1, list = listOf(Tv(id = FIRST_ID), Tv(id = REPEATED_ID)), totalResults = 4, totalPages = 2),
+                )
+            val viewModel = screenModel()
+            // TMDB moved a show between requests, so page 2 repeats one from page 1.
+            fakeDiscoverRepository.discoverTvShowsResult =
+                Result.success(
+                    TvPageResult(page = 2, list = listOf(Tv(id = REPEATED_ID), Tv(id = LAST_ID)), totalResults = 4, totalPages = 2),
+                )
+
+            viewModel.loadTvShows()
+
+            assertEquals(listOf(FIRST_ID, REPEATED_ID, LAST_ID), viewModel.tvList.map { it.id })
+        }
+
+    @Test
     fun testStartsAlreadyLoadedUsingPersistedFilters() =
         runTest(testDispatcher) {
             val persisted = DiscoverFilters(genreIds = setOf(10759), year = 2021)
@@ -85,4 +104,10 @@ class DiscoverTvScreenModelTest {
             assertEquals(ListState.NETWORK_ERROR, viewModel.listState)
             assertTrue(viewModel.tvList.isEmpty())
         }
+
+    private companion object {
+        const val FIRST_ID = 986055
+        const val REPEATED_ID = 986056
+        const val LAST_ID = 986057
+    }
 }

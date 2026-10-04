@@ -87,6 +87,35 @@ class DiscoverMovieScreenModelTest {
         }
 
     @Test
+    fun testAPageRepeatingATitle_doesNotDuplicateIt() =
+        runTest(testDispatcher) {
+            fakeDiscoverRepository.discoverMoviesResult =
+                Result.success(
+                    MoviePageResult(
+                        page = 1,
+                        list = listOf(Movie(id = FIRST_ID), Movie(id = REPEATED_ID)),
+                        totalResults = 4,
+                        totalPages = 2,
+                    ),
+                )
+            val viewModel = screenModel()
+            // TMDB moved a title between requests, so page 2 repeats one from page 1.
+            fakeDiscoverRepository.discoverMoviesResult =
+                Result.success(
+                    MoviePageResult(
+                        page = 2,
+                        list = listOf(Movie(id = REPEATED_ID), Movie(id = LAST_ID)),
+                        totalResults = 4,
+                        totalPages = 2,
+                    ),
+                )
+
+            viewModel.loadMovies()
+
+            assertEquals(listOf(FIRST_ID, REPEATED_ID, LAST_ID), viewModel.movieList.map { it.id })
+        }
+
+    @Test
     fun testNetworkErrorSetsNetworkErrorState() =
         runTest(testDispatcher) {
             fakeDiscoverRepository.discoverMoviesResult = Result.failure(IOException("boom"))
@@ -96,4 +125,10 @@ class DiscoverMovieScreenModelTest {
             assertEquals(ListState.NETWORK_ERROR, viewModel.listState)
             assertTrue(viewModel.movieList.isEmpty())
         }
+
+    private companion object {
+        const val FIRST_ID = 986055
+        const val REPEATED_ID = 986056
+        const val LAST_ID = 986057
+    }
 }

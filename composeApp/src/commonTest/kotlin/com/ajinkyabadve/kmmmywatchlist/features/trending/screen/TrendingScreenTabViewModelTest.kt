@@ -221,6 +221,30 @@ class TrendingScreenTabViewModelTest {
         }
 
     @Test
+    fun testAMovieListedTwice_yieldsOneTrailerCard() =
+        runTest(testDispatcher) {
+            fakeMovieRepository.getMoviesResult =
+                Result.success(
+                    MoviePageResult(
+                        page = 1,
+                        list =
+                            listOf(
+                                Movie(id = DUPLICATE_MOVIE_ID, title = DUPLICATE_TITLE),
+                                Movie(id = DUPLICATE_MOVIE_ID, title = DUPLICATE_TITLE),
+                            ),
+                        totalResults = 2,
+                        totalPages = 1,
+                    ),
+                )
+            fakeMovieRepository.getMovieVideosResults[DUPLICATE_MOVIE_ID.toLong()] =
+                Result.success(VideoResponse(results = listOf(trailerVideo(DUPLICATE_VIDEO_ID, DUPLICATE_PUBLISHED_AT))))
+
+            val viewModel = createViewModel()
+
+            assertEquals(listOf(DUPLICATE_VIDEO_ID), viewModel.trailerList.value.map { it.video.id })
+        }
+
+    @Test
     fun testOnTrailerSourceSelectedOnTvFetchesFromTvRepository() =
         runTest(testDispatcher) {
             fakeTvRepository.getTvShowsResult =
@@ -323,6 +347,10 @@ class TrendingScreenTabViewModelTest {
         }
 
     private companion object {
+        const val DUPLICATE_MOVIE_ID = 986056
+        const val DUPLICATE_TITLE = "Listed Twice"
+        const val DUPLICATE_VIDEO_ID = "dup-trailer"
+        const val DUPLICATE_PUBLISHED_AT = "2026-03-01T00:00:00.000Z"
         const val MEDIA_TYPE_MOVIE = "movie"
         const val MEDIA_TYPE_TV = "tv"
         const val MEDIA_TYPE_PEOPLE = "person"

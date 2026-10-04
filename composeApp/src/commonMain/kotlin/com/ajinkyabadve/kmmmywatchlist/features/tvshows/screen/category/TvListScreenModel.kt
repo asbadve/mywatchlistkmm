@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.ajinkyabadve.kmmmywatchlist.core.util.addAllNewBy
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
@@ -44,12 +45,8 @@ class TvListScreenModel(
                     val response = tvRepository.getTvShows(page, tvFetchType)
                     response.list?.let {
                         canPaginate = response.page <= (response.totalPages ?: 0)
-                        if (isFirstPage()) {
-                            tvList.clear()
-                            tvList.addAll(it)
-                        } else {
-                            tvList.addAll(it)
-                        }
+                        if (isFirstPage()) tvList.clear()
+                        tvList.addAllNewBy(it) { tvShow -> tvShow.id }
                     }
                     listState =
                         if (canPaginate) {
