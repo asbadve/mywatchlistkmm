@@ -31,6 +31,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarg
 import com.ajinkyabadve.kmmmywatchlist.core.notification.MediaDetailNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
+import qrgenerator.AppContext
 
 class AndroidApp : Application() {
     companion object {
@@ -40,6 +41,9 @@ class AndroidApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // QRKit (transfer QR scanning) reads its context from here - see the manifest's
+        // tools:replace note for why its own Application class isn't used.
+        AppContext.set(applicationContext)
         // Debuggable builds only - release APKs should not spend cycles formatting HTTP traffic
         // into logcat. Read off the manifest flag the build type already sets, so there is no
         // separate switch to remember to flip.

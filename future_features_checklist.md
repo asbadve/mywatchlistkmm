@@ -644,6 +644,40 @@ Two ways to get it - **option A chosen (2026-10-04)**: `core/file/BackupFileLaun
   `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`.
 
 ### Stage 2: QR-code transfer between devices (after stage 1 ships)
+**Built 2026-10-04** (`nonWebMain/.../features/backup/transfer/` + `.../backup/screen/DeviceTransfer*`),
+with these deviations from the plan below, each for a reason found while building it:
+- **No `ktor-server-cio` / ktor-network.** This app's Ktor is 2.3.x, whose iOS ktor-network klib
+  fails to link with Kotlin 2.3 (`Failed to build cache ... Expected a type operator call`). Plain
+  TCP instead: `java.net` in a new `jvmSharedMain` (Android + desktop), POSIX sockets in `iosMain`,
+  behind `TransferSockets`.
+- **QRKit only scans, and only on Android/iOS.** Its desktop build targets Java 21 (app runs on
+  17), its manifest declares its own Application class (overridden with `tools:replace`, `AppContext`
+  set in `AndroidApp`), and it declares `image-loader` 1.9.0 - unused by its code - which pulls
+  Ktor 3.0.0-rc-1 and breaks the app's Ktor 2.3 client at runtime; that group is excluded, as are
+  its `ui-test-junit4`/`ui-tooling` runtime deps. The sender's QR code is drawn with **qrose 1.1.1**
+  (pure Kotlin + compose-ui; 1.2+ needs Compose 1.12 / Kotlin 2.4).
+- **No 4-digit confirmation code.** Both ends would derive it from the same key in the QR code, so
+  it proves nothing a successful scan doesn't. Instead: the receiver's first message must decrypt
+  with the key (anything else is dropped silently), the sender asks "Send your backup to
+  <device name>?", and the receiver still gets stage 1's "Restore this backup?" confirmation.
+- **Typed short code (added 2026-10-04)** so a device that can't scan - desktop - can receive: the
+  sender shows `XXXX-XXXX-XXXX-XXXX-XXXX` (Crockford Base32: last two IPv4 octets, port, 64-bit
+  secret) under the QR code; the receiver fills the first two octets from its own address. The QR
+  code carries the same 64-bit secret and the AES key is derived from it (SHA-256 over a label +
+  secret), so both paths are identical. Consequence: the short code assumes both devices share the
+  first two IPv4 octets, true on a normal Wi-Fi but not across an emulator's NAT (10.0.2.x).
+- **Desktop receives by typing the code**; phones scan or type.
+- Crypto: cryptography-kotlin 0.6.0, AES-256-GCM, direction-bound associated data. Auth failures are
+  mapped per platform (`GeneralSecurityException` on the JVM, `IllegalStateException` from CryptoKit).
+- Verified: loopback end-to-end tests (approve, decline, wrong-key intruder, expiry, unreachable,
+  closing a waiting offer), screen-model and Compose UI tests; and a real cross-platform transfer
+  **iOS simulator -> Android emulator** (2026-10-04): the iOS QR code was decoded from a screenshot
+  with ZXing, pasted into the receiver through a **debug-build-only "paste a transfer code" field**
+  (simulators can't scan another screen), and the backup arrived and restored. The reverse direction
+  can't run on emulators (an emulator advertises its NAT address 10.0.2.x). **Confirmed by the user
+  on two physical Android phones on one Wi-Fi (2026-10-04)** - real camera scan, send, restore.
+
+#### Original plan
 WhatsApp/Signal model: the QR code is a short-lived pairing ticket, and the data moves over the
 local network, encrypted. Putting the data itself in the QR code was rejected: a typical backup
 (~40 people, ~20 collections, ~30 reminders, settings) is ~8-12 KB of JSON / ~3 KB gzipped, over a
@@ -1084,5 +1118,53 @@ server-side model call. TMDB has no API for any of this data, by construction.
   catch-up with a fake transport; Compose UI test for the toggle and status row.
 - [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
   `:composeApp:assembleDebug`, `:composeApp:compileKotlinJs`, `:composeApp:ktlintCheck`.
+
+---
+
+## 19. Overview Text on Upcoming Timeline Cards (Medium/Expanded Widths)
+**Goal**: On medium and expanded windows the Upcoming tab's timeline cards have spare width beside
+the title (`UpcomingLayoutSizes` already gives them bigger posters and a side-by-side pill). Use it
+for a short overview - the episode's title and synopsis for episode rows, the movie's synopsis for
+movie rows - clamped to 2-3 lines. Phones (compact) stay exactly as they are. Parked 2026-10-04
+from a user observation; small.
+
+### Data: what already exists (checked 2026-10-04)
+- **Episodes - no network, no schema change.** `Episode.name` / `Episode.overview` are in the cached
+  `TvSeasonDetail` (`tvSeasonDetailCache`), which the Upcoming tab now refreshes on every open
+  (`TvDetailCacheRepository.refreshLatestSeasons`). Only `UpcomingMediaItem` and
+  `buildUpcomingEpisodeItems` need to carry them through.
+- **Movies - needs a column.** TMDB's favorites/watchlist response already includes `overview`
+  (`SearchResultItem.overview`), but `trackedMedia` doesn't store it. Add a nullable `overview`
+  column via `2.sqm` (schema v3, `LocalSchemaVersion.CURRENT = 3`, `verifyMigrations` will check
+  it against a regenerated `2.db`), written by both `TrackedMediaRemoteMediator` and
+  `TrackedMediaRepository.refreshAll`, selected by `selectUpcomingTrackedMedia`. Rows synced before
+  the migration have it null until the next refresh - render nothing rather than a placeholder.
+
+### Implementation Checklist
+- [ ] `UpcomingMediaItem`: add `overview: String?` and `episodeTitle: String?`.
+- [ ] Movie column + migration as above; episode fields from the season cache.
+- [ ] `UpcomingMediaRow`: when `!sizes.stackedRows`, show episode title (titleSmall) and overview
+  (bodySmall, `maxLines` 2-3, ellipsis) in the text column; row height must still derive from the
+  poster (`TimelineEntryCard` needs a definite height for the rail) - clamp lines, don't grow.
+- [ ] Blank/null overview renders nothing (TMDB often has no synopsis for future episodes).
+- [ ] Tests: unit - episode builder carries name/overview, migration test for the new column;
+  Compose UI - overview shown at MEDIUM/EXPANDED, absent at COMPACT, absent when blank.
+- [ ] Verify the usual Gradle tasks, then check at 700dp and 900dp in both themes.
+
+---
+
+## 20. Remove Existing Deprecated API Usages (next task, queued 2026-10-04)
+**Goal**: Clear the deprecation warnings the build already prints, now that
+`.claude/skills/code-conventions/SKILL.md` §12 forbids new ones. Pure cleanup, no behaviour change.
+
+- [ ] `kotlinx.datetime.Clock` / `kotlinx.datetime.Instant` -> `kotlin.time.Clock` / `kotlin.time.Instant`
+  (repositories, screen models, pollers, tests).
+- [ ] `LocalDate.dayOfMonth` / `monthNumber` -> `day` / `month` (e.g. `design/calendar/MonthCalendar.kt`).
+- [ ] `Icons.Filled.List`, `Icons.Filled.KeyboardArrowRight` -> `Icons.AutoMirrored.Filled.*`.
+- [ ] `LocalClipboardManager` -> `LocalClipboard` (`core/ui/LongPressToCopy.kt`, suspend API).
+- [ ] compose-ui `LocalLifecycleOwner` -> lifecycle-runtime-compose's (`AutoScrollCarousel.kt`).
+- [ ] `currentWindowAdaptiveInfo()` -> the V2 variant (`App.kt`).
+- [ ] Verify: `compileKotlinDesktop 2>&1 | grep "^w:.*deprecated"` is empty for `composeApp/src`,
+  plus the usual test/compile/ktlint tasks.
 
 ---

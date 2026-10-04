@@ -120,7 +120,26 @@ kotlin {
             }
         }
 
+        // Everything except the web target: item 15 stage 2's device-to-device transfer. Browsers
+        // have no raw sockets, and backup is hidden on web anyway.
+        val nonWebMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+                implementation(libs.cryptography.core)
+                implementation(libs.cryptography.provider.optimal)
+                // Draws the sender's QR code - pure Kotlin + compose-ui, so it works on desktop too.
+                implementation(libs.qrose)
+            }
+        }
+
+        // Android + desktop: the transfer's java.net sockets and JVM crypto error types are identical
+        // on both, so they're written once here rather than duplicated in each.
+        val jvmSharedMain by creating {
+            dependsOn(nonWebMain)
+        }
+
         val androidMain by getting {
+            dependsOn(jvmSharedMain)
             dependencies {
                 implementation(libs.androidx.appcompat)
                 implementation(libs.androidx.browser)
@@ -133,6 +152,19 @@ kotlin {
                 implementation(libs.androidx.window)
                 implementation(libs.androidx.ui.tooling.preview.android)
                 implementation(libs.androidx.splashscreen)
+                // Scans the transfer QR code (item 15 stage 2). Android/iOS only: its desktop build
+                // targets Java 21 (this app runs on 17) and desktop never scans.
+                implementation(libs.qrkit.get().toString()) {
+                    // QRKit publishes test and preview tooling as runtime dependencies; neither
+                    // belongs in the app.
+                    exclude(group = "androidx.compose.ui", module = "ui-test-junit4")
+                    exclude(group = "androidx.compose.ui", module = "ui-tooling")
+                    // QRKit declares image-loader 1.9.0 but never calls it (checked 2026-10-04: no
+                    // reference in its Android or JVM classes). It drags in Ktor 3.0.0-rc-1, which
+                    // silently upgrades this app's Ktor 2.3 client and breaks it at runtime
+                    // (NoClassDefFoundError: HttpRequestRetry).
+                    exclude(group = "io.github.qdsfdhvh")
+                }
             }
         }
         val androidUnitTest by getting {
@@ -141,6 +173,7 @@ kotlin {
         }
 
         val desktopMain by getting {
+            dependsOn(jvmSharedMain)
             dependencies {
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(compose.desktop.common)
@@ -188,12 +221,25 @@ kotlin {
         val iosArm64Main by getting
         val iosSimulatorArm64Main by getting
         val iosMain by getting {
-            dependsOn(commonMain)
+            dependsOn(nonWebMain)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
             dependencies {
                 implementation(libs.ktor.client.darwin)
                 implementation(libs.sqlDelight.driver.native)
+                // Scans the transfer QR code (item 15 stage 2). Android/iOS only: its desktop build
+                // targets Java 21 (this app runs on 17) and desktop never scans.
+                implementation(libs.qrkit.get().toString()) {
+                    // QRKit publishes test and preview tooling as runtime dependencies; neither
+                    // belongs in the app.
+                    exclude(group = "androidx.compose.ui", module = "ui-test-junit4")
+                    exclude(group = "androidx.compose.ui", module = "ui-tooling")
+                    // QRKit declares image-loader 1.9.0 but never calls it (checked 2026-10-04: no
+                    // reference in its Android or JVM classes). It drags in Ktor 3.0.0-rc-1, which
+                    // silently upgrades this app's Ktor 2.3 client and breaks it at runtime
+                    // (NoClassDefFoundError: HttpRequestRetry).
+                    exclude(group = "io.github.qdsfdhvh")
+                }
             }
         }
     }

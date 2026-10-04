@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -9,9 +10,17 @@
          ReminderRescheduleReceiver put them back. No exact-alarm permission: reminders use
          inexact setWindow alarms (see ReminderScheduler's kdoc). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Scanning another device's transfer QR code (backup & restore, item 15 stage 2). The camera
+         is optional so Play still lists the app on camera-less devices; they restore from a file. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- tools:replace: QRKit's library manifest declares its own Application class
+         (org.qrcodeScanner.QRKitApp); the app keeps AndroidApp, which does the same AppContext
+         setup QRKitApp would have. -->
     <application
         android:name=".AndroidApp"
+        tools:replace="android:name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="MyWatchList"

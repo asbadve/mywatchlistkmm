@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.backup.screen
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasText
@@ -84,6 +85,73 @@ class BackupRestoreDialogsUiTest {
             )
         }
 
+    @Test
+    fun testTransferButtons_openTheTransferDialogInTheRightMode() =
+        runComposeUiTest {
+            val phone = BackupTestFixture()
+            val opened = mutableListOf<DeviceTransferMode>()
+            setContent {
+                BackupRestoreDialogs(
+                    screenModel = phone.screenModel,
+                    fileLauncher = FakeBackupFileLauncher(),
+                    onRestored = {},
+                    canSendToDevice = true,
+                    canReceiveFromDevice = true,
+                    transferDialog = { mode, _, _ -> opened.add(mode) },
+                )
+            }
+            phone.screenModel.open()
+
+            onNodeWithText(RECEIVE_FROM_DEVICE).performClick()
+
+            waitUntil { opened.isNotEmpty() }
+            assertEquals(DeviceTransferMode.RECEIVE, opened.first())
+        }
+
+    @Test
+    fun testABackupReceivedFromADevice_goesThroughTheRestoreConfirmation() {
+        val backup = exportedBackup()
+        runComposeUiTest {
+            val newPhone = BackupTestFixture()
+            setContent {
+                BackupRestoreDialogs(
+                    screenModel = newPhone.screenModel,
+                    fileLauncher = FakeBackupFileLauncher(),
+                    onRestored = {},
+                    canSendToDevice = true,
+                    canReceiveFromDevice = true,
+                    // Stands in for the real dialog: delivers the backup as soon as it opens.
+                    transferDialog = { _, onBackupReceived, _ -> LaunchedEffect(Unit) { onBackupReceived(backup) } },
+                )
+            }
+            newPhone.screenModel.open()
+
+            onNodeWithText(RECEIVE_FROM_DEVICE).performClick()
+
+            waitUntil { hasNode(CONFIRM_MESSAGE) }
+        }
+    }
+
+    @Test
+    fun testTransferButtons_hiddenWhereUnsupported() =
+        runComposeUiTest {
+            val phone = BackupTestFixture()
+            setContent {
+                BackupRestoreDialogs(
+                    screenModel = phone.screenModel,
+                    fileLauncher = FakeBackupFileLauncher(),
+                    onRestored = {},
+                    canSendToDevice = false,
+                    canReceiveFromDevice = false,
+                )
+            }
+            phone.screenModel.open()
+
+            onNodeWithText(EXPORT_BACKUP).assertExists()
+            onNodeWithText(SEND_TO_DEVICE).assertDoesNotExist()
+            onNodeWithText(RECEIVE_FROM_DEVICE).assertDoesNotExist()
+        }
+
     private fun ComposeUiTest.hasNode(text: String): Boolean =
         onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
 
@@ -96,5 +164,7 @@ class BackupRestoreDialogsUiTest {
         const val MALFORMED_MESSAGE = "This file isn't a MyWatchList backup"
         const val EXPORT_SUCCESS = "Backup saved."
         const val FORMAT_FIELD = "\"format\""
+        const val SEND_TO_DEVICE = "Send to another device"
+        const val RECEIVE_FROM_DEVICE = "Receive from another device"
     }
 }

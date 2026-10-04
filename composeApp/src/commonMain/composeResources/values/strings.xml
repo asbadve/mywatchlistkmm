@@ -347,4 +347,33 @@
     <string name="backup_restore_result">Restored.\nPeople added: %1$d\nCollections added: %2$d\nRelease reminders added: %3$d\nSettings restored: %4$d\n\nAnything already on this device was kept.</string>
     <string name="backup_error_unsupported_format">This backup was made by a newer version of MyWatchList (format %1$d; this version reads up to %2$d). Update the app and try again.</string>
     <string name="backup_error_malformed">This file isn't a MyWatchList backup, or it was edited and has invalid data. Nothing was changed.</string>
+    <!-- Device-to-device transfer (future_features_checklist.md item 15 stage 2) -->
+    <string name="transfer_send_action">Send to another device</string>
+    <string name="transfer_receive_action">Receive from another device</string>
+    <string name="transfer_send_instructions">On your other device, open Settings, then Backup &amp; restore, then Receive from another device, and scan this code. Both devices must be on the same Wi-Fi.</string>
+    <string name="transfer_code_validity">The code works once and expires in 5 minutes.</string>
+    <string name="transfer_qr_content_description">Transfer code</string>
+    <string name="transfer_request_message">Send your backup to %1$s?</string>
+    <string name="transfer_request_unknown_device">another device</string>
+    <string name="transfer_request_send">Send</string>
+    <string name="transfer_request_decline">Don't send</string>
+    <string name="transfer_preparing">Getting ready…</string>
+    <string name="transfer_sending">Sending…</string>
+    <string name="transfer_sent">Sent to %1$s. Finish the restore on that device.</string>
+    <string name="transfer_declined_sender">Not sent.</string>
+    <string name="transfer_expired">This code has expired. Start again for a new one.</string>
+    <string name="transfer_no_network">Connect to Wi-Fi to send to another device. Both devices must be on the same network.</string>
+    <string name="transfer_failed">Something went wrong. Try again.</string>
+    <string name="transfer_scan_instructions">Scan the code on your other device. To show it there, open Settings, then Backup &amp; restore, then Send to another device.</string>
+    <string name="transfer_waiting">Connected. Tap Send on the other device.</string>
+    <string name="transfer_invalid_code">That isn't a MyWatchList transfer code. Check it and try again.</string>
+    <string name="transfer_unreachable">Couldn't reach the other device. Both devices must be on the same Wi-Fi - guest and public networks often block this.</string>
+    <string name="transfer_declined_receiver">The other device didn't send the backup.</string>
+    <string name="transfer_camera_denied">Allow camera access in Settings to scan the code.</string>
+    <string name="transfer_scan_again">Scan again</string>
+    <string name="transfer_try_again">Try again</string>
+    <string name="transfer_code_label">Or type the code from the other device</string>
+    <string name="transfer_connect">Connect</string>
+    <string name="transfer_short_code_hint">Can't scan? Type this code on the other device instead:</string>
+    <string name="transfer_type_instructions">On your other device, open Settings, then Backup &amp; restore, then Send to another device. Type the code shown under its QR code here.</string>
 </resources>

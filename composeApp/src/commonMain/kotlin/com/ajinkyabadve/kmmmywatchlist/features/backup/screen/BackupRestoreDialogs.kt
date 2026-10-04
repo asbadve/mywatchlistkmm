@@ -13,7 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,6 +37,8 @@ import mywatchlist.composeapp.generated.resources.backup_restore_confirm_action
 import mywatchlist.composeapp.generated.resources.backup_restore_confirm_message
 import mywatchlist.composeapp.generated.resources.backup_restore_confirm_title
 import mywatchlist.composeapp.generated.resources.backup_restore_result
+import mywatchlist.composeapp.generated.resources.transfer_receive_action
+import mywatchlist.composeapp.generated.resources.transfer_send_action
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -46,9 +51,32 @@ fun BackupRestoreDialogs(
     screenModel: BackupScreenModel,
     fileLauncher: BackupFileLauncher,
     onRestored: () -> Unit,
+    // Parameters, not direct calls, so the desktop UI test can render either set of buttons.
+    canSendToDevice: Boolean = supportsTransferSending(),
+    canReceiveFromDevice: Boolean = supportsTransferReceiving(),
+    transferDialog: @Composable (
+        mode: DeviceTransferMode,
+        onBackupReceived: (String) -> Unit,
+        onDismiss: () -> Unit,
+    ) -> Unit = { mode, onReceived, onDismiss ->
+        DeviceTransferDialog(mode, onReceived, onDismiss)
+    },
 ) {
     val state by screenModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
+    var transferMode by remember { mutableStateOf<DeviceTransferMode?>(null) }
+
+    transferMode?.let { mode ->
+        transferDialog(
+            mode,
+            { backupJson ->
+                transferMode = null
+                // Same path as a picked file: validate, then ask before restoring.
+                screenModel.onFilePicked(backupJson)
+            },
+            { transferMode = null },
+        )
+    }
 
     when (val current = state) {
         BackupUiState.Idle -> Unit
@@ -73,6 +101,24 @@ fun BackupRestoreDialogs(
                             onClick = { scope.launch { screenModel.onFilePicked(fileLauncher.open()) } },
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(stringResource(Res.string.backup_restore_action)) }
+                        if (canSendToDevice) {
+                            OutlinedButton(
+                                onClick = {
+                                    screenModel.dismiss()
+                                    transferMode = DeviceTransferMode.SEND
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(stringResource(Res.string.transfer_send_action)) }
+                        }
+                        if (canReceiveFromDevice) {
+                            OutlinedButton(
+                                onClick = {
+                                    screenModel.dismiss()
+                                    transferMode = DeviceTransferMode.RECEIVE
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(stringResource(Res.string.transfer_receive_action)) }
+                        }
                     }
                 },
                 confirmButton = {},
