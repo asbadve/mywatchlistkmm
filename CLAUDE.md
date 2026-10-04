@@ -12,6 +12,8 @@ Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions
   `gradle/libs.versions.toml` rather than trusting recalled knowledge, which is usually older than
   the versions here. Custom code is allowed but must say in its KDoc what the platform equivalent
   was and why it did not fit.
+- No deprecated APIs: check an API isn't deprecated in the versions here before using it, and grep
+  the compile warnings for files you touched - a deprecation in your change is a defect (§12).
 
 Before implementing any new feature, follow `.claude/skills/testing-conventions/SKILL.md`:
 every new feature needs both a unit test (ScreenModel/repository logic) and a Compose UI JUnit

@@ -386,3 +386,38 @@ class TrackedMediaRepositoryImplTest {
     }
 }
 ```
+
+## 12. No deprecated APIs - check before you use one (agreed 2026-10-04)
+
+Don't write new code against an API that is deprecated in the versions this repo actually uses
+(`gradle/libs.versions.toml`). A deprecation warning in the build output is a defect in *your*
+change, not background noise - the build already prints dozens of them, which is exactly how new
+ones slip in unnoticed.
+
+- **Before using an API, check it isn't deprecated** - read the declaration's `@Deprecated` /
+  KDoc (IDE, sources jar, or the library's current docs), not recalled knowledge, which is usually
+  from an older version. Use the replacement the deprecation message names.
+- **After compiling, grep the warnings for files you touched**:
+  `./gradlew :composeApp:compileKotlinDesktop 2>&1 | grep "^w:.*deprecated" | grep <your files>` -
+  any hit in your change gets fixed before finalizing, same tier as ktlint.
+- If the replacement genuinely can't be used yet (needs a library/Kotlin bump, is experimental on a
+  target we ship), keep the deprecated call but say why in a comment next to it, and add it to the
+  cleanup list rather than leaving it silent.
+- Existing deprecated usages are cleaned up as their own task - don't mix a repo-wide migration into
+  an unrelated change, but do fix the ones in code you are already editing.
+
+```kotlin
+// WRONG - kotlinx.datetime.Clock is deprecated ("Use kotlin.time.Clock instead")
+import kotlinx.datetime.Clock
+val now = Clock.System.now()
+
+// RIGHT
+import kotlin.time.Clock
+val now = Clock.System.now()
+```
+
+Known existing offenders to clean up (2026-10-04): `kotlinx.datetime.Clock` / `kotlinx.datetime.Instant`
+(-> `kotlin.time`), `LocalDate.dayOfMonth` / `monthNumber` (-> `day` / `month`),
+`Icons.Filled.List` / `KeyboardArrowRight` (-> `Icons.AutoMirrored.Filled.*`),
+`LocalClipboardManager` (-> `LocalClipboard`), `LocalLifecycleOwner` from compose-ui
+(-> lifecycle-runtime-compose), `currentWindowAdaptiveInfo()` (-> the V2 variant).
