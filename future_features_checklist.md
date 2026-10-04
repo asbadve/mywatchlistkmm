@@ -701,6 +701,34 @@ single QR code's ~2.9 KB ceiling and unscannable at that density.
   and the confirmation-code derivation; Compose UI test the show-code / scan / confirm screens with a
   fake transport.
 
+### Stage 3: follow-ups from the platform research (queued 2026-10-04)
+Not one feature - four independent items the stage-1/2 research surfaced. Each can be picked up on
+its own; the first is the natural next step.
+
+- [ ] **3a. Decide Android Auto Backup deliberately** (small). The manifest sets no `allowBackup`,
+  so the default copies `watchlist_settings` - including `auth_session_id` - and the whole SQLite
+  file (TMDB caches too) to Google Drive and in device-to-device transfers (QRKit's library
+  manifest also merges `allowBackup="true"`). Add `android:dataExtractionRules` with a
+  `data_extraction_rules.xml` (`<cloud-backup>` / `<device-transfer>`, and the legacy
+  `fullBackupContent` for API < 31): include the settings file and the database, exclude caches;
+  decide whether the session belongs in an encrypted OS backup (it is not in our own file, by
+  design). Exclusions are per file, not per table - splitting the cache tables into their own
+  database is the only way to drop them from a database backup.
+  Verify with `adb shell bmgr backupnow <package>` + reinstall, and a D2D-style restore.
+- [ ] **3b. Google Play Restore Credentials** (deadline **April 2027**). Apps with sign-in must
+  restore the session automatically on a new Android device via the Restore Credentials API
+  (Block Store is grandfathered only for apps already using it by 2026-09-30). This app has TMDB
+  sign-in: store a restore credential after login, read it on first launch of a fresh install,
+  clear it on logout. Android-only; iOS keeps the session via its own backup. Ties into 3a.
+- [ ] **3c. Platform cross-OS migration** (later, when mature). Apple's AppMigrationKit
+  (iOS 26.1+, beta at research time; runs only during new-device setup) plus Android's
+  `<cross-platform-transfer platform="ios">` rule (Android 16 QPR2+): export/import the stage-1
+  backup envelope through them so a phone switch carries the device-only data with no user action.
+  Too new for this app's iOS 16.2 / minSdk 24 floor to rely on - an extra path, never instead of
+  stages 1-2.
+- [ ] **3d. Cloud sync, incl. web** - tracked as
+  [item 18](#18-own-backend-server-cross-device-sync-and-backup-incl-web) (needs item 1's gateway).
+
 ### Deliberately out of scope
 - **Cloud sync / cross-device backup.** Now tracked as its own item,
   [item 18](#18-own-backend-server-cross-device-sync-and-backup-incl-web). Same conclusion as
