@@ -8,6 +8,8 @@ actual fun getPlatformName(): String = "Browser"
 
 actual fun isMobilePlatform(): Boolean = false
 
+actual fun is24HourClock(): Boolean = false
+
 actual fun createSettings(): com.russhwolf.settings.Settings = StorageSettings(localStorage)
 
 // This project has no separate web release/CDN pipeline yet - every JS build today is a dev build.

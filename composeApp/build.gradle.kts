@@ -401,14 +401,15 @@ sqldelight {
             // Default dialect (sqlite_3_18) predates SQLite's `ON CONFLICT ... DO UPDATE` syntax,
             // which trackedMedia's upsert needs (SQLite added it in 3.24, generalised in 3.35).
             dialect(libs.sqlDelight.dialect.sqlite338)
-            // NOT YET ENABLED: `verifyMigrations.set(true)` would diff every numbered `.sqm` file
-            // (see `LocalSchemaVersion`'s kdoc) against `MyDatabase.sq` at build time - exactly the
-            // safety net a real migration needs. Tried 2026-09-12 with zero `.sqm` files present
-            // (nothing to verify yet) and `verifyCommonMainMyDatabaseMigration` failed outright:
-            // "Verifying a migration requires a database file to be present... use the generate
-            // schema Gradle task" - no such task exists in this SQLDelight version's default Gradle
-            // task graph. Turn this on (and resolve that task-graph gap) when the first real `.sqm`
-            // migration is added - don't ship it disabled forever.
+            // Schema snapshots (`N.db`, one per shipped schema version) live here. The
+            // `generateCommonMainMyDatabaseSchema` task only exists once this is set - that was the
+            // missing piece when `verifyMigrations` was first tried on 2026-09-12. Workflow for a
+            // schema change: run that task on the *old* schema first to snapshot `N.db`, then edit
+            // `MyDatabase.sq`, add `N.sqm`, and bump `LocalSchemaVersion.CURRENT`.
+            schemaOutputDirectory.set(file("src/commonMain/sqldelight/databases"))
+            // Fails the build if applying every `.sqm` to the snapshots doesn't produce exactly
+            // the schema `MyDatabase.sq` describes.
+            verifyMigrations.set(true)
         }
     }
 }

@@ -17,12 +17,21 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryIm
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.resolveReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,6 +58,9 @@ class MovieDetailScreenModel(
     authRepository: AuthRepository = AuthRepositoryImpl(),
     accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
     trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
+    releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
+    private val releaseReminderCoordinator: ReleaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository),
+    private val notificationJobSync: NotificationJobSync = NotificationJobSync(releaseReminderRepository = releaseReminderRepository),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -62,6 +74,14 @@ class MovieDetailScreenModel(
      */
     val mediaActionsState =
         MediaActionsState(MediaTypeConstant.MOVIE, movieId, viewModelScope, accountMediaRepository, trackedMediaRepository)
+
+    private val reminderKey = ReminderKey(movieId, MediaTypeConstant.MOVIE)
+
+    /** Whether a release reminder (checklist item 16) is set for this movie - a local read. */
+    val hasReleaseReminder: Flow<Boolean> = releaseReminderRepository.observeHasReminder(reminderKey)
+
+    /** The global reminder time, shown in the hero's caption once a reminder is set. */
+    val reminderPreference: Flow<ReminderPreference> = releaseReminderRepository.observePreference()
 
     init {
         loadMovieDetails()
@@ -89,6 +109,33 @@ class MovieDetailScreenModel(
                         }
                 }
             }
+        }
+    }
+
+    /**
+     * Adds or removes this movie's release reminder. The date is resolved for the viewer's region
+     * (see [resolveReleaseDate]); a movie with no usable date can't be reminded about, so this is a
+     * no-op then. Also keeps the shared background job in step, since a first reminder may need it.
+     */
+    fun setReleaseReminder(
+        detail: MovieDetail,
+        regionCode: String,
+        fallbackRegionCode: String,
+        enabled: Boolean,
+    ) {
+        viewModelScope.launch {
+            val resolved = detail.resolveReleaseDate(regionCode, fallbackRegionCode) ?: return@launch
+            releaseReminderCoordinator.setReminder(
+                ReleaseReminder(
+                    key = reminderKey,
+                    title = detail.title,
+                    posterPath = detail.posterPath,
+                    releaseDate = resolved.date,
+                    releaseSource = resolved.source.encode(),
+                ),
+                enabled,
+            )
+            notificationJobSync.refresh()
         }
     }
 

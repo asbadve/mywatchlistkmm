@@ -168,7 +168,7 @@ class MovieHeroFactsTest {
     }
 
     @Test
-    fun testCertificationComesFromTheUsReleaseDates() {
+    fun testCertificationComesFromTheViewersRegion() {
         val detail =
             MovieDetail(
                 releaseDates =
@@ -187,7 +187,9 @@ class MovieHeroFactsTest {
                     ),
             )
 
-        assertEquals("R", detail.usCertification())
+        assertEquals("15", detail.regionalCertification(VIEWER_REGION, RegionConstant.US))
+        // A viewer in a region with no rating of its own falls back to the US one.
+        assertEquals("R", detail.regionalCertification(UNRATED_REGION, UNRATED_REGION))
     }
 
     /**
@@ -210,11 +212,11 @@ class MovieHeroFactsTest {
                     ),
             )
 
-        assertEquals("PG-13", detail.usCertification())
+        assertEquals("PG-13", detail.regionalCertification(RegionConstant.US, RegionConstant.US))
     }
 
     @Test
-    fun testCertificationIsNullWhenThereIsNoUsRelease() {
+    fun testCertificationIsNullWhenNeitherTheViewersRegionsNorTheUsHaveOne() {
         val detail =
             MovieDetail(
                 releaseDates =
@@ -229,12 +231,12 @@ class MovieHeroFactsTest {
                     ),
             )
 
-        assertNull(detail.usCertification())
+        assertNull(detail.regionalCertification(UNRATED_REGION, UNRATED_REGION))
     }
 
     @Test
     fun testCertificationIsNullWhenTheReleaseDatesAppendIsMissing() {
-        assertNull(MovieDetail().usCertification())
+        assertNull(MovieDetail().regionalCertification(VIEWER_REGION, RegionConstant.US))
     }
 
     @Test
@@ -267,5 +269,8 @@ class MovieHeroFactsTest {
     private companion object {
         /** Any region that is not [RegionConstant.US], so the fallback order is actually exercised. */
         const val VIEWER_REGION = "GB"
+
+        // A region with no release-dates bucket in any fixture below.
+        const val UNRATED_REGION = "IN"
     }
 }

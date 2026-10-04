@@ -123,13 +123,7 @@ fun MovieMetaSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (detail.releaseDate.isNotEmpty()) {
-                val fullDate = formatFullReleaseDate(detail.releaseDate)
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(fullDate) },
-                )
-            }
+            RegionalReleaseDateChip(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode)
 
             if (translationsCount > 0) {
                 SuggestionChip(

@@ -86,14 +86,27 @@ fun WatchProvidersResponse?.heroWatchOption(
     )
 }
 
-/** The age rating TMDB publishes for the US, which is the one release-dates bucket always present. */
-fun MovieDetail.usCertification(): String? =
-    releaseDates
-        ?.results
-        ?.firstOrNull { it.iso3166 == RegionConstant.US }
-        ?.releaseDates
-        ?.firstOrNull { it.certification.isNotEmpty() }
-        ?.certification
+/**
+ * The age rating for the viewer's region: the selected region's, then the fallback region's, then
+ * the US one as a last resort (the bucket TMDB most reliably carries a rating in). A rating is
+ * region-specific - "R" means nothing to someone who would see the film as "15" - so this follows
+ * the same region priority as the release-date chip and the watch providers. Within a region, the
+ * first non-empty rating wins, since only some release types carry one.
+ */
+fun MovieDetail.regionalCertification(
+    regionCode: String,
+    fallbackRegionCode: String,
+): String? {
+    val buckets = releaseDates?.results.orEmpty()
+    return listOf(regionCode, fallbackRegionCode, RegionConstant.US).distinct().firstNotNullOfOrNull { region ->
+        buckets
+            .firstOrNull { it.iso3166 == region }
+            ?.releaseDates
+            ?.firstOrNull { it.certification.isNotBlank() }
+            ?.certification
+            ?.trim()
+    }
+}
 
 /** Runtime split into whole hours and remaining minutes; null when TMDB has no runtime. */
 fun MovieDetail.runtimeHoursAndMinutes(): Pair<Int, Int>? {

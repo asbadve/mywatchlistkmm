@@ -12,6 +12,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
@@ -301,4 +303,101 @@ class AccountScreenUiTest {
 
             assertTrue(backClicked)
         }
+
+    @Test
+    fun testReleaseReminderRowsShowTheDefaultTimeOnMobile() =
+        runComposeUiTest {
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                    releaseReminderRepository = FakeReleaseReminderRepository(),
+                    showReleaseReminderSettings = true,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNodeWithText(RELEASE_REMINDERS_LABEL).performScrollTo().assertIsDisplayed()
+            onNodeWithText(REMINDER_TIME_LABEL).performScrollTo().assertIsDisplayed()
+            onNodeWithText(DEFAULT_REMINDER_TIME).performScrollTo().assertIsDisplayed()
+        }
+
+    @Test
+    fun testReleaseReminderDebugRowsAreShownInDebugBuilds() =
+        runComposeUiTest {
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                    releaseReminderRepository = FakeReleaseReminderRepository(),
+                    showReleaseReminderSettings = true,
+                    screenModel = screenModel,
+                )
+            }
+
+            // isDebugBuild() is always true on desktop, which is where this test runs.
+            listOf(DEBUG_FIRE_TEST_REMINDER, DEBUG_POLL_RELEASE_REMINDERS, DEBUG_SHOW_PENDING, DEBUG_CLEAR_REMINDERS).forEach { label ->
+                onNodeWithText(label).performScrollTo().assertIsDisplayed()
+            }
+        }
+
+    @Test
+    fun testClearAllRemindersDebugRowDeletesSavedReminders() =
+        runComposeUiTest {
+            val releaseReminderRepository = FakeReleaseReminderRepository()
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                    releaseReminderRepository = releaseReminderRepository,
+                    showReleaseReminderSettings = true,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNodeWithText(DEBUG_CLEAR_REMINDERS).performScrollTo().performClick()
+            waitUntil { releaseReminderRepository.deleteAllCallCount == 1 }
+
+            assertEquals(1, releaseReminderRepository.deleteAllCallCount)
+        }
+
+    @Test
+    fun testReleaseReminderRowsAreHiddenWhereRemindersCantFire() =
+        runComposeUiTest {
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    releaseReminderRepository = FakeReleaseReminderRepository(),
+                    showReleaseReminderSettings = false,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNodeWithText(REMINDER_TIME_LABEL).assertDoesNotExist()
+            onNodeWithText(DEBUG_FIRE_TEST_REMINDER).assertDoesNotExist()
+        }
+
+    private companion object {
+        const val RELEASE_REMINDERS_LABEL = "Release reminders"
+        const val REMINDER_TIME_LABEL = "Reminder time"
+
+        // Desktop's is24HourClock() is always false, so the 12-hour form is expected.
+        const val DEFAULT_REMINDER_TIME = "9:00 AM"
+        const val DEBUG_FIRE_TEST_REMINDER = "Fire test reminder in 1 minute"
+        const val DEBUG_POLL_RELEASE_REMINDERS = "Poll release reminders now"
+        const val DEBUG_SHOW_PENDING = "Show pending reminders"
+        const val DEBUG_CLEAR_REMINDERS = "Clear all reminders"
+    }
 }

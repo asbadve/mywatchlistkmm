@@ -1,16 +1,23 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeReminderScheduler
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedTvShowSummary
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingDateKind
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.FakeTvDetailCacheRepository
@@ -352,4 +359,61 @@ class UpcomingReleasesTabUiTest {
             onNodeWithText("View details").assertExists()
             onNodeWithText("Remind me").assertDoesNotExist()
         }
+
+    @Test
+    fun testTappingABell_setsAReminderForThatRow() =
+        runComposeUiTest {
+            val fakeTrackedMediaRepository =
+                FakeTrackedMediaRepository().apply {
+                    seedUpcoming(
+                        listOf(
+                            UpcomingMediaItem(
+                                id = BELL_MOVIE_ID,
+                                mediaType = MediaTypeConstant.MOVIE,
+                                title = BELL_MOVIE_TITLE,
+                                posterPath = null,
+                                date = LocalDate(2099, 1, 1),
+                                dateKind = UpcomingDateKind.MOVIE_RELEASE,
+                            ),
+                        ),
+                    )
+                }
+            val releaseReminderRepository = FakeReleaseReminderRepository()
+            val viewModel =
+                UpcomingReleasesScreenModel(
+                    trackedMediaRepository = fakeTrackedMediaRepository,
+                    tvDetailCacheRepository = FakeTvDetailCacheRepository(),
+                    releaseReminderRepository = releaseReminderRepository,
+                    releaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository, FakeReminderScheduler()),
+                    // No-op job hooks: the real ones would start desktop's background poll loop.
+                    notificationJobSync =
+                        NotificationJobSync(
+                            notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                            releaseReminderRepository = releaseReminderRepository,
+                            scheduleJob = {},
+                            cancelJob = {},
+                        ),
+                )
+
+            setContent {
+                UpcomingReleasesTab(windowSize = WindowSize.COMPACT, viewModel = viewModel, showReminderControls = true)
+            }
+
+            // The compact Next-up card and the timeline row both carry a bell for this title.
+            onAllNodesWithContentDescription(REMIND_ME_DESCRIPTION)[0].performClick()
+            waitUntil { releaseReminderRepository.setReminderCalls.isNotEmpty() }
+
+            assertEquals(
+                listOf(ReminderKey(BELL_MOVIE_ID.toLong(), MediaTypeConstant.MOVIE) to true),
+                releaseReminderRepository.setReminderCalls,
+            )
+            waitUntil { onAllNodesWithContentDescription(REMINDER_SET_DESCRIPTION).fetchSemanticsNodes().isNotEmpty() }
+        }
+
+    private companion object {
+        const val BELL_MOVIE_ID = 77
+        const val BELL_MOVIE_TITLE = "Bell Movie"
+        const val REMIND_ME_DESCRIPTION = "Remind me"
+        const val REMINDER_SET_DESCRIPTION = "Reminder set - tap to remove"
+    }
 }

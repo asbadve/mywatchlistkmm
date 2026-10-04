@@ -42,12 +42,19 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionButtonsSection
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.ReleaseReminderHeroAction
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.isUpcoming
+import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.section_backdrops
@@ -120,6 +127,9 @@ fun MovieDetailScreen(
 
                 is MovieDetailState.Success -> {
                     val detail = state.movieDetail
+                    val releaseReminderAction: @Composable (HeroColors) -> Unit = { colors ->
+                        MovieReleaseReminderAction(detail, state, viewModel, colors)
+                    }
                     Box(modifier = Modifier.fillMaxSize()) {
                         val headerBgColor by animateColorAsState(
                             targetValue = if (showSolidHeader) MaterialTheme.colorScheme.background else Color.Transparent,
@@ -173,6 +183,7 @@ fun MovieDetailScreen(
                                     lazyListState = lazyListState,
                                     authRepository = authRepository,
                                     mediaActionsState = viewModel.mediaActionsState,
+                                    releaseReminderAction = releaseReminderAction,
                                     onMovieClicked = onMovieClicked,
                                     onPersonClicked = onPersonClicked,
                                     onCollectionClicked = onCollectionClicked,
@@ -189,6 +200,7 @@ fun MovieDetailScreen(
                                     leftLazyListState = leftLazyListState,
                                     authRepository = authRepository,
                                     mediaActionsState = viewModel.mediaActionsState,
+                                    releaseReminderAction = releaseReminderAction,
                                     onMovieClicked = onMovieClicked,
                                     onPersonClicked = onPersonClicked,
                                     onCollectionClicked = onCollectionClicked,
@@ -240,6 +252,7 @@ private fun CompactMovieDetailContent(
     lazyListState: LazyListState,
     authRepository: AuthRepository,
     mediaActionsState: MediaActionsState,
+    releaseReminderAction: @Composable (HeroColors) -> Unit,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onCollectionClicked: (Long) -> Unit,
@@ -252,6 +265,7 @@ private fun CompactMovieDetailContent(
     ) {
         item {
             MovieHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
+                releaseReminderAction(colors)
                 MediaActionButtonsSection(
                     mediaId = detail.id.toLong(),
                     colors = colors,
@@ -323,6 +337,7 @@ private fun ExpandedMovieDetailContent(
     leftLazyListState: LazyListState,
     authRepository: AuthRepository,
     mediaActionsState: MediaActionsState,
+    releaseReminderAction: @Composable (HeroColors) -> Unit,
     onMovieClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onCollectionClicked: (Long) -> Unit,
@@ -341,6 +356,7 @@ private fun ExpandedMovieDetailContent(
         ) {
             item {
                 MovieHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
+                    releaseReminderAction(colors)
                     MediaActionButtonsSection(
                         mediaId = detail.id.toLong(),
                         colors = colors,
@@ -411,4 +427,26 @@ private fun ExpandedMovieDetailContent(
             }
         }
     }
+}
+
+/** The "Remind me" control for an upcoming movie (checklist item 16) - mobile only, since desktop
+ *  and web can't deliver a scheduled reminder with the app closed. Its flows are only collected
+ *  here, behind that gate, so desktop never touches the reminder table. */
+@Composable
+private fun MovieReleaseReminderAction(
+    detail: MovieDetail,
+    state: MovieDetailState.Success,
+    viewModel: MovieDetailScreenModel,
+    colors: HeroColors,
+) {
+    val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
+    if (!isMobilePlatform() || !detail.isUpcoming(today)) return
+    val isSet by viewModel.hasReleaseReminder.collectAsState(initial = false)
+    val preference by viewModel.reminderPreference.collectAsState(initial = null)
+    ReleaseReminderHeroAction(
+        isSet = isSet,
+        reminderTime = preference?.time,
+        contentColor = colors.onHero,
+        onSetReminder = { enabled -> viewModel.setReleaseReminder(detail, state.regionCode, state.fallbackRegionCode, enabled) },
+    )
 }

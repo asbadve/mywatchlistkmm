@@ -1,8 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.core.notification
 
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.CollectionNotificationPoller
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.runBackgroundPolls
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,9 +43,7 @@ actual object NotificationScheduler {
         scheduleNextRequest()
         val job =
             CoroutineScope(Dispatchers.Default).launch {
-                TvEpisodeNotificationPoller().poll()
-                PersonCreditNotificationPoller().poll()
-                CollectionNotificationPoller().poll()
+                runBackgroundPolls()
                 task.setTaskCompletedWithSuccess(true)
             }
         task.expirationHandler = { job.cancel() }

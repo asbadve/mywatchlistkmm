@@ -3,12 +3,15 @@ package com.ajinkyabadve.kmmmywatchlist
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.provider.Settings
+import android.text.format.DateFormat
 import android.view.accessibility.AccessibilityManager
 import com.russhwolf.settings.SharedPreferencesSettings
 
 actual fun getPlatformName(): String = "Android"
 
 actual fun isMobilePlatform(): Boolean = true
+
+actual fun is24HourClock(): Boolean = DateFormat.is24HourFormat(AndroidApp.instance)
 
 actual fun createSettings(): com.russhwolf.settings.Settings {
     val sharedPrefs = AndroidApp.instance.getSharedPreferences("watchlist_settings", Context.MODE_PRIVATE)

@@ -12,6 +12,14 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.resolveReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
@@ -22,6 +30,7 @@ import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,6 +65,9 @@ class TvDetailScreenModel(
     authRepository: AuthRepository = AuthRepositoryImpl(),
     accountMediaRepository: AccountMediaRepository = AccountMediaRepositoryImpl(),
     trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
+    releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
+    private val releaseReminderCoordinator: ReleaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository),
+    private val notificationJobSync: NotificationJobSync = NotificationJobSync(releaseReminderRepository = releaseReminderRepository),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
 
@@ -69,6 +81,14 @@ class TvDetailScreenModel(
      */
     val mediaActionsState =
         MediaActionsState(MediaTypeConstant.TV, tvId, viewModelScope, accountMediaRepository, trackedMediaRepository)
+
+    private val reminderKey = ReminderKey(tvId, MediaTypeConstant.TV)
+
+    /** Whether a premiere reminder (checklist item 16) is set for this show - a local read. */
+    val hasReleaseReminder: Flow<Boolean> = releaseReminderRepository.observeHasReminder(reminderKey)
+
+    /** The global reminder time, shown in the hero's caption once a reminder is set. */
+    val reminderPreference: Flow<ReminderPreference> = releaseReminderRepository.observePreference()
 
     init {
         loadTvDetails()
@@ -97,6 +117,28 @@ class TvDetailScreenModel(
                         }
                 }
             }
+        }
+    }
+
+    /** Adds or removes this show's premiere reminder (its first air date). No-op for a show with
+     *  no usable first air date. Also keeps the shared background job in step. */
+    fun setReleaseReminder(
+        detail: TvDetail,
+        enabled: Boolean,
+    ) {
+        viewModelScope.launch {
+            val resolved = detail.resolveReleaseDate() ?: return@launch
+            releaseReminderCoordinator.setReminder(
+                ReleaseReminder(
+                    key = reminderKey,
+                    title = detail.title,
+                    posterPath = detail.posterPath,
+                    releaseDate = resolved.date,
+                    releaseSource = resolved.source.encode(),
+                ),
+                enabled,
+            )
+            notificationJobSync.refresh()
         }
     }
 

@@ -33,6 +33,14 @@ data class CollectionNotificationTarget(
     val collectionId: Long,
 ) : NotificationTarget
 
+/** Which movie or show a release reminder (checklist item 16) was about - opens its detail screen.
+ *  [mediaType] is a [com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant] value; an
+ *  episode reminder opens its show. Android and iOS only, since reminders are mobile-only. */
+data class MediaDetailNotificationTarget(
+    val mediaId: Long,
+    val mediaType: String,
+) : NotificationTarget
+
 /**
  * Set by a platform's notification-tap handler (Android's `AppActivity`, iOS's
  * `UNUserNotificationCenterDelegate`, JS's `Notification.onclick`, Desktop's `TrayIcon`

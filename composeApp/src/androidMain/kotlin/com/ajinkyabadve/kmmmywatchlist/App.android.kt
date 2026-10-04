@@ -28,6 +28,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
 import com.ajinkyabadve.kmmmywatchlist.core.notification.AndroidNotificationConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.CollectionNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.MediaDetailNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
 
@@ -46,6 +47,7 @@ class AndroidApp : Application() {
             initLogging()
         }
         createEpisodeNotificationChannel()
+        createReleaseReminderChannel()
     }
 
     // Must exist before LocalNotifier.post() ever notifies against it - channels are one-time
@@ -59,6 +61,21 @@ class AndroidApp : Application() {
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
                 description = getString(R.string.notification_channel_episodes_description)
+            }
+        getSystemService<NotificationManager>()?.createNotificationChannel(channel)
+    }
+
+    // Its own channel (not the episode one) so a user can silence episode alerts and keep the
+    // reminders they explicitly asked for, or the reverse, from the system settings.
+    private fun createReleaseReminderChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val channel =
+            NotificationChannel(
+                AndroidNotificationConstant.RELEASE_REMINDER_CHANNEL_ID,
+                getString(R.string.notification_channel_release_reminders_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = getString(R.string.notification_channel_release_reminders_description)
             }
         getSystemService<NotificationManager>()?.createNotificationChannel(channel)
     }
@@ -114,6 +131,11 @@ class AppActivity : ComponentActivity() {
             val collectionId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_COLLECTION_ID, -1L)
             if (collectionId < 0) return
             PendingNotificationTarget.set(CollectionNotificationTarget(collectionId))
+        } else if (intent.hasExtra(AndroidNotificationConstant.EXTRA_MEDIA_ID)) {
+            val mediaId = intent.getLongExtra(AndroidNotificationConstant.EXTRA_MEDIA_ID, -1L)
+            val mediaType = intent.getStringExtra(AndroidNotificationConstant.EXTRA_MEDIA_TYPE)
+            if (mediaId < 0 || mediaType == null) return
+            PendingNotificationTarget.set(MediaDetailNotificationTarget(mediaId, mediaType))
         }
     }
 

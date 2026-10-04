@@ -42,8 +42,10 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.HeroColors
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionButtonsSection
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
+import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.ReleaseReminderHeroAction
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
@@ -51,8 +53,13 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CastSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.OverviewSection
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.VideoClipsSection
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.isUpcoming
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
+import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.section_backdrops
@@ -128,6 +135,9 @@ fun TvDetailScreen(
 
                 is TvDetailState.Success -> {
                     val detail = state.tvDetail
+                    val releaseReminderAction: @Composable (HeroColors) -> Unit = { colors ->
+                        TvReleaseReminderAction(detail, viewModel, colors)
+                    }
                     Box(modifier = Modifier.fillMaxSize()) {
                         val headerBgColor by animateColorAsState(
                             targetValue = if (showSolidHeader) MaterialTheme.colorScheme.background else Color.Transparent,
@@ -182,6 +192,7 @@ fun TvDetailScreen(
                                     lazyListState = lazyListState,
                                     authRepository = authRepository,
                                     mediaActionsState = viewModel.mediaActionsState,
+                                    releaseReminderAction = releaseReminderAction,
                                     onTvShowClicked = onTvShowClicked,
                                     onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
@@ -202,6 +213,7 @@ fun TvDetailScreen(
                                     leftLazyListState = leftLazyListState,
                                     authRepository = authRepository,
                                     mediaActionsState = viewModel.mediaActionsState,
+                                    releaseReminderAction = releaseReminderAction,
                                     onTvShowClicked = onTvShowClicked,
                                     onPersonClicked = onPersonClicked,
                                     onShowGallery = { images, index ->
@@ -257,6 +269,7 @@ private fun CompactTvDetailContent(
     lazyListState: LazyListState,
     authRepository: AuthRepository,
     mediaActionsState: MediaActionsState,
+    releaseReminderAction: @Composable (HeroColors) -> Unit,
     onTvShowClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
@@ -270,6 +283,7 @@ private fun CompactTvDetailContent(
     ) {
         item {
             TvHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
+                releaseReminderAction(colors)
                 MediaActionButtonsSection(
                     mediaId = detail.id.toLong(),
                     colors = colors,
@@ -343,6 +357,7 @@ private fun ExpandedTvDetailContent(
     leftLazyListState: LazyListState,
     authRepository: AuthRepository,
     mediaActionsState: MediaActionsState,
+    releaseReminderAction: @Composable (HeroColors) -> Unit,
     onTvShowClicked: (Long) -> Unit,
     onPersonClicked: (Long) -> Unit,
     onShowGallery: (images: List<String>, index: Int) -> Unit,
@@ -362,6 +377,7 @@ private fun ExpandedTvDetailContent(
         ) {
             item {
                 TvHeroSection(detail = detail, regionCode = regionCode, fallbackRegionCode = fallbackRegionCode) { colors ->
+                    releaseReminderAction(colors)
                     MediaActionButtonsSection(
                         mediaId = detail.id.toLong(),
                         colors = colors,
@@ -433,4 +449,24 @@ private fun ExpandedTvDetailContent(
             }
         }
     }
+}
+
+/** The "Remind me" control for a show that hasn't premiered yet (checklist item 16) - mobile only,
+ *  and its flows are only collected behind that gate, same as the movie screen's. */
+@Composable
+private fun TvReleaseReminderAction(
+    detail: TvDetail,
+    viewModel: TvDetailScreenModel,
+    colors: HeroColors,
+) {
+    val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
+    if (!isMobilePlatform() || !detail.isUpcoming(today)) return
+    val isSet by viewModel.hasReleaseReminder.collectAsState(initial = false)
+    val preference by viewModel.reminderPreference.collectAsState(initial = null)
+    ReleaseReminderHeroAction(
+        isSet = isSet,
+        reminderTime = preference?.time,
+        contentColor = colors.onHero,
+        onSetReminder = { enabled -> viewModel.setReleaseReminder(detail, enabled) },
+    )
 }

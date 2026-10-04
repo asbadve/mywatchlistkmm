@@ -64,9 +64,11 @@ import coil3.compose.setSingletonImageLoaderFactory
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.image.newImageLoader
 import com.ajinkyabadve.kmmmywatchlist.core.notification.CollectionNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.notification.MediaDetailNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AccountAvatarButton
@@ -84,6 +86,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MovieScreenTabs
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.CollectionDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieDetailScreen
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail.PersonDetailScreen
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.SearchScreen
 import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.MyFavScreenTab
@@ -177,6 +180,13 @@ fun MainAppScreen(windowSize: WindowSize) {
     // Fires once per genuinely new tap (see PendingNotificationTarget's kdoc for why it's a
     // consumed observable rather than a one-shot callback) - re-fires on a later tap even for the
     // exact same target, since consume() nulls it out in between.
+    // Release reminders (checklist item 16): re-derive every OS-scheduled reminder from the
+    // database on each launch. Android wipes alarms on force-stop (a reboot is covered by its boot
+    // receiver), and iOS only holds the next 30 days' worth, so this also tops that window up.
+    LaunchedEffect(Unit) {
+        if (isMobilePlatform()) ReleaseReminderCoordinator().rescheduleAll()
+    }
+
     val pendingNotificationTarget = PendingNotificationTarget.current
     LaunchedEffect(pendingNotificationTarget) {
         when (val target = pendingNotificationTarget) {
@@ -191,6 +201,14 @@ fun MainAppScreen(windowSize: WindowSize) {
             }
             is CollectionNotificationTarget -> {
                 topLevelBackStack.add(CollectionDetailKey(target.collectionId))
+                PendingNotificationTarget.consume()
+            }
+            is MediaDetailNotificationTarget -> {
+                if (target.mediaType == MediaTypeConstant.TV) {
+                    topLevelBackStack.add(TvDetailKey(target.mediaId))
+                } else {
+                    topLevelBackStack.add(MovieDetailKey(target.mediaId))
+                }
                 PendingNotificationTarget.consume()
             }
             null -> Unit

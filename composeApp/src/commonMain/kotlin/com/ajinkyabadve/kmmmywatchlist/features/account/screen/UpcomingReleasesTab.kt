@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +49,7 @@ import coil3.compose.AsyncImage
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.design.calendar.MonthCalendarCard
 import com.ajinkyabadve.kmmmywatchlist.design.calendar.monthNameRes
 import com.ajinkyabadve.kmmmywatchlist.design.calendar.weekdayNameRes
@@ -55,9 +58,11 @@ import com.ajinkyabadve.kmmmywatchlist.design.pill.StatusPill
 import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineEntryCard
 import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineSectionHeader
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.MediaTypeBadge
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -66,6 +71,7 @@ import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_upcoming_empty_message
 import mywatchlist.composeapp.generated.resources.account_upcoming_empty_title
+import mywatchlist.composeapp.generated.resources.action_reminder_set
 import mywatchlist.composeapp.generated.resources.upcoming_calendar_legend_release
 import mywatchlist.composeapp.generated.resources.upcoming_calendar_legend_today
 import mywatchlist.composeapp.generated.resources.upcoming_episode_label
@@ -76,6 +82,7 @@ import mywatchlist.composeapp.generated.resources.upcoming_in_days
 import mywatchlist.composeapp.generated.resources.upcoming_next_up_label
 import mywatchlist.composeapp.generated.resources.upcoming_remind_me_button
 import mywatchlist.composeapp.generated.resources.upcoming_remind_me_content_description
+import mywatchlist.composeapp.generated.resources.upcoming_reminder_set_content_description
 import mywatchlist.composeapp.generated.resources.upcoming_today
 import mywatchlist.composeapp.generated.resources.upcoming_tomorrow
 import mywatchlist.composeapp.generated.resources.upcoming_view_details_button
@@ -133,6 +140,10 @@ fun UpcomingReleasesTab(
     lazyListState: LazyListState = rememberLazyListState(),
     onMovieSelected: (movieId: Long) -> Unit = {},
     onTvSelected: (tvId: Long) -> Unit = {},
+    // A scheduled reminder can only be delivered on Android/iOS - desktop/browser have no OS
+    // scheduler that fires with the app closed, so the reminder UI (item 16) never renders there.
+    // A parameter rather than a direct call so the UI test (which runs on desktop) can render it.
+    showReminderControls: Boolean = isMobilePlatform(),
 ) {
     val upcomingItems by viewModel.upcomingItems.collectAsState(initial = emptyList())
 
@@ -155,10 +166,25 @@ fun UpcomingReleasesTab(
             val onItemClick: (UpcomingMediaItem) -> Unit = { item ->
                 if (item.mediaType == MediaTypeConstant.TV) onTvSelected(item.id.toLong()) else onMovieSelected(item.id.toLong())
             }
-            // A local reminder notification can only ever fire on Android/iOS - desktop/browser
-            // have nothing to schedule it against, so the not-yet-built reminder UI (item 16)
-            // never renders there, not even as a disabled placeholder.
-            val showReminderControls = remember { isMobilePlatform() }
+            // The reminder flow is only collected behind the platform gate, so desktop never reads
+            // the reminder table.
+            val remindedKeys =
+                if (showReminderControls) {
+                    viewModel.remindedKeys.collectAsState(initial = emptySet()).value
+                } else {
+                    emptySet()
+                }
+            val permissionRequester = rememberNotificationPermissionRequester()
+            val reminderScope = rememberCoroutineScope()
+            val onToggleReminder: (UpcomingMediaItem) -> Unit = { item ->
+                if (item.reminderKey() in remindedKeys) {
+                    viewModel.setReminder(item, enabled = false)
+                } else {
+                    reminderScope.launch {
+                        if (permissionRequester.request()) viewModel.setReminder(item, enabled = true)
+                    }
+                }
+            }
 
             if (windowSize.isExpanded()) {
                 Row(modifier = Modifier.fillMaxSize()) {
@@ -170,6 +196,8 @@ fun UpcomingReleasesTab(
                             nextUpItem = nextUpItem,
                             lazyListState = lazyListState,
                             showBell = showReminderControls,
+                            remindedKeys = remindedKeys,
+                            onToggleReminder = onToggleReminder,
                             modifier = Modifier.weight(1f),
                             onMovieSelected = onMovieSelected,
                             onTvSelected = onTvSelected,
@@ -190,6 +218,8 @@ fun UpcomingReleasesTab(
                                 today = today,
                                 expanded = true,
                                 showReminderControls = showReminderControls,
+                                isReminderSet = item.reminderKey() in remindedKeys,
+                                onToggleReminder = { onToggleReminder(item) },
                                 onClick = { onItemClick(item) },
                             )
                         }
@@ -204,6 +234,8 @@ fun UpcomingReleasesTab(
                             today = today,
                             expanded = false,
                             showReminderControls = showReminderControls,
+                            isReminderSet = item.reminderKey() in remindedKeys,
+                            onToggleReminder = { onToggleReminder(item) },
                             onClick = { onItemClick(item) },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         )
@@ -215,6 +247,8 @@ fun UpcomingReleasesTab(
                         nextUpItem = nextUpItem,
                         lazyListState = lazyListState,
                         showBell = showReminderControls,
+                        remindedKeys = remindedKeys,
+                        onToggleReminder = onToggleReminder,
                         modifier = Modifier.weight(1f),
                         onMovieSelected = onMovieSelected,
                         onTvSelected = onTvSelected,
@@ -253,6 +287,8 @@ private fun UpcomingTimelineList(
     nextUpItem: UpcomingMediaItem?,
     lazyListState: LazyListState,
     showBell: Boolean,
+    remindedKeys: Set<ReminderKey>,
+    onToggleReminder: (UpcomingMediaItem) -> Unit,
     modifier: Modifier = Modifier,
     onMovieSelected: (Long) -> Unit = {},
     onTvSelected: (Long) -> Unit = {},
@@ -273,6 +309,8 @@ private fun UpcomingTimelineList(
                     today = today,
                     isNextUp = item == nextUpItem,
                     showBell = showBell,
+                    isReminderSet = item.reminderKey() in remindedKeys,
+                    onToggleReminder = { onToggleReminder(item) },
                     onClick = {
                         if (item.mediaType == MediaTypeConstant.TV) {
                             onTvSelected(item.id.toLong())
@@ -300,6 +338,8 @@ private fun UpcomingMediaRow(
     today: LocalDate,
     isNextUp: Boolean,
     showBell: Boolean,
+    isReminderSet: Boolean,
+    onToggleReminder: () -> Unit,
     onClick: () -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -362,16 +402,29 @@ private fun UpcomingMediaRow(
         }
         UpcomingCountdownPill(date = item.date, today = today, highlighted = isNextUp)
         if (showBell) {
-            // Decorative only - future_features_checklist.md item 16 (Release-Date Reminders)
-            // wires this up for real; it doesn't exist yet.
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector = Icons.Filled.Notifications,
-                    contentDescription = stringResource(Res.string.upcoming_remind_me_content_description),
-                    tint = if (isNextUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            ReminderBellButton(isSet = isReminderSet, emphasized = isNextUp, onClick = onToggleReminder)
         }
+    }
+}
+
+/** The bell on a timeline row and the compact Next-up card: filled once a reminder is set,
+ *  outlined otherwise. [emphasized] tints it with the primary colour even before it's set. */
+@Composable
+private fun ReminderBellButton(
+    isSet: Boolean,
+    emphasized: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        Icon(
+            imageVector = if (isSet) Icons.Filled.Notifications else Icons.Outlined.Notifications,
+            contentDescription =
+                stringResource(
+                    if (isSet) Res.string.upcoming_reminder_set_content_description else Res.string.upcoming_remind_me_content_description,
+                ),
+            tint = if (isSet || emphasized) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -399,6 +452,8 @@ private fun NextUpCard(
     today: LocalDate,
     expanded: Boolean,
     showReminderControls: Boolean,
+    isReminderSet: Boolean,
+    onToggleReminder: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -469,23 +524,22 @@ private fun NextUpCard(
                         Text(stringResource(Res.string.upcoming_view_details_button))
                     }
                     if (showReminderControls) {
-                        // Decorative only - item 16 (Release-Date Reminders) wires this up for real.
-                        OutlinedButton(onClick = {}) {
-                            Text(stringResource(Res.string.upcoming_remind_me_button))
+                        OutlinedButton(onClick = onToggleReminder) {
+                            Text(
+                                stringResource(if (isReminderSet) Res.string.action_reminder_set else Res.string.upcoming_remind_me_button),
+                            )
                         }
                     }
                 }
             }
         }
         if (!expanded && showReminderControls) {
-            // Decorative only - item 16 (Release-Date Reminders) wires this up for real.
-            IconButton(onClick = {}, modifier = Modifier.align(Alignment.CenterVertically)) {
-                Icon(
-                    imageVector = Icons.Filled.Notifications,
-                    contentDescription = stringResource(Res.string.upcoming_remind_me_content_description),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
+            ReminderBellButton(
+                isSet = isReminderSet,
+                emphasized = true,
+                onClick = onToggleReminder,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            )
         }
     }
 }

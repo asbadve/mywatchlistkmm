@@ -29,6 +29,8 @@ internal object IosNotificationUserInfoKeyConstant {
     const val EPISODE_NUMBER = "episodeNumber"
     const val PERSON_ID = "personId"
     const val COLLECTION_ID = "collectionId"
+    const val MEDIA_ID = "mediaId"
+    const val MEDIA_TYPE = "mediaType"
 }
 
 private const val LOCAL_NOTIFIER_TAG = "LocalNotifierIos"
@@ -42,38 +44,53 @@ actual object LocalNotifier {
         deepLink: NotificationTarget?,
         posterUrl: String?,
     ) {
-        val content =
-            UNMutableNotificationContent().apply {
-                setTitle(title)
-                setBody(body)
-                setSound(UNNotificationSound.defaultSound)
-                // No deepLink means no userInfo at all - NotificationTapDelegate simply has
-                // nothing to navigate to.
-                when (deepLink) {
-                    is EpisodeNotificationTarget ->
-                        setUserInfo(
-                            mapOf(
-                                IosNotificationUserInfoKeyConstant.TV_SHOW_ID to deepLink.tvShowId,
-                                IosNotificationUserInfoKeyConstant.SEASON_NUMBER to deepLink.seasonNumber,
-                                IosNotificationUserInfoKeyConstant.EPISODE_NUMBER to deepLink.episodeNumber,
-                            ),
-                        )
-                    is PersonNotificationTarget ->
-                        setUserInfo(mapOf(IosNotificationUserInfoKeyConstant.PERSON_ID to deepLink.personId))
-                    is CollectionNotificationTarget ->
-                        setUserInfo(mapOf(IosNotificationUserInfoKeyConstant.COLLECTION_ID to deepLink.collectionId))
-                    null -> Unit
-                }
-                posterAttachment(posterUrl)?.let { setAttachments(listOf(it)) }
-            }
         val request =
             UNNotificationRequest.requestWithIdentifier(
                 identifier = notificationId.toString(),
-                content = content,
+                content = buildContent(title, body, deepLink, posterUrl),
                 trigger = null,
             )
         UNUserNotificationCenter.currentNotificationCenter().addNotificationRequest(request, null)
     }
+
+    /** The notification content [post] delivers now - also handed to the OS ahead of time by
+     *  `IosReminderScheduler`, so a scheduled reminder looks and taps exactly like a posted one. */
+    internal suspend fun buildContent(
+        title: String,
+        body: String,
+        deepLink: NotificationTarget?,
+        posterUrl: String?,
+    ): UNMutableNotificationContent =
+        UNMutableNotificationContent().apply {
+            setTitle(title)
+            setBody(body)
+            setSound(UNNotificationSound.defaultSound)
+            // No deepLink means no userInfo at all - NotificationTapDelegate simply has
+            // nothing to navigate to.
+            when (deepLink) {
+                is EpisodeNotificationTarget ->
+                    setUserInfo(
+                        mapOf(
+                            IosNotificationUserInfoKeyConstant.TV_SHOW_ID to deepLink.tvShowId,
+                            IosNotificationUserInfoKeyConstant.SEASON_NUMBER to deepLink.seasonNumber,
+                            IosNotificationUserInfoKeyConstant.EPISODE_NUMBER to deepLink.episodeNumber,
+                        ),
+                    )
+                is PersonNotificationTarget ->
+                    setUserInfo(mapOf(IosNotificationUserInfoKeyConstant.PERSON_ID to deepLink.personId))
+                is CollectionNotificationTarget ->
+                    setUserInfo(mapOf(IosNotificationUserInfoKeyConstant.COLLECTION_ID to deepLink.collectionId))
+                is MediaDetailNotificationTarget ->
+                    setUserInfo(
+                        mapOf(
+                            IosNotificationUserInfoKeyConstant.MEDIA_ID to deepLink.mediaId,
+                            IosNotificationUserInfoKeyConstant.MEDIA_TYPE to deepLink.mediaType,
+                        ),
+                    )
+                null -> Unit
+            }
+            posterAttachment(posterUrl)?.let { setAttachments(listOf(it)) }
+        }
 
     // Best-effort, same reasoning as the Android actual's decodePosterBitmap: any failure (download,
     // temp-file write, or UNNotificationAttachment construction) returns null so the notification

@@ -21,11 +21,15 @@ expect fun isReducedMotionEnabled(): Boolean
  *  no such signal, and browsers deliberately don't let page script detect assistive technology. */
 expect fun isScreenReaderActive(): Boolean
 
-/** True on Android/iOS, where a local notification can actually fire - false on desktop/web, which
- *  have no equivalent the app can schedule against yet. Gates UI for a not-yet-built feature
- *  (future_features_checklist.md item 16, Release-Date Reminders) so it never shows where it
- *  couldn't work even once that feature ships. */
+/** True on Android/iOS, where the OS can deliver a scheduled local notification with the app
+ *  closed - false on desktop/web, which have no such scheduler. Gates all release-reminder UI
+ *  (checklist item 16) so it never appears where a reminder couldn't actually fire. */
 expect fun isMobilePlatform(): Boolean
+
+/** True when the device shows times in 24-hour format (Android's system setting, iOS's locale /
+ *  "24-Hour Time" toggle). Used to format the release-reminder time and configure its picker.
+ *  Always `false` on desktop/JS, where reminder UI isn't shown. */
+expect fun is24HourClock(): Boolean
 
 /** True only on Android, where the native splash (`Theme.MyWatchList.Splash`,
  *  `splash_icon_animated.xml`) already plays the full "3b" icon reveal itself - `App()` skips

@@ -52,7 +52,8 @@ import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.rememberWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.constant.PrivacyConsentConstant
 import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
-import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
+import com.ajinkyabadve.kmmmywatchlist.core.formatClockTime
+import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingReminder
 import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthErrorContent
 import com.ajinkyabadve.kmmmywatchlist.core.ui.auth.AuthorizingContent
@@ -64,10 +65,17 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.CollectionNotificationPoller
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationReason
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderConstant
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepositoryImpl
@@ -75,7 +83,9 @@ import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionReposi
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.is24HourClock
 import com.ajinkyabadve.kmmmywatchlist.isDebugBuild
+import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
 import com.ajinkyabadve.kmmmywatchlist.openUrl
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
@@ -84,14 +94,23 @@ import mywatchlist.composeapp.generated.resources.action_close
 import mywatchlist.composeapp.generated.resources.auth_account_welcome
 import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.back_content_description
+import mywatchlist.composeapp.generated.resources.debug_clear_reminders_description
+import mywatchlist.composeapp.generated.resources.debug_clear_reminders_label
+import mywatchlist.composeapp.generated.resources.debug_fire_test_reminder_description
+import mywatchlist.composeapp.generated.resources.debug_fire_test_reminder_label
+import mywatchlist.composeapp.generated.resources.debug_fire_test_reminder_scheduled
 import mywatchlist.composeapp.generated.resources.debug_poll_collection_notifications_now_description
 import mywatchlist.composeapp.generated.resources.debug_poll_collection_notifications_now_label
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_description
 import mywatchlist.composeapp.generated.resources.debug_poll_notifications_now_label
 import mywatchlist.composeapp.generated.resources.debug_poll_person_notifications_now_description
 import mywatchlist.composeapp.generated.resources.debug_poll_person_notifications_now_label
+import mywatchlist.composeapp.generated.resources.debug_poll_release_reminders_description
+import mywatchlist.composeapp.generated.resources.debug_poll_release_reminders_label
 import mywatchlist.composeapp.generated.resources.debug_reset_episode_alert_prompt_description
 import mywatchlist.composeapp.generated.resources.debug_reset_episode_alert_prompt_label
+import mywatchlist.composeapp.generated.resources.debug_show_pending_reminders_description
+import mywatchlist.composeapp.generated.resources.debug_show_pending_reminders_label
 import mywatchlist.composeapp.generated.resources.fallback_region_picker_title
 import mywatchlist.composeapp.generated.resources.region_picker_title
 import mywatchlist.composeapp.generated.resources.settings_episode_notifications_description
@@ -100,9 +119,16 @@ import mywatchlist.composeapp.generated.resources.settings_fallback_region_descr
 import mywatchlist.composeapp.generated.resources.settings_fallback_region_label
 import mywatchlist.composeapp.generated.resources.settings_privacy_policy_label
 import mywatchlist.composeapp.generated.resources.settings_region_label
+import mywatchlist.composeapp.generated.resources.settings_release_reminders_description
+import mywatchlist.composeapp.generated.resources.settings_release_reminders_title
+import mywatchlist.composeapp.generated.resources.settings_reminder_time_description
+import mywatchlist.composeapp.generated.resources.settings_reminder_time_label
 import mywatchlist.composeapp.generated.resources.settings_restricted_mode_description
 import mywatchlist.composeapp.generated.resources.settings_restricted_mode_label
+import mywatchlist.composeapp.generated.resources.time_am
+import mywatchlist.composeapp.generated.resources.time_pm
 import mywatchlist.composeapp.generated.resources.tmdb_attribution_notice
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 private object AccountScreenConstant {
@@ -136,6 +162,10 @@ fun AccountScreen(
     regionRepository: RegionRepository = RegionRepositoryImpl(),
     restrictedModeRepository: RestrictedModeRepository = RestrictedModeRepositoryImpl(),
     notificationSettingsRepository: NotificationSettingsRepository = NotificationSettingsRepositoryImpl(),
+    releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
+    // Release reminders can only be delivered on Android/iOS - a parameter rather than a direct
+    // isMobilePlatform() call so the UI test (which runs on desktop) can render these rows.
+    showReleaseReminderSettings: Boolean = isMobilePlatform(),
     screenModel: AuthScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
 ) {
@@ -148,6 +178,38 @@ fun AccountScreen(
     var episodeNotificationsEnabled by remember { mutableStateOf(notificationSettingsRepository.isEpisodeNotificationsEnabled()) }
     val notificationPermissionRequester = rememberNotificationPermissionRequester()
     val coroutineScope = rememberCoroutineScope()
+    val releaseReminderCoordinator = remember(releaseReminderRepository) { ReleaseReminderCoordinator(releaseReminderRepository) }
+    val notificationJobSync =
+        remember(notificationSettingsRepository, releaseReminderRepository) {
+            NotificationJobSync(notificationSettingsRepository, releaseReminderRepository)
+        }
+    val reminderPreferenceFlow = remember(releaseReminderRepository) { releaseReminderRepository.observePreference() }
+    val reminderPreference =
+        if (showReleaseReminderSettings) {
+            reminderPreferenceFlow.collectAsState(initial = null).value
+        } else {
+            null
+        }
+    var showReminderTimePicker by remember { mutableStateOf(false) }
+    var pendingReminders by remember { mutableStateOf<List<PendingReminder>?>(null) }
+    var debugMessage by remember { mutableStateOf<String?>(null) }
+    // A reminder's date is resolved for the viewer's region (a movie can open weeks apart in two
+    // countries), so a region change re-resolves every saved reminder now rather than leaving it on
+    // the old region's date until the next background poll.
+    val refreshReminderDatesForRegion: () -> Unit = {
+        if (showReleaseReminderSettings) {
+            coroutineScope.launch {
+                ReleaseReminderPoller(
+                    repository = releaseReminderRepository,
+                    regionRepository = regionRepository,
+                    coordinator = releaseReminderCoordinator,
+                ).poll()
+            }
+        }
+    }
+    val is24Hour = remember { is24HourClock() }
+    val amLabel = stringResource(Res.string.time_am)
+    val pmLabel = stringResource(Res.string.time_pm)
 
     LaunchedEffect(webAuthLauncher) {
         screenModel.checkForPendingWebAuth(webAuthLauncher)
@@ -212,13 +274,15 @@ fun AccountScreen(
                                 if (granted) {
                                     notificationSettingsRepository.setEpisodeNotificationsEnabled(true)
                                     episodeNotificationsEnabled = true
-                                    NotificationScheduler.schedule()
+                                    notificationJobSync.refresh()
                                 }
                             }
                         } else {
                             notificationSettingsRepository.setEpisodeNotificationsEnabled(false)
                             episodeNotificationsEnabled = false
-                            NotificationScheduler.cancel()
+                            // The shared background job keeps running if release reminders still
+                            // need it - see NotificationJobSync's kdoc.
+                            coroutineScope.launch { notificationJobSync.refresh() }
                         }
                     },
                     showDebugPollNowRow = isDebugBuild(),
@@ -283,7 +347,78 @@ fun AccountScreen(
                         notificationSettingsRepository.setEpisodeNotificationsEnabled(false)
                         notificationSettingsRepository.resetEpisodeAlertOptInPromptForDebug()
                         episodeNotificationsEnabled = false
-                        NotificationScheduler.cancel()
+                        coroutineScope.launch { notificationJobSync.refresh() }
+                    },
+                    releaseReminderRows = {
+                        if (showReleaseReminderSettings) {
+                            val preference = reminderPreference ?: defaultReminderPreference()
+                            SettingsSwitchRow(
+                                label = stringResource(Res.string.settings_release_reminders_title),
+                                description = stringResource(Res.string.settings_release_reminders_description),
+                                checked = preference.enabled,
+                                onCheckedChange = { enabled ->
+                                    coroutineScope.launch {
+                                        if (!enabled || notificationPermissionRequester.request()) {
+                                            releaseReminderCoordinator.setPreference(preference.copy(enabled = enabled))
+                                            notificationJobSync.refresh()
+                                        }
+                                    }
+                                },
+                            )
+                            SettingsRow(
+                                label = stringResource(Res.string.settings_reminder_time_label),
+                                description = stringResource(Res.string.settings_reminder_time_description),
+                                value = formatClockTime(preference.time, is24Hour, amLabel, pmLabel),
+                                onClick = { showReminderTimePicker = true },
+                            )
+                        }
+                    },
+                    releaseReminderDebugRows = {
+                        if (showReleaseReminderSettings) {
+                            SettingsRow(
+                                label = stringResource(Res.string.debug_fire_test_reminder_label),
+                                description = stringResource(Res.string.debug_fire_test_reminder_description),
+                                onClick = {
+                                    coroutineScope.launch {
+                                        if (notificationPermissionRequester.request()) {
+                                            val fireAt = releaseReminderCoordinator.scheduleTestReminder()
+                                            debugMessage =
+                                                getString(
+                                                    Res.string.debug_fire_test_reminder_scheduled,
+                                                    formatClockTime(fireAt.time, is24Hour, amLabel, pmLabel),
+                                                )
+                                        }
+                                    }
+                                },
+                            )
+                            SettingsRow(
+                                label = stringResource(Res.string.debug_poll_release_reminders_label),
+                                description = stringResource(Res.string.debug_poll_release_reminders_description),
+                                onClick = {
+                                    coroutineScope.launch {
+                                        ReleaseReminderPoller(
+                                            repository = releaseReminderRepository,
+                                            coordinator = releaseReminderCoordinator,
+                                        ).poll()
+                                    }
+                                },
+                            )
+                            SettingsRow(
+                                label = stringResource(Res.string.debug_show_pending_reminders_label),
+                                description = stringResource(Res.string.debug_show_pending_reminders_description),
+                                onClick = { coroutineScope.launch { pendingReminders = releaseReminderCoordinator.pendingForDebug() } },
+                            )
+                            SettingsRow(
+                                label = stringResource(Res.string.debug_clear_reminders_label),
+                                description = stringResource(Res.string.debug_clear_reminders_description),
+                                onClick = {
+                                    coroutineScope.launch {
+                                        releaseReminderCoordinator.clearAll()
+                                        notificationJobSync.refresh()
+                                    }
+                                },
+                            )
+                        }
                     },
                     onLogoutClicked =
                         if (uiState is AuthUiState.LoggedIn) {
@@ -324,9 +459,32 @@ fun AccountScreen(
             onRegionSelected = { code ->
                 regionRepository.setSelectedRegion(code)
                 selectedRegionCode = code
+                refreshReminderDatesForRegion()
             },
             onDismiss = { showRegionPicker = false },
         )
+    }
+
+    if (showReminderTimePicker) {
+        ReminderTimePickerDialog(
+            initialTime = (reminderPreference ?: defaultReminderPreference()).time,
+            is24Hour = is24Hour,
+            onConfirm = { time ->
+                showReminderTimePicker = false
+                coroutineScope.launch {
+                    releaseReminderCoordinator.setPreference((reminderPreference ?: defaultReminderPreference()).copy(time = time))
+                }
+            },
+            onDismiss = { showReminderTimePicker = false },
+        )
+    }
+
+    pendingReminders?.let { pending ->
+        PendingRemindersDialog(pending = pending, onDismiss = { pendingReminders = null })
+    }
+
+    debugMessage?.let { message ->
+        DebugMessageDialog(message = message, onDismiss = { debugMessage = null })
     }
 
     if (showFallbackRegionPicker) {
@@ -336,6 +494,7 @@ fun AccountScreen(
             onRegionSelected = { code ->
                 regionRepository.setFallbackRegion(code)
                 fallbackRegionCode = code
+                refreshReminderDatesForRegion()
             },
             onDismiss = { showFallbackRegionPicker = false },
         )
@@ -437,6 +596,8 @@ private fun SettingsList(
     onDebugPollPersonNotificationsNowClicked: () -> Unit,
     onDebugPollCollectionNotificationsNowClicked: () -> Unit,
     onDebugResetEpisodeAlertPromptClicked: () -> Unit,
+    releaseReminderRows: @Composable () -> Unit,
+    releaseReminderDebugRows: @Composable () -> Unit,
     onLogoutClicked: (() -> Unit)?,
     onPrivacyPolicyClicked: () -> Unit,
 ) {
@@ -464,6 +625,7 @@ private fun SettingsList(
             checked = episodeNotificationsEnabled,
             onCheckedChange = onEpisodeNotificationsChanged,
         )
+        releaseReminderRows()
         if (showDebugPollNowRow) {
             SettingsRow(
                 label = stringResource(Res.string.debug_poll_notifications_now_label),
@@ -485,6 +647,7 @@ private fun SettingsList(
                 description = stringResource(Res.string.debug_reset_episode_alert_prompt_description),
                 onClick = onDebugResetEpisodeAlertPromptClicked,
             )
+            releaseReminderDebugRows()
         }
         onLogoutClicked?.let {
             SettingsRow(
@@ -586,3 +749,8 @@ private fun SettingsSwitchRow(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
+/** What the reminder rows show before the preference row has loaded - the same defaults the
+ *  repository uses when no row exists yet. */
+private fun defaultReminderPreference(): ReminderPreference =
+    ReminderPreference(enabled = ReleaseReminderConstant.DEFAULT_ENABLED, time = ReleaseReminderConstant.DEFAULT_TIME)

@@ -432,3 +432,71 @@ DELETE FROM favoriteCollection WHERE id = ?;
 
 updateFavoriteCollectionPartIds:
 UPDATE favoriteCollection SET lastKnownPartIds = ? WHERE id = ?;
+
+-- future_features_checklist.md item 16: release-date reminders, local-only (a reminder needs no
+-- TMDB account and has nothing on TMDB's side to sync to). The database is the source of truth;
+-- ReleaseReminderCoordinator re-derives every OS-scheduled notification from these rows, so a
+-- reboot, a reinstall-restore or a changed reminder time only ever needs a reschedule-all.
+--
+-- seasonNumber/episodeNumber are -1 (not NULL) for a reminder on the title itself: SQLite treats
+-- NULLs as distinct inside a PRIMARY KEY, which would let the same title be inserted twice.
+-- releaseDate is the resolved yyyy-MM-dd the reminder fires around; releaseSource records which
+-- date won (e.g. 'theatrical:IN', 'first_air', 'episode_air') so the notification can explain it.
+CREATE TABLE releaseReminder (
+    mediaId INTEGER NOT NULL,
+    mediaType TEXT NOT NULL,
+    seasonNumber INTEGER NOT NULL DEFAULT -1,
+    episodeNumber INTEGER NOT NULL DEFAULT -1,
+    title TEXT NOT NULL,
+    posterPath TEXT,
+    releaseDate TEXT NOT NULL,
+    releaseSource TEXT,
+    addedAt INTEGER NOT NULL,
+    lastCheckedAt INTEGER,
+    PRIMARY KEY (mediaId, mediaType, seasonNumber, episodeNumber)
+);
+
+selectAllReleaseReminders:
+SELECT * FROM releaseReminder ORDER BY releaseDate ASC;
+
+selectReleaseReminder:
+SELECT * FROM releaseReminder
+WHERE mediaId = ? AND mediaType = ? AND seasonNumber = ? AND episodeNumber = ?;
+
+selectReleaseReminderKeys:
+SELECT mediaId, mediaType, seasonNumber, episodeNumber FROM releaseReminder;
+
+insertReleaseReminder:
+INSERT OR REPLACE INTO releaseReminder
+    (mediaId, mediaType, seasonNumber, episodeNumber, title, posterPath, releaseDate, releaseSource, addedAt, lastCheckedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteReleaseReminder:
+DELETE FROM releaseReminder
+WHERE mediaId = ? AND mediaType = ? AND seasonNumber = ? AND episodeNumber = ?;
+
+deleteAllReleaseReminders:
+DELETE FROM releaseReminder;
+
+updateReleaseReminderDate:
+UPDATE releaseReminder SET releaseDate = ?, releaseSource = ?, lastCheckedAt = ?
+WHERE mediaId = ? AND mediaType = ? AND seasonNumber = ? AND episodeNumber = ?;
+
+-- yyyy-MM-dd strings compare correctly as text, so a plain < works as a date comparison.
+deleteReleaseRemindersBefore:
+DELETE FROM releaseReminder WHERE releaseDate < ?;
+
+-- Single-row table (id is pinned to 0) holding the release-reminder preferences. Kept in the
+-- database rather than the key-value Settings store so reminders and their delivery time back up,
+-- restore and reschedule together. No row yet means the defaults: enabled, 09:00 (540 minutes).
+CREATE TABLE reminderPreference (
+    id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+    enabled INTEGER NOT NULL DEFAULT 1,
+    minutesOfDay INTEGER NOT NULL DEFAULT 540
+);
+
+selectReminderPreference:
+SELECT * FROM reminderPreference WHERE id = 0;
+
+upsertReminderPreference:
+INSERT OR REPLACE INTO reminderPreference (id, enabled, minutesOfDay) VALUES (0, ?, ?);

@@ -133,7 +133,13 @@ internal fun MovieHeroSection(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.longPressToCopy(detail.title),
             )
-            HeroMetaRow(detail = detail, colors = colors, modifier = Modifier.padding(top = 8.dp))
+            HeroMetaRow(
+                detail = detail,
+                regionCode = regionCode,
+                fallbackRegionCode = fallbackRegionCode,
+                colors = colors,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             watchOption?.let { option ->
                 Row(
                     modifier = Modifier.padding(top = 12.dp),
@@ -158,6 +164,8 @@ internal fun MovieHeroSection(
 @Composable
 private fun HeroMetaRow(
     detail: MovieDetail,
+    regionCode: String,
+    fallbackRegionCode: String,
     colors: HeroColors,
     modifier: Modifier = Modifier,
 ) {
@@ -180,7 +188,7 @@ private fun HeroMetaRow(
                 add(stringResource(Res.string.hero_rating, it.toOneDecimalString()))
             }
         }
-    val certification = detail.usCertification()
+    val certification = detail.regionalCertification(regionCode, fallbackRegionCode)
     if (facts.isEmpty() && certification.isNullOrEmpty()) return
 
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {

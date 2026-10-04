@@ -7,15 +7,28 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedTvShowSummary
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingDateKind
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseSource
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseSourceKind
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepositoryImpl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -37,7 +50,35 @@ import kotlinx.datetime.todayIn
 class UpcomingReleasesScreenModel(
     trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
     tvDetailCacheRepository: TvDetailCacheRepository = TvDetailCacheRepositoryImpl(),
+    releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
+    private val releaseReminderCoordinator: ReleaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository),
+    private val notificationJobSync: NotificationJobSync = NotificationJobSync(releaseReminderRepository = releaseReminderRepository),
 ) : ViewModel() {
+    private val viewModelScope = CoroutineScope(Dispatchers.Main)
+
+    /** Which rows have a release reminder set (checklist item 16), for the bells' set state. */
+    val remindedKeys: Flow<Set<ReminderKey>> = releaseReminderRepository.observeReminderKeys()
+
+    /** The global reminder time - not shown on this tab today, kept alongside [remindedKeys] so
+     *  the tab and the detail heroes read reminder state from the same place. */
+    val reminderPreference: Flow<ReminderPreference> = releaseReminderRepository.observePreference()
+
+    /** Adds or removes the reminder for one row - a movie, or one specific episode of a show. */
+    fun setReminder(
+        item: UpcomingMediaItem,
+        enabled: Boolean,
+    ) {
+        viewModelScope.launch {
+            releaseReminderCoordinator.setReminder(item.toReleaseReminder(), enabled)
+            notificationJobSync.refresh()
+        }
+    }
+
+    override fun onCleared() {
+        viewModelScope.cancel()
+        super.onCleared()
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val upcomingItems: Flow<List<UpcomingMediaItem>> =
         combine(
@@ -89,3 +130,26 @@ internal fun buildUpcomingEpisodeItems(
             }
         }
     }
+
+/** The reminder key for an Upcoming row: an episode row keys on its season/episode, so each
+ *  unaired episode can be reminded about on its own. */
+fun UpcomingMediaItem.reminderKey(): ReminderKey =
+    if (mediaType == MediaTypeConstant.TV && seasonNumber != null && episodeNumber != null) {
+        ReminderKey(id.toLong(), MediaTypeConstant.TV, seasonNumber, episodeNumber)
+    } else {
+        ReminderKey(id.toLong(), mediaType)
+    }
+
+internal fun UpcomingMediaItem.toReleaseReminder(): ReleaseReminder {
+    val key = reminderKey()
+    // A movie row's date is TMDB's primary release date (that's what trackedMedia stores); the
+    // poller refines it to the viewer's regional theatrical/digital date on its next run.
+    val source = if (key.isEpisode) ReleaseSourceKind.EPISODE_AIR else ReleaseSourceKind.PRIMARY
+    return ReleaseReminder(
+        key = key,
+        title = title,
+        posterPath = posterPath,
+        releaseDate = date,
+        releaseSource = ReleaseSource(source).encode(),
+    )
+}

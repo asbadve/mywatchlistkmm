@@ -2,9 +2,7 @@
 
 package com.ajinkyabadve.kmmmywatchlist.core.notification
 
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.CollectionNotificationPoller
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.PersonCreditNotificationPoller
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.TvEpisodeNotificationPoller
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.runBackgroundPolls
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
@@ -35,9 +33,7 @@ actual object NotificationScheduler {
                 {
                     runCatching {
                         runBlocking {
-                            TvEpisodeNotificationPoller().poll()
-                            PersonCreditNotificationPoller().poll()
-                            CollectionNotificationPoller().poll()
+                            runBackgroundPolls()
                         }
                     }.onFailure { Napier.e(tag = DesktopNotificationSchedulerConstant.TAG, throwable = it) { "Poll cycle failed" } }
                 },

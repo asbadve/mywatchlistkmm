@@ -5,6 +5,8 @@
          composition, before Compose Resources' asset loader is guaranteed ready. -->
     <string name="notification_channel_episodes_name">Episode notifications</string>
     <string name="notification_channel_episodes_description">Alerts when a favorited or watchlisted show has a new episode</string>
+    <string name="notification_channel_release_reminders_name">Release reminders</string>
+    <string name="notification_channel_release_reminders_description">Reminders you set for upcoming movies, shows and episodes</string>
     <!-- Summary shown only when a show's individual notifications collapse into one group (API 24+,
          see LocalNotifier.kt's postGroupSummary) - never shown standalone, so it doesn't need to
          name the show itself. -->

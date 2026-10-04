@@ -488,15 +488,16 @@ Decided by "would this come back on its own after a reinstall?" - if yes, it sta
 | Restricted mode | `restricted_mode_enabled` (`RestrictedModeConstant`) | No | ✅ |
 | Episode-notification opt-in | `episode_notifications_enabled`, `episode_alert_opt_in_prompt_seen` (`NotificationSettingsConstant`) | No | ✅ |
 | Saved Discover filters | `discover_movie_filters_json` / `discover_tv_filters_json` (`DiscoverFilterRepository`) | No | ✅ |
+| Release reminders + reminder time | `releaseReminder` and `reminderPreference` tables (`ReleaseReminderRepository`) - item 16 | No - local-only, nothing on TMDB to sync to | ✅ - after restoring, call `ReleaseReminderCoordinator.rescheduleAll()` so the OS-scheduled notifications come back too |
 | Favorites / watchlist / custom lists | `trackedMedia`, `customList`, `customListItem` | **Yes** - re-synced from TMDB on sign-in | ❌ |
 | Detail caches, `remoteKeys` | `movieDetailCache` / `tvDetailCache` / `tvSeasonDetailCache` / `personDetailCache` / `remoteKeys` | Yes - pure read-through caches | ❌ |
 | Poll state + notification ledger | `trackedMedia.lastKnown*`, `favoritePerson.lastKnownCreditIds`, `favoriteCollection.lastKnownPartIds`, `notificationLedger` | n/a - see below | ❌ (deliberate) |
 | TMDB session | `auth_session_id`, `auth_account_id`, `auth_username`, `auth_name`, `auth_avatar_url` (`AuthRepository`) | Yes - the user signs in again | ❌ **never** |
 | Privacy-policy acceptance | `privacy_policy_accepted_v1` (`PrivacyConsentRepository`) | n/a - re-shown per install | ❌ (deliberate) |
 
-If [item 16](#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts)
-ships, its local-only `releaseReminder` table joins the ✅ rows above by the same test (its
-`lastKnownReleaseDate` stays out, like the other poll-state columns).
+[Item 16](#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts)'s
+reminder rows carry no poll cursor of their own (the poller just re-resolves `releaseDate` and
+`lastCheckedAt` is informational), so the whole row is backed up as-is.
 
 Three exclusions are decisions, not oversights, and each should be stated in the exporter's KDoc so
 nobody "fixes" them later:

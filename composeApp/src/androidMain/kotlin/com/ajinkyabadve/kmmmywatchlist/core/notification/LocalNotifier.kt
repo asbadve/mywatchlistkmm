@@ -19,6 +19,7 @@ import com.ajinkyabadve.kmmmywatchlist.R
 
 internal object AndroidNotificationConstant {
     const val CHANNEL_ID = "episode_notifications"
+    const val RELEASE_REMINDER_CHANNEL_ID = "release_reminders"
 
     // Read back by AppActivity.handleNotificationIntent() - keep both sides in sync.
     const val EXTRA_TV_SHOW_ID = "notification_tv_show_id"
@@ -26,6 +27,8 @@ internal object AndroidNotificationConstant {
     const val EXTRA_EPISODE_NUMBER = "notification_episode_number"
     const val EXTRA_PERSON_ID = "notification_person_id"
     const val EXTRA_COLLECTION_ID = "notification_collection_id"
+    const val EXTRA_MEDIA_ID = "notification_media_id"
+    const val EXTRA_MEDIA_TYPE = "notification_media_type"
 
     // Prefix, not just the raw id, so this can never collide with a per-reason notificationId
     // (Triple(id, mediaType, reason).hashCode() in TvEpisodeNotificationPoller) that happens to
@@ -62,6 +65,10 @@ actual object LocalNotifier {
                     }
                     is PersonNotificationTarget -> putExtra(AndroidNotificationConstant.EXTRA_PERSON_ID, deepLink.personId)
                     is CollectionNotificationTarget -> putExtra(AndroidNotificationConstant.EXTRA_COLLECTION_ID, deepLink.collectionId)
+                    is MediaDetailNotificationTarget -> {
+                        putExtra(AndroidNotificationConstant.EXTRA_MEDIA_ID, deepLink.mediaId)
+                        putExtra(AndroidNotificationConstant.EXTRA_MEDIA_TYPE, deepLink.mediaType)
+                    }
                     null -> Unit
                 }
             }
@@ -83,6 +90,7 @@ actual object LocalNotifier {
                 is EpisodeNotificationTarget -> AndroidNotificationConstant.GROUP_KEY_PREFIX + deepLink.tvShowId
                 is PersonNotificationTarget -> AndroidNotificationConstant.PERSON_GROUP_KEY_PREFIX + deepLink.personId
                 is CollectionNotificationTarget -> null
+                is MediaDetailNotificationTarget -> null
                 null -> null
             }
         val groupSummaryTitleRes =
@@ -91,10 +99,16 @@ actual object LocalNotifier {
             } else {
                 R.string.notification_group_summary_title
             }
+        val channelId =
+            if (deepLink is MediaDetailNotificationTarget) {
+                AndroidNotificationConstant.RELEASE_REMINDER_CHANNEL_ID
+            } else {
+                AndroidNotificationConstant.CHANNEL_ID
+            }
         val posterBitmap = posterUrl?.let { url -> decodePosterBitmap(url) }
         val notification =
             NotificationCompat
-                .Builder(context, AndroidNotificationConstant.CHANNEL_ID)
+                .Builder(context, channelId)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(body)
