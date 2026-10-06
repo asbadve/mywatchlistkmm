@@ -1196,3 +1196,32 @@ from a user observation; small.
   plus the usual test/compile/ktlint tasks.
 
 ---
+
+## 21. Native Debug Symbols for Play (next release, queued 2026-10-05)
+**Goal**: Clear Play Console's v1.2.0 warning *"This App Bundle contains native code, and you've not
+uploaded debug symbols"*, so native crashes and ANRs in Play Vitals have readable stack traces.
+
+- **Where the native code comes from**: ML Kit's `libbarhopper_v3.so` (QR scanner, item 15 stage
+  2 - about 20 MB across four ABIs), plus Skiko/Compose and SQLite libraries.
+- [ ] Add `ndk { debugSymbolLevel = "SYMBOL_TABLE" }` to the `release` build type in
+  `composeApp/build.gradle.kts` (use `"FULL"` only if the AAB stays under Play's size limit). AGP
+  then packs the symbols into the AAB (`BUNDLE-METADATA/com.android.tools.build.debugsymbols/`) and
+  Play reads them on upload - no manual symbol upload.
+- [ ] **Check, don't assume:** prebuilt third-party `.so` files (ML Kit's above all) usually ship
+  stripped, so there may be nothing for AGP to extract and the warning can persist for them.
+  Confirm with `bundletool dump` / unzip that the symbol directory has entries for each library;
+  if ML Kit's are empty, note it and move on.
+- [ ] Java/Kotlin crashes are already covered: AGP includes the R8 `mapping.txt` in the AAB, so
+  Play de-obfuscates those traces. Local crashes can be retraced with
+  `cmdline-tools/<ver>/bin/retrace composeApp/build/outputs/mapping/release/mapping.txt <trace>`
+  (used 2026-10-05 for the ML Kit crash).
+- **Not yet:** the linked page's newer `optimization { enable = true }` DSL needs AGP 9.3+; this
+  project is on AGP 9.1.1 (`gradle/libs.versions.toml`) and keeps the legacy
+  `isMinifyEnabled`/`isShrinkResources` until it upgrades.
+- Related size note: the universal GitHub APK is 24 MB because of those native libraries; Play
+  delivers per-ABI splits (about 5 MB of ML Kit native code on arm64). Optional: drop x86/x86_64
+  (emulator-only) from the GitHub APK with `abiFilters` to save about 12 MB there.
+- [ ] Verify: `./gradlew :composeApp:bundleRelease`, inspect the AAB, upload to an internal test
+  track and confirm the warning is gone (or explained).
+
+---

@@ -80,6 +80,22 @@ Enabled (`isMinifyEnabled`/`isShrinkResources` on the `release` build type,
    R8 stripping a class used only via reflection (a serializer, a service-loaded driver) doesn't
    always show up as a build error; it shows up as a runtime crash the build never caught.
 
+Lessons from v1.2.0 (2026-10-05):
+- **Reflection-heavy libraries need their own keep rules under R8 full mode** (AGP's default). ML
+  Kit's barcode scanner (QRKit) crashed only in the release build - `BarcodeScanning.getClient()`
+  NPE - until `proguard-rules.pro` kept `com.google.android.gms.internal.mlkit_*` and
+  `com.google.android.libraries.barhopper`. Any release that touches the scanner: open "Receive
+  from another device" in an R8 build and let the camera start. Retrace an obfuscated trace with
+  `cmdline-tools/<ver>/bin/retrace build/outputs/mapping/release/mapping.txt <trace>`.
+- **Native debug symbols** - Play warns the AAB has native code without symbols. Planned for the
+  next release: `ndk { debugSymbolLevel = "SYMBOL_TABLE" }` on the release build type, then check
+  what actually lands in the AAB - see `future_features_checklist.md` item 21.
+- **Play never accepts the same versionCode twice.** If a rollout fails after the AAB uploaded,
+  reuse it with *Add from library* in a new release (discard the broken draft) rather than
+  re-uploading; only cut a new patch tag if the library copy can't be used.
+- **Check CI is green before tagging** - it was silently red for a week before v1.2.0 (the
+  `setup-android` default package list broke).
+
 ## Play Store listing
 
 - **Listing copy** (title, short/full description) lives in `docs/play-store-listing.md`
