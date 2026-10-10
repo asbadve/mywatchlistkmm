@@ -1,5 +1,9 @@
 # MyWatchList - Compose Multiplatform (Android / iOS / desktop / js)
 
+## Start of every dev session
+If `IMMEDIATE_DEFECTS.md` has any entries, tell the user and offer to fix them before starting
+other work. Delete an entry once its fix lands.
+
 ## Mandatory conventions
 Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions/SKILL.md`:
 - Catch/throw specific exception types only - never bare `Exception`.
