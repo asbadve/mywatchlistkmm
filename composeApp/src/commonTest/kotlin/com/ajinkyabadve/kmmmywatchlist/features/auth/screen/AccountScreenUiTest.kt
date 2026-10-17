@@ -14,9 +14,6 @@ import com.ajinkyabadve.kmmmywatchlist.core.file.FakeBackupFileLauncher
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupTestFixture
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
-import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
-import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -33,12 +30,14 @@ class AccountScreenUiTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var fakeWebAuthLauncher: WebAuthLauncher
+    private lateinit var fixture: AccountTestFixture
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeAuthRepository = FakeAuthRepository()
         fakeWebAuthLauncher = FakeWebAuthLauncher()
+        fixture = AccountTestFixture()
     }
 
     @AfterTest
@@ -55,6 +54,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -73,6 +73,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = true,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -90,6 +91,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -118,6 +120,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -141,21 +144,21 @@ class AccountScreenUiTest {
                 UserSession(sessionId = "session_999", accountId = 99L, username = "jane_doe", name = "Jane Doe")
             fakeAuthRepository.saveSession(session)
             val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
-            val fakeRestrictedModeRepository = FakeRestrictedModeRepository(restrictedModeEnabled = true)
+            fixture = AccountTestFixture(restrictedModeEnabled = true)
 
             setContent {
                 AccountScreen(
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
-                    restrictedModeRepository = fakeRestrictedModeRepository,
                 )
             }
 
             onAllNodes(isToggleable())[0].performClick()
 
-            assertTrue(fakeRestrictedModeRepository.setRestrictedModeCalls.contains(false))
+            assertTrue(fixture.restrictedMode.setRestrictedModeCalls.contains(false))
         }
 
     @Test
@@ -165,22 +168,21 @@ class AccountScreenUiTest {
                 UserSession(sessionId = "session_999", accountId = 99L, username = "jane_doe", name = "Jane Doe")
             fakeAuthRepository.saveSession(session)
             val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
-            val fakeNotificationSettingsRepository = FakeNotificationSettingsRepository(episodeNotificationsEnabled = false)
 
             setContent {
                 AccountScreen(
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
-                    notificationSettingsRepository = fakeNotificationSettingsRepository,
                 )
             }
 
             onAllNodes(isToggleable())[1].performClick()
             waitForIdle()
 
-            assertTrue(fakeNotificationSettingsRepository.setEpisodeNotificationsEnabledCalls.contains(true))
+            assertTrue(fixture.notificationSettings.setEpisodeNotificationsEnabledCalls.contains(true))
         }
 
     @Test
@@ -198,6 +200,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -224,6 +227,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = { backClicked = true },
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -246,6 +250,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -277,6 +282,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = deniedWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -298,6 +304,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = { backClicked = true },
                     webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -316,9 +323,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
-                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
-                    releaseReminderRepository = FakeReleaseReminderRepository(),
-                    showReleaseReminderSettings = true,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -337,9 +342,7 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
-                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
-                    releaseReminderRepository = FakeReleaseReminderRepository(),
-                    showReleaseReminderSettings = true,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -353,37 +356,34 @@ class AccountScreenUiTest {
     @Test
     fun testClearAllRemindersDebugRowDeletesSavedReminders() =
         runComposeUiTest {
-            val releaseReminderRepository = FakeReleaseReminderRepository()
             val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
             setContent {
                 AccountScreen(
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
-                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
-                    releaseReminderRepository = releaseReminderRepository,
-                    showReleaseReminderSettings = true,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
 
             onNodeWithText(DEBUG_CLEAR_REMINDERS).performScrollTo().performClick()
-            waitUntil { releaseReminderRepository.deleteAllCallCount == 1 }
+            waitUntil { fixture.reminders.deleteAllCallCount == 1 }
 
-            assertEquals(1, releaseReminderRepository.deleteAllCallCount)
+            assertEquals(1, fixture.reminders.deleteAllCallCount)
         }
 
     @Test
     fun testReleaseReminderRowsAreHiddenWhereRemindersCantFire() =
         runComposeUiTest {
+            fixture = AccountTestFixture(releaseRemindersSupported = false)
             val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
             setContent {
                 AccountScreen(
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
-                    releaseReminderRepository = FakeReleaseReminderRepository(),
-                    showReleaseReminderSettings = false,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -401,9 +401,9 @@ class AccountScreenUiTest {
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
-                    showBackupSettings = true,
                     backupFileLauncher = FakeBackupFileLauncher(),
                     backupScreenModel = BackupTestFixture().screenModel,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
@@ -416,20 +416,82 @@ class AccountScreenUiTest {
     @Test
     fun testBackupRowIsHiddenWhereBackupIsUnsupported() =
         runComposeUiTest {
+            fixture = AccountTestFixture(backupSupported = false)
             val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
             setContent {
                 AccountScreen(
                     isDialogPresentation = false,
                     onBackClicked = {},
                     webAuthLauncher = fakeWebAuthLauncher,
-                    showBackupSettings = false,
                     backupFileLauncher = FakeBackupFileLauncher(),
                     backupScreenModel = BackupTestFixture().screenModel,
+                    accountScreenModel = fixture.screenModel,
                     screenModel = screenModel,
                 )
             }
 
             onNodeWithText(BACKUP_ROW_LABEL).assertDoesNotExist()
+        }
+
+    @Test
+    fun testDebugPollEpisodeRowRunsTheEpisodePoll() =
+        runComposeUiTest {
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
+                    screenModel = AuthScreenModel(authRepository = fakeAuthRepository),
+                )
+            }
+
+            onNodeWithText(DEBUG_POLL_EPISODES).performScrollTo().performClick()
+            waitForIdle()
+
+            assertEquals(1, fixture.debugActions.episodePollCount)
+        }
+
+    @Test
+    fun testShowPendingRemindersOpensAndClosesTheDialog() =
+        runComposeUiTest {
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
+                    screenModel = AuthScreenModel(authRepository = fakeAuthRepository),
+                )
+            }
+
+            onNodeWithText(DEBUG_SHOW_PENDING).performScrollTo().performClick()
+            waitUntil { fixture.screenModel.uiState.value.pendingReminders != null }
+
+            onNodeWithText(PENDING_REMINDERS_EMPTY).assertIsDisplayed()
+
+            onNodeWithText(CLOSE_ACTION).performClick()
+
+            onNodeWithText(PENDING_REMINDERS_EMPTY).assertDoesNotExist()
+        }
+
+    @Test
+    fun testFireTestReminderShowsWhenItWillFire() =
+        runComposeUiTest {
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
+                    screenModel = AuthScreenModel(authRepository = fakeAuthRepository),
+                )
+            }
+
+            onNodeWithText(DEBUG_FIRE_TEST_REMINDER).performScrollTo().performClick()
+            waitUntil { fixture.screenModel.uiState.value.testReminderMessage != null }
+
+            onNodeWithText(TEST_REMINDER_SCHEDULED_PREFIX, substring = true).assertIsDisplayed()
         }
 
     private companion object {
@@ -444,5 +506,9 @@ class AccountScreenUiTest {
         const val DEBUG_POLL_RELEASE_REMINDERS = "Poll release reminders now"
         const val DEBUG_SHOW_PENDING = "Show pending reminders"
         const val DEBUG_CLEAR_REMINDERS = "Clear all reminders"
+        const val DEBUG_POLL_EPISODES = "Poll episode notifications now"
+        const val PENDING_REMINDERS_EMPTY = "Nothing scheduled"
+        const val CLOSE_ACTION = "Close"
+        const val TEST_REMINDER_SCHEDULED_PREFIX = "Test reminder scheduled for"
     }
 }
