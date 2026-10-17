@@ -19,6 +19,9 @@ private object RegionPickerDialogUiTestConstant {
     val UNITED_STATES = WatchProviderRegion(iso3166 = "US", englishName = "United States", nativeName = "United States")
     val INDIA = WatchProviderRegion(iso3166 = "IN", englishName = "India", nativeName = "India")
     val FRANCE = WatchProviderRegion(iso3166 = "FR", englishName = "France", nativeName = "France")
+    const val SEARCH_HINT = "Search regions"
+    const val INDIA_QUERY = "Ind"
+    const val CLOSE = "Close"
 }
 
 @OptIn(ExperimentalTestApi::class)
@@ -97,5 +100,56 @@ class RegionPickerDialogUiTest {
 
             assertTrue(dismissed)
             assertEquals("IN", pickedRegion)
+        }
+
+    @Test
+    fun testClosingThePickerClearsItsSearch() =
+        runComposeUiTest {
+            val regionScreenModel =
+                RegionScreenModel(
+                    FakeRegionRepository(
+                        availableRegions = listOf(RegionPickerDialogUiTestConstant.UNITED_STATES, RegionPickerDialogUiTestConstant.INDIA),
+                    ),
+                )
+            setContent {
+                RegionPickerDialog(
+                    title = RegionPickerDialogUiTestConstant.TEST_TITLE,
+                    selectedRegionCode = RegionPickerDialogUiTestConstant.UNITED_STATES.iso3166,
+                    onRegionSelected = {},
+                    onDismiss = {},
+                    regionScreenModel = regionScreenModel,
+                )
+            }
+            onNodeWithText(RegionPickerDialogUiTestConstant.SEARCH_HINT).performTextInput(RegionPickerDialogUiTestConstant.INDIA_QUERY)
+
+            onNodeWithText(RegionPickerDialogUiTestConstant.CLOSE).performClick()
+
+            assertEquals("", regionScreenModel.searchQuery)
+        }
+
+    @Test
+    fun testPickingARegionClearsTheSearchForTheNextPicker() =
+        runComposeUiTest {
+            val regionScreenModel =
+                RegionScreenModel(
+                    FakeRegionRepository(
+                        availableRegions = listOf(RegionPickerDialogUiTestConstant.UNITED_STATES, RegionPickerDialogUiTestConstant.INDIA),
+                    ),
+                )
+            setContent {
+                RegionPickerDialog(
+                    title = RegionPickerDialogUiTestConstant.TEST_TITLE,
+                    selectedRegionCode = RegionPickerDialogUiTestConstant.UNITED_STATES.iso3166,
+                    onRegionSelected = {},
+                    onDismiss = {},
+                    regionScreenModel = regionScreenModel,
+                )
+            }
+            onNodeWithText(RegionPickerDialogUiTestConstant.SEARCH_HINT).performTextInput(RegionPickerDialogUiTestConstant.INDIA_QUERY)
+
+            onNodeWithText(RegionPickerDialogUiTestConstant.INDIA.englishName, substring = true).performClick()
+
+            assertEquals("", regionScreenModel.searchQuery)
+            assertEquals(2, regionScreenModel.filteredRegions.size)
         }
 }

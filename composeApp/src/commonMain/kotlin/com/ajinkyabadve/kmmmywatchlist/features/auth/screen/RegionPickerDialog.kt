@@ -52,8 +52,13 @@ fun RegionPickerDialog(
     modifier: Modifier = Modifier,
     regionScreenModel: RegionScreenModel = viewModel { RegionScreenModel() },
 ) {
+    // Every way out - a pick, Close, or tapping outside - starts the next opening with an empty search.
+    val dismiss = {
+        regionScreenModel.clearSearch()
+        onDismiss()
+    }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         modifier = modifier,
         title = { Text(title) },
         text = {
@@ -83,7 +88,7 @@ fun RegionPickerDialog(
                                         isSelected = region.iso3166 == selectedRegionCode,
                                         onClick = {
                                             onRegionSelected(region.iso3166)
-                                            onDismiss()
+                                            dismiss()
                                         },
                                     )
                                 }
@@ -94,7 +99,7 @@ fun RegionPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = dismiss) {
                 Text(stringResource(Res.string.action_close))
             }
         },

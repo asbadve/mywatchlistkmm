@@ -59,6 +59,13 @@ class RegionScreenModel(
         applyFilter()
     }
 
+    /**
+     * Empties the search box. The picker calls this whenever it closes: one instance backs both the
+     * region and fallback-region pickers for as long as the account screen is open, so without
+     * this the second picker would open still filtered by the first one's query.
+     */
+    fun clearSearch() = onSearchQueryChanged("")
+
     private fun applyFilter() {
         filteredRegions.clear()
         filteredRegions.addAll(

@@ -17,6 +17,7 @@ private object RegionScreenModelTestConstant {
     val UNITED_STATES = WatchProviderRegion(iso3166 = "US", englishName = "United States", nativeName = "United States")
     val INDIA = WatchProviderRegion(iso3166 = "IN", englishName = "India", nativeName = "India")
     val FRANCE = WatchProviderRegion(iso3166 = "FR", englishName = "France", nativeName = "France")
+    const val INDIA_QUERY = "ind"
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -68,5 +69,22 @@ class RegionScreenModelTest {
             viewModel.onSearchQueryChanged("ind")
 
             assertEquals(listOf("IN"), viewModel.filteredRegions.map { it.iso3166 })
+        }
+
+    @Test
+    fun testClearSearchEmptiesTheQueryAndShowsEveryRegionAgain() =
+        runTest(testDispatcher) {
+            val fakeRepository =
+                FakeRegionRepository(
+                    availableRegions =
+                        listOf(RegionScreenModelTestConstant.UNITED_STATES, RegionScreenModelTestConstant.INDIA),
+                )
+            val viewModel = RegionScreenModel(fakeRepository)
+            viewModel.onSearchQueryChanged(RegionScreenModelTestConstant.INDIA_QUERY)
+
+            viewModel.clearSearch()
+
+            assertEquals("", viewModel.searchQuery)
+            assertEquals(listOf("IN", "US"), viewModel.filteredRegions.map { it.iso3166 })
         }
 }
