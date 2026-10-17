@@ -5,6 +5,8 @@ Engineering/ops work-in-progress lives in the (untracked) `TASKS.md`; product id
 `future_features_checklist.md`, and features that already shipped are archived in
 `shipped_features.md`.
 
+Defects to fix first, before any other work, live in `IMMEDIATE_DEFECTS.md`.
+
 Each entry: what you see, where it is, what has been ruled out, and the next concrete step.
 
 ---
