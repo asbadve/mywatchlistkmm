@@ -290,6 +290,71 @@ class TrackedMediaRepositoryImplTest {
             assertEquals(listOf(REMOVED_ID), rows.map { it.id })
         }
 
+    @Test
+    fun testTrackLocally_newUnreleasedMovieAppearsInUpcomingWithoutARefresh() =
+        runTest {
+            val database = createTestDatabase()
+            val repository = repository(database)
+
+            repository.trackLocally(snapshot(MediaTypeConstant.MOVIE, NEAR_FUTURE_DATE), AccountMediaCategory.FAVORITES)
+
+            assertEquals(listOf(TRACKED_TITLE), repository.observeUpcoming().first().map { it.title })
+        }
+
+    @Test
+    fun testTrackLocally_newShowAppearsInTrackedTvShows() =
+        runTest {
+            val database = createTestDatabase()
+            val repository = repository(database)
+
+            repository.trackLocally(snapshot(MediaTypeConstant.TV, PAST_DATE), AccountMediaCategory.WATCHLIST)
+
+            assertEquals(listOf(TRACKED_ID), repository.observeTrackedTvShows().first().map { it.id })
+        }
+
+    @Test
+    fun testTrackLocally_revivesARowQueuedForRemoval() =
+        runTest {
+            val database = createTestDatabase()
+            val repository = repository(database)
+            repository.trackLocally(snapshot(MediaTypeConstant.MOVIE, NEAR_FUTURE_DATE), AccountMediaCategory.FAVORITES)
+            repository.markPendingDelete(TRACKED_ID, MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)
+
+            repository.trackLocally(snapshot(MediaTypeConstant.MOVIE, NEAR_FUTURE_DATE), AccountMediaCategory.FAVORITES)
+
+            val row =
+                database.myDatabaseQueries
+                    .selectTrackedMediaRow(TRACKED_ID.toLong(), MediaTypeConstant.MOVIE, "favorite")
+                    .awaitAsOneOrNull()
+            assertEquals(0L, row?.isDeleted)
+            assertEquals(0L, row?.pendingSync)
+        }
+
+    @Test
+    fun testTrackLocally_rowTmdbNeverGotIsDroppedByTheNextCompleteRefresh() =
+        runTest {
+            val database = createTestDatabase()
+            // TMDB's favorites come back empty: the offline toggle never reached it.
+            val repository = repository(database, FakeAccountMediaRepository())
+            repository.trackLocally(snapshot(MediaTypeConstant.MOVIE, NEAR_FUTURE_DATE), AccountMediaCategory.FAVORITES)
+
+            repository.refreshAll(ACCOUNT_ID, SESSION_ID)
+
+            assertTrue(repository.observeUpcoming().first().isEmpty())
+        }
+
+    private fun snapshot(
+        mediaType: String,
+        releaseDate: String,
+    ) = TrackedMediaSnapshot(
+        id = TRACKED_ID,
+        mediaType = mediaType,
+        title = TRACKED_TITLE,
+        posterPath = null,
+        releaseDate = releaseDate,
+        voteAverage = 0.0,
+    )
+
     private fun page(item: SearchResultItem) = SearchPageResult(page = 1, list = listOf(item), totalPages = 1)
 
     private companion object {
@@ -299,6 +364,8 @@ class TrackedMediaRepositoryImplTest {
         const val FAVORITE_MOVIE_ID = 11
         const val WATCHLIST_TV_ID = 22
         const val PAGE_LIMIT = 100L
+        const val TRACKED_ID = 33
+        const val TRACKED_TITLE = "Just Favorited"
 
         // Comfortably past/future relative to whenever this test actually runs, so
         // observeUpcoming's real Clock.System.todayIn(...) comparison never flakes.

@@ -19,6 +19,7 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
     val markPendingDeleteCalls = mutableListOf<Triple<Int, String, AccountMediaCategory>>()
     val clearPendingDeleteCalls = mutableListOf<Triple<Int, String, AccountMediaCategory>>()
     val confirmDeleteCalls = mutableListOf<Triple<Int, String, AccountMediaCategory>>()
+    val trackLocallyCalls = mutableListOf<Pair<TrackedMediaSnapshot, AccountMediaCategory>>()
 
     private val trackedTv = mutableMapOf<Int, TrackedTvPollCandidate>()
 
@@ -113,6 +114,13 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
         category: AccountMediaCategory,
     ) {
         clearPendingDeleteCalls.add(Triple(id, mediaType, category))
+    }
+
+    override suspend fun trackLocally(
+        snapshot: TrackedMediaSnapshot,
+        category: AccountMediaCategory,
+    ) {
+        trackLocallyCalls.add(snapshot to category)
     }
 
     override suspend fun confirmDelete(

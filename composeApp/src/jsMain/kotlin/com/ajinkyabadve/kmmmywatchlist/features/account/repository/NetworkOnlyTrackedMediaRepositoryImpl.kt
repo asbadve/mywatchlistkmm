@@ -21,7 +21,7 @@ private object NetworkOnlyTrackedMediaConstant {
  * rather than fighting sql.js/WebWorkerDriver's build and bundling cost for a platform with no
  * offline story to begin with. [pagedFlow] fetches TMDB directly, one page at a time, with no
  * local mirror behind it - so there's nothing for [markPendingDelete]/[clearPendingDelete]/
- * [confirmDelete]/[updatePollState] to update either; they're no-ops here.
+ * [trackLocally]/[confirmDelete]/[updatePollState] to update either; they're no-ops here.
  */
 internal class NetworkOnlyTrackedMediaRepositoryImpl(
     private val accountMediaRepository: AccountMediaRepository,
@@ -80,6 +80,11 @@ internal class NetworkOnlyTrackedMediaRepositoryImpl(
     override suspend fun clearPendingDelete(
         id: Int,
         mediaType: String,
+        category: AccountMediaCategory,
+    ) = Unit
+
+    override suspend fun trackLocally(
+        snapshot: TrackedMediaSnapshot,
         category: AccountMediaCategory,
     ) = Unit
 

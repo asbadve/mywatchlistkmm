@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -27,6 +28,17 @@ private object MediaActionsStateTestConstant {
     const val MOVIE_ID = 42L
     const val SESSION_ID = "session_abc"
     const val ACCOUNT_ID = 100L
+    const val TITLE = "Upcoming Movie"
+    const val RELEASE_DATE = "2099-01-01"
+    val SNAPSHOT =
+        TrackedMediaSnapshot(
+            id = MOVIE_ID.toInt(),
+            mediaType = MediaTypeConstant.MOVIE,
+            title = TITLE,
+            posterPath = null,
+            releaseDate = RELEASE_DATE,
+            voteAverage = 0.0,
+        )
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -53,13 +65,14 @@ class MediaActionsStateTest {
         Dispatchers.resetMain()
     }
 
-    private fun state() =
+    private fun state(snapshot: TrackedMediaSnapshot? = MediaActionsStateTestConstant.SNAPSHOT) =
         MediaActionsState(
             MediaTypeConstant.MOVIE,
             MediaActionsStateTestConstant.MOVIE_ID,
             CoroutineScope(testDispatcher),
             fakeAccountMediaRepository,
             fakeTrackedMediaRepository,
+            trackedMediaSnapshot = { snapshot },
         )
 
     private fun tvState() =
@@ -215,4 +228,75 @@ class MediaActionsStateTest {
 
         assertFalse(mediaActionsState.shouldPromptForEpisodeAlerts.value)
     }
+
+    /** The Upcoming-timeline defect: favoriting a title for the first time must write it locally. */
+    @Test
+    fun testTurningFavoriteOnWritesTheTitleLocally() =
+        runTest(testDispatcher) {
+            val mediaActionsState = state()
+
+            mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertEquals(
+                listOf(MediaActionsStateTestConstant.SNAPSHOT to AccountMediaCategory.FAVORITES),
+                fakeTrackedMediaRepository.trackLocallyCalls,
+            )
+        }
+
+    @Test
+    fun testTurningWatchlistOnWritesTheTitleLocally() =
+        runTest(testDispatcher) {
+            val mediaActionsState = state()
+
+            mediaActionsState.toggleWatchlist(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertEquals(
+                listOf(MediaActionsStateTestConstant.SNAPSHOT to AccountMediaCategory.WATCHLIST),
+                fakeTrackedMediaRepository.trackLocallyCalls,
+            )
+        }
+
+    /** Offline, the heart stays on - so the title should be on the timeline too. */
+    @Test
+    fun testTurningFavoriteOnWhileOfflineStillWritesTheTitleLocally() =
+        runTest(testDispatcher) {
+            fakeAccountMediaRepository.setFavoriteResult = Result.failure(IOException("Mock network failure"))
+            val mediaActionsState = state()
+
+            mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertTrue(mediaActionsState.uiState.value.isFavorite)
+            assertEquals(
+                listOf(MediaActionsStateTestConstant.SNAPSHOT to AccountMediaCategory.FAVORITES),
+                fakeTrackedMediaRepository.trackLocallyCalls,
+            )
+        }
+
+    /** A real rejection rolls the heart back, so nothing may be written. */
+    @Test
+    fun testTurningFavoriteOnFailingOutrightWritesNothing() =
+        runTest(testDispatcher) {
+            fakeAccountMediaRepository.setFavoriteResult = Result.failure(forbiddenException)
+            val mediaActionsState = state()
+
+            mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertFalse(mediaActionsState.uiState.value.isFavorite)
+            assertTrue(fakeTrackedMediaRepository.trackLocallyCalls.isEmpty())
+        }
+
+    /** Before the screen's detail has loaded there's nothing to write - only revive an existing row. */
+    @Test
+    fun testTurningFavoriteOnWithoutASnapshotOnlyRevivesAnExistingRow() =
+        runTest(testDispatcher) {
+            val mediaActionsState = state(snapshot = null)
+
+            mediaActionsState.toggleFavorite(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertTrue(fakeTrackedMediaRepository.trackLocallyCalls.isEmpty())
+            assertEquals(
+                listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
+                fakeTrackedMediaRepository.clearPendingDeleteCalls,
+            )
+        }
 }

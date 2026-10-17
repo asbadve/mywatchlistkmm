@@ -5,6 +5,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -50,6 +51,13 @@ data class MediaActionsUiState(
  * forwards click events to [toggleFavorite]/[toggleWatchlist], per code-conventions §6 ("a
  * composable never triggers an API call, not even indirectly via a state holder's method from a
  * `LaunchedEffect`" - the ViewModel triggers it).
+ *
+ * Turning a toggle **on** also writes the title into the local tracked-media table
+ * ([TrackedMediaRepository.trackLocally]), so the Upcoming timeline - which reads only that table -
+ * shows it immediately rather than after the next full refresh.
+ *
+ * @param trackedMediaSnapshot the title's details as the owning screen currently has them; null
+ *   until its detail has loaded, in which case only an existing row is revived.
  */
 class MediaActionsState(
     private val mediaType: String,
@@ -59,6 +67,7 @@ class MediaActionsState(
     // Test-only seam, same pattern as accountMediaRepository above - lets a test inject a fake so
     // this state holder never hits the real database.
     private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
+    private val trackedMediaSnapshot: () -> TrackedMediaSnapshot? = { null },
 ) {
     private val _uiState = MutableStateFlow(MediaActionsUiState())
     val uiState: StateFlow<MediaActionsUiState> = _uiState.asStateFlow()
@@ -108,11 +117,12 @@ class MediaActionsState(
                     if (!newValue) {
                         trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
                     } else {
-                        trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
+                        trackLocally(AccountMediaCategory.FAVORITES)
                     }
-                // Offline - leave it queued, both the local hide and the optimistic icon state stay
-                // put; TrackedMediaRepository.sync flushes this the next time Favorites loads online.
-                ToggleOutcome.OFFLINE -> Unit
+                // Offline - the optimistic icon state stays put. A removal stays queued (local
+                // hide); an addition is written locally so Upcoming matches the icon, and the next
+                // complete refresh drops it again if it never reached TMDB.
+                ToggleOutcome.OFFLINE -> if (newValue) trackLocally(AccountMediaCategory.FAVORITES)
                 ToggleOutcome.FAILED -> {
                     _uiState.update { it.copy(isFavorite = !newValue) }
                     if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
@@ -141,14 +151,28 @@ class MediaActionsState(
                     if (!newValue) {
                         trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
                     } else {
-                        trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
+                        trackLocally(AccountMediaCategory.WATCHLIST)
                     }
-                ToggleOutcome.OFFLINE -> Unit
+                // Same as toggleFavorite's offline branch.
+                ToggleOutcome.OFFLINE -> if (newValue) trackLocally(AccountMediaCategory.WATCHLIST)
                 ToggleOutcome.FAILED -> {
                     _uiState.update { it.copy(isInWatchlist = !newValue) }
                     if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
                 }
             }
+        }
+    }
+
+    /**
+     * Writes the title into [category] locally - or, before the owning screen has loaded its
+     * detail (no snapshot yet), at least revives a row that was queued for removal.
+     */
+    private suspend fun trackLocally(category: AccountMediaCategory) {
+        val snapshot = trackedMediaSnapshot()
+        if (snapshot != null) {
+            trackedMediaRepository.trackLocally(snapshot, category)
+        } else {
+            trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, category)
         }
     }
 

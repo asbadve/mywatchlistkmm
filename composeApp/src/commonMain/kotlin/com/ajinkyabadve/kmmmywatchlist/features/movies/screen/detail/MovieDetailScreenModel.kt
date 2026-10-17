@@ -12,6 +12,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaR
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
@@ -73,7 +74,14 @@ class MovieDetailScreenModel(
      * `viewModelScope`, so the toggle survives past whatever recomposes the hero.
      */
     val mediaActionsState =
-        MediaActionsState(MediaTypeConstant.MOVIE, movieId, viewModelScope, accountMediaRepository, trackedMediaRepository)
+        MediaActionsState(
+            MediaTypeConstant.MOVIE,
+            movieId,
+            viewModelScope,
+            accountMediaRepository,
+            trackedMediaRepository,
+            trackedMediaSnapshot = { (_uiState.value as? MovieDetailState.Success)?.movieDetail?.toTrackedMediaSnapshot() },
+        )
 
     private val reminderKey = ReminderKey(movieId, MediaTypeConstant.MOVIE)
 
@@ -151,3 +159,14 @@ class MovieDetailScreenModel(
         const val TAG = "MovieDetailScreenModel"
     }
 }
+
+/** The row favoriting/watchlisting this movie writes locally - see [MediaActionsState]. */
+internal fun MovieDetail.toTrackedMediaSnapshot(): TrackedMediaSnapshot =
+    TrackedMediaSnapshot(
+        id = id.toInt(),
+        mediaType = MediaTypeConstant.MOVIE,
+        title = title,
+        posterPath = posterPath,
+        releaseDate = releaseDate.ifBlank { null },
+        voteAverage = voteAverage,
+    )

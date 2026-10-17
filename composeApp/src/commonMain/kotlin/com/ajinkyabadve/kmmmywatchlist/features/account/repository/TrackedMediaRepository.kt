@@ -27,11 +27,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlinx.serialization.SerializationException
+import kotlin.time.Clock
 
 private object TrackedMediaConstant {
     const val CATEGORY_FAVORITE = "favorite"
@@ -161,6 +161,21 @@ interface TrackedMediaRepository {
     suspend fun clearPendingDelete(
         id: Int,
         mediaType: String,
+        category: AccountMediaCategory,
+    )
+
+    /**
+     * Writes [snapshot] into [category] locally, right after a favorite/watchlist toggle turns a
+     * title on - so screens that only read the local table (the Upcoming timeline) show it at once
+     * instead of after the next [refreshAll]. Also revives a row [markPendingDelete] had queued,
+     * for a toggle-back-on before that removal reached TMDB.
+     *
+     * The row is written as already-synced (no pending flag): if the toggle never reached TMDB
+     * (offline), the next complete [refreshAll] drops it again rather than showing a title TMDB
+     * doesn't have.
+     */
+    suspend fun trackLocally(
+        snapshot: TrackedMediaSnapshot,
         category: AccountMediaCategory,
     )
 
@@ -333,6 +348,30 @@ internal class SqliteTrackedMediaRepositoryImpl(
         category: AccountMediaCategory,
     ) {
         databaseProvider().myDatabaseQueries.clearTrackedMediaPendingDelete(id.toLong(), mediaType, category.storageValue)
+    }
+
+    override suspend fun trackLocally(
+        snapshot: TrackedMediaSnapshot,
+        category: AccountMediaCategory,
+    ) {
+        val queries = databaseProvider().myDatabaseQueries
+        val now = Clock.System.now().toEpochMilliseconds()
+        queries.transaction {
+            // Same columns refreshAll writes; the upsert leaves addedAt alone on an existing row.
+            queries.upsertTrackedMedia(
+                id = snapshot.id.toLong(),
+                mediaType = snapshot.mediaType,
+                category = category.storageValue,
+                title = snapshot.title,
+                posterPath = snapshot.posterPath,
+                releaseDate = snapshot.releaseDate,
+                voteAverage = snapshot.voteAverage,
+                addedAt = now,
+                lastSyncedAt = now,
+            )
+            // The upsert doesn't touch isDeleted/pendingSync - revive a row queued for removal.
+            queries.clearTrackedMediaPendingDelete(snapshot.id.toLong(), snapshot.mediaType, category.storageValue)
+        }
     }
 
     override suspend fun confirmDelete(
