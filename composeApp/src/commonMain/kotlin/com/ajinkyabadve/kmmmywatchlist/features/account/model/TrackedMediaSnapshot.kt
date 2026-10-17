@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.account.repository
+package com.ajinkyabadve.kmmmywatchlist.features.account.model
 
 /**
  * What a `trackedMedia` row needs about a title, taken from whichever screen the user favorited or

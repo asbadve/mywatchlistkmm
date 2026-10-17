@@ -15,18 +15,20 @@ import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeReminderScheduler
 import com.ajinkyabadve.kmmmywatchlist.db.createTestDatabase
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
-import com.ajinkyabadve.kmmmywatchlist.features.account.screen.UpcomingReleasesScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.UpcomingReleasesTab
+import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.UpcomingReleasesScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.FakeTvDetailCacheRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -92,6 +94,8 @@ class FavoriteToUpcomingUiTest {
                             scheduleJob = {},
                             cancelJob = {},
                         ),
+                    movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                    regionRepository = FakeRegionRepository(),
                 )
             setContent {
                 Column {

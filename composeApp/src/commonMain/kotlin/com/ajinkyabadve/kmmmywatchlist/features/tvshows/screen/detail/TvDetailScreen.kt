@@ -56,6 +56,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.VideoClipsS
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.isUpcoming
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.TvDetailScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.TvDetailState
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone

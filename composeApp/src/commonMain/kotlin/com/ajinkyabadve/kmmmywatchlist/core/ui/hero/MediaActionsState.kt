@@ -1,11 +1,11 @@
 package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
@@ -19,15 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
-
-data class MediaActionsUiState(
-    val isFavorite: Boolean = false,
-    val isInWatchlist: Boolean = false,
-    // Starts true: the icons render a shimmer placeholder (see MediaActionButtons) rather than a
-    // guessed favorite/watchlist state until account_states actually answers - this never blocks
-    // the rest of the detail screen, which loads on its own separate ScreenModel call.
-    val isLoading: Boolean = true,
-)
 
 /**
  * Owns every network call behind a title's favorite/watchlist icons - pre-checking their state via

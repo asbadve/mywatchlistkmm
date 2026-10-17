@@ -1,13 +1,18 @@
-package com.ajinkyabadve.kmmmywatchlist.features.account.screen
+package com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedTvShowSummary
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingDateKind
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingDateKind
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseSource
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseSourceKind
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Network
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BuildUpcomingEpisodeItemsTest {
@@ -65,7 +70,50 @@ class BuildUpcomingEpisodeItemsTest {
         assertEquals(setOf("Show One", "Show Two"), items.map { it.title }.toSet())
     }
 
+    @Test
+    fun testBuildUpcomingEpisodeItems_labelsEpisodesWithTheNetworksCountry() {
+        val show = TrackedTvShowSummary(id = SHOW_ID, title = SHOW_TITLE, posterPath = null)
+        val season = TvSeasonDetail(seasonNumber = 1, episodes = listOf(Episode(episodeNumber = 1, airDate = FUTURE_AIR_DATE)))
+
+        val item = buildUpcomingEpisodeItems(listOf(show to mapOf(1 to season)), TODAY, mapOf(SHOW_ID to NETWORK_REGION)).single()
+
+        assertEquals(ReleaseSource(ReleaseSourceKind.EPISODE_AIR, NETWORK_REGION), item.releaseSource)
+    }
+
+    @Test
+    fun testBuildUpcomingEpisodeItems_noKnownNetworkMeansNoRegion() {
+        val show = TrackedTvShowSummary(id = SHOW_ID, title = SHOW_TITLE, posterPath = null)
+        val season = TvSeasonDetail(seasonNumber = 1, episodes = listOf(Episode(episodeNumber = 1, airDate = FUTURE_AIR_DATE)))
+
+        assertNull(buildUpcomingEpisodeItems(listOf(show to mapOf(1 to season)), TODAY).single().releaseSource)
+    }
+
+    @Test
+    fun testAiringRegion_isTheFirstNetworkWithACountry() {
+        val detail =
+            TvDetail(networks = listOf(Network(name = NO_COUNTRY_NETWORK), Network(name = SHOW_NETWORK, originCountry = NETWORK_REGION)))
+
+        assertEquals(NETWORK_REGION, detail.airingRegion())
+        assertNull(TvDetail().airingRegion())
+    }
+
+    /** Streaming services often have no country on TMDB (Apple TV for Slow Horses). */
+    @Test
+    fun testAiringRegion_fallsBackToTheShowsOriginCountry() {
+        val detail = TvDetail(networks = listOf(Network(name = STREAMING_NETWORK)), originCountry = listOf(ORIGIN_REGION))
+
+        assertEquals(ORIGIN_REGION, detail.airingRegion())
+    }
+
     private companion object {
+        const val SHOW_ID = 9
+        const val SHOW_TITLE = "The Simpsons"
+        const val SHOW_NETWORK = "FOX"
+        const val NO_COUNTRY_NETWORK = "Unknown"
+        const val NETWORK_REGION = "US"
+        const val STREAMING_NETWORK = "Apple TV"
+        const val ORIGIN_REGION = "GB"
+        const val FUTURE_AIR_DATE = "2099-01-01"
         val TODAY = LocalDate(2026, 1, 10)
     }
 }

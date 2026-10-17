@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
+package com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -8,11 +8,11 @@ import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.data.Resource
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.loadOnSessionAvailable
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail

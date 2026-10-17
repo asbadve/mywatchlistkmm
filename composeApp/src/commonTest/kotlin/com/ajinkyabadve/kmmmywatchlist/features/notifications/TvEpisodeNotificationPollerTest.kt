@@ -1,7 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.notifications
 
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeNotificationLedgerRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationReason
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode

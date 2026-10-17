@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
@@ -6,11 +6,11 @@ import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.data.Resource
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.MediaActionsState
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.loadOnSessionAvailable
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
@@ -27,6 +27,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail.resolveCurrentSeasonAndEpisode
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

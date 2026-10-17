@@ -50,6 +50,8 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
+import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.MovieDetailScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.MovieDetailState
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.isUpcoming
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
 import kotlinx.datetime.Clock

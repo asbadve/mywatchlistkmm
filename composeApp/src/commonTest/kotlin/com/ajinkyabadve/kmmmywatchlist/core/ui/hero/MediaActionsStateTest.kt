@@ -2,9 +2,9 @@ package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions

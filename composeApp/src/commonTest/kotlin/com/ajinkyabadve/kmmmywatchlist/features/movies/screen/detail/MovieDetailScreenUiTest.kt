@@ -18,6 +18,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetailCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.MovieDetailScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers

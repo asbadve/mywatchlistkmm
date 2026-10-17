@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
+package com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel
 
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates

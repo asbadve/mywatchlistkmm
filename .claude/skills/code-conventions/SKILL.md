@@ -1,6 +1,6 @@
 ---
 name: code-conventions
-description: Coding conventions for this codebase - specific exception types only (never catch/throw bare Exception), no magic strings (constants for internal strings, compose string resources for user-facing text), prefer Kotlin scope functions/modern idioms/enums over closed value sets, and bump LocalSchemaVersion.CURRENT with every MyDatabase.sq change. Apply to ALL new or modified Kotlin code.
+description: Coding conventions for this codebase - specific exception types only (never catch/throw bare Exception), no magic strings (constants for internal strings, compose string resources for user-facing text), prefer Kotlin scope functions/modern idioms/enums over closed value sets, bump LocalSchemaVersion.CURRENT with every MyDatabase.sq change, one data class per file (models in a `model` package), and ViewModels in a `viewmodel` package - moving them whenever their file is touched. Apply to ALL new or modified Kotlin code.
 ---
 
 # Code conventions (user-mandated)
@@ -421,3 +421,59 @@ Known existing offenders to clean up (2026-10-04): `kotlinx.datetime.Clock` / `k
 `Icons.Filled.List` / `KeyboardArrowRight` (-> `Icons.AutoMirrored.Filled.*`),
 `LocalClipboardManager` (-> `LocalClipboard`), `LocalLifecycleOwner` from compose-ui
 (-> lifecycle-runtime-compose), `currentWindowAdaptiveInfo()` (-> the V2 variant).
+
+## 13. One data class per file (agreed 2026-10-17)
+
+Every top-level `data class` lives in its own file, named after the class (`UpcomingMediaItem` ->
+`UpcomingMediaItem.kt`). It
+can then be found, reused and reviewed on its own instead of being buried under whatever repository,
+screen model or composable first needed it. This covers API models too: a model file is a set of
+one-class files, not one file per endpoint.
+
+- **New code:** a new data class gets its own file from the start - never append it to an existing
+  repository/screen/model file.
+- **Existing code you touch:** move every top-level data class out of each file you modify, in the
+  same change. Untouched files stay as they are until someone touches them.
+- A `private` data class becomes `internal` in its own file - the point is that it can be reused.
+- Nested data classes (declared *inside* another class, e.g. a fake's recorded-call type) and
+  sealed-interface subtypes that only make sense next to their parent stay where they are.
+- Keep the class's KDoc and annotations with it, and import only what the moved class uses
+  (ktlint fails on unused imports).
+
+**Which package** (checked 2026-10-17 against Android's architecture recommendations, the Kotlin
+coding conventions and Now in Android):
+- **Data/domain models** - what repositories, data sources and pollers pass around, and API
+  response models - go in the feature's `model` package: `features/<feature>/model/`
+  (`features/account/model/UpcomingMediaItem.kt`, `features/tvshows/model/Episode.kt`). Never a
+  `pojo` package: POJO is a Java term that neither Kotlin's nor Android's guidance uses; Now in
+  Android keeps its models in `core:model`, and this codebase already uses `model`.
+- **UI state** - `*UiState`, dialog/visibility/callback holders a screen renders - stays in the UI
+  layer, in the package of the screen or composable that owns it (`features/auth/screen/AccountUiState.kt`,
+  `core/ui/hero/MediaActionsUiState.kt`). Android puts `UiState` in the UI layer next to its ViewModel.
+- An enum that a model's fields use (e.g. `UpcomingDateKind`) moves to `model` with it, so `model`
+  never imports back from `repository`.
+
+Note this is stricter than Kotlin's own conventions, which encourage grouping closely related
+declarations in one file - a deliberate project choice for findability and reuse.
+
+Reference: `features/account/model/` (`UpcomingMediaItem.kt`, `TrackedMediaSnapshot.kt`,
+`UpcomingDateKind.kt`), `features/auth/screen/AccountUiState.kt`, `SettingsRowVisibility.kt`.
+
+## 14. ViewModels live in a `viewmodel` package (agreed 2026-10-17)
+
+Every `ViewModel` (this codebase names them `<Feature>ScreenModel`, §6) lives in its feature's
+`viewmodel` package - `features/<feature>/viewmodel/` (`features/account/viewmodel/UpcomingReleasesScreenModel.kt`,
+`features/movies/viewmodel/MovieDetailScreenModel.kt`) - not next to the composables in `screen/`.
+Same policy as §13:
+
+- **New code:** a new ViewModel starts in `viewmodel/`.
+- **Existing code you touch:** move the ViewModel file in the same change; untouched ones stay
+  until someone touches them.
+- The UI state the ViewModel produces (`*UiState`, `*State` sealed types) moves with it - Android
+  keeps `UiState` next to its ViewModel. Stateless composables stay in `screen/`.
+- Unit tests of the ViewModel's logic move to the matching test package
+  (`commonTest/.../features/<feature>/viewmodel/`); Compose UI tests stay with the screen.
+- Keep the `*ScreenModel` class names - only the package changes.
+
+Android's guidance and Now in Android don't mandate a package name here (Now in Android keeps each
+ViewModel beside its screen); this is a project choice so ViewModels are easy to find in one place.

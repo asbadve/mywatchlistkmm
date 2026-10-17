@@ -15,6 +15,11 @@ import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabaseQueries
 import com.ajinkyabadve.kmmmywatchlist.db.SelectUpcomingTrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMedia
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingDateKind
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingMediaItem
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
@@ -27,13 +32,20 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
 import kotlinx.serialization.SerializationException
 import kotlin.time.Clock
 
 private object TrackedMediaConstant {
+    /** How far before today [TrackedMediaRepository.observeUpcoming] looks on the primary date -
+     *  enough for a movie that opened elsewhere to still be listed until it reaches the viewer's
+     *  region (international windows run up to a few months). */
+    const val UPCOMING_LOOKBACK_DAYS = 180
+
     const val CATEGORY_FAVORITE = "favorite"
     const val CATEGORY_WATCHLIST = "watchlist"
 
@@ -45,48 +57,6 @@ private object TrackedMediaConstant {
      *  enough for any real account (20 per page), bounded so one visit can't fan out unbounded. */
     const val REFRESH_MAX_PAGES = 10
 }
-
-/** One TV show's poll-relevant state, as read by [TrackedMediaRepository.trackedTvForPolling]. */
-data class TrackedTvPollCandidate(
-    val id: Int,
-    val lastKnownNextEpisodeAirDate: String?,
-    val lastKnownStatus: String?,
-)
-
-/** Which date [UpcomingMediaItem.date] represents - a closed set, so an enum rather than a
- *  boolean/string, per code-conventions §9. */
-enum class UpcomingDateKind {
-    MOVIE_RELEASE,
-    NEXT_EPISODE,
-}
-
-/**
- * One row of the "Upcoming" tab (future_features_checklist.md item 18) - a tracked movie not yet
- * released ([TrackedMediaRepository.observeUpcoming], [dateKind] = [UpcomingDateKind.MOVIE_RELEASE],
- * [seasonNumber]/[episodeNumber] null), or one specific unreleased episode of a tracked TV show
- * ([dateKind] = [UpcomingDateKind.NEXT_EPISODE], built at the ScreenModel layer from
- * [TrackedMediaRepository.observeTrackedTvShows] combined with cached season data - see
- * `UpcomingReleasesScreenModel`'s kdoc for why episode-level items don't come from this repository
- * directly). A show with several unreleased episodes produces one [UpcomingMediaItem] per episode,
- * not one per show.
- */
-data class UpcomingMediaItem(
-    val id: Int,
-    val mediaType: String,
-    val title: String,
-    val posterPath: String?,
-    val date: LocalDate,
-    val dateKind: UpcomingDateKind,
-    val seasonNumber: Int? = null,
-    val episodeNumber: Int? = null,
-)
-
-/** One currently tracked TV show, as read by [TrackedMediaRepository.observeTrackedTvShows]. */
-data class TrackedTvShowSummary(
-    val id: Int,
-    val title: String,
-    val posterPath: String?,
-)
 
 /**
  * Local SQLite mirror of a signed-in user's favorites/watchlist (see
@@ -187,8 +157,10 @@ interface TrackedMediaRepository {
     )
 
     /**
-     * future_features_checklist.md item 18: every tracked movie not yet released, soonest first -
-     * see `MyDatabase.sq`'s `selectUpcomingTrackedMedia` kdoc. Movie-only: a TV show's *next*
+     * future_features_checklist.md item 18: every tracked movie whose TMDB primary release date is
+     * at most [TrackedMediaConstant.UPCOMING_LOOKBACK_DAYS] old, soonest first - the candidates
+     * for the Upcoming tab, which re-dates each one to the viewer's regional release and drops the
+     * ones already out there (see `MyDatabase.sq`'s `selectUpcomingTrackedMedia` kdoc). Movie-only: a TV show's *next*
      * episode date alone can't list every unreleased episode of its current season, so TV is
      * covered by [observeTrackedTvShows] instead, combined with cached season data at the
      * ScreenModel layer. Purely local/reactive, no network call. Empty on the web target, which has
@@ -384,11 +356,15 @@ internal class SqliteTrackedMediaRepositoryImpl(
 
     override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> =
         flow {
-            val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+            val since =
+                Clock.System
+                    .todayIn(TimeZone.currentSystemDefault())
+                    .minus(TrackedMediaConstant.UPCOMING_LOOKBACK_DAYS, DateTimeUnit.DAY)
+                    .toString()
             emitAll(
                 databaseProvider()
                     .myDatabaseQueries
-                    .selectUpcomingTrackedMedia(today)
+                    .selectUpcomingTrackedMedia(since)
                     .asFlow()
                     .mapToList(Dispatchers.Default)
                     // SQL's DISTINCT only collapses a favorite+watchlist pair when every selected
@@ -521,8 +497,8 @@ private fun SelectUpcomingTrackedMedia.toUpcomingMediaItem(): UpcomingMediaItem 
         title = title,
         posterPath = posterPath,
         // Guaranteed non-null here: selectUpcomingTrackedMedia's WHERE clause only admits rows
-        // where releaseDate is non-null and >= today - upcomingDate is only String? because it's
-        // aliased in the SELECT rather than selected as the plain (non-null) column directly.
+        // where releaseDate is non-null - upcomingDate is only String? because it's aliased in
+        // the SELECT rather than selected as the plain (non-null) column directly.
         date = LocalDate.parse(upcomingDate!!),
         dateKind = UpcomingDateKind.MOVIE_RELEASE,
     )

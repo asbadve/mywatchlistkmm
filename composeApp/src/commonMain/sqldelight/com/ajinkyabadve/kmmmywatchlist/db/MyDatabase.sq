@@ -86,10 +86,14 @@ WHERE mediaType = 'tv' AND isDeleted = 0;
 -- (TvDetailCacheRepository.observeSeasons) at the ScreenModel layer instead. DISTINCT because a
 -- movie tracked under both favorite and watchlist produces two otherwise-identical rows (same
 -- id/title/posterPath/date).
+-- :since is a few months *before* today, not today: releaseDate is TMDB's primary date, usually the
+-- earliest release anywhere, so a movie already out elsewhere can still be upcoming in the viewer's
+-- region. UpcomingReleasesScreenModel re-dates each row to the regional release and drops the ones
+-- that are already out there.
 selectUpcomingTrackedMedia:
 SELECT DISTINCT id, title, posterPath, releaseDate AS upcomingDate
 FROM trackedMedia
-WHERE isDeleted = 0 AND mediaType = 'movie' AND releaseDate >= :today
+WHERE isDeleted = 0 AND mediaType = 'movie' AND releaseDate >= :since
 ORDER BY upcomingDate ASC;
 
 -- future_features_checklist.md item 18: every currently tracked TV show (regardless of poll

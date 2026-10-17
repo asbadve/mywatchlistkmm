@@ -10,6 +10,11 @@ Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions
 - No magic strings: internal strings become `private const val`s; user-facing text goes in
   `composeApp/src/commonMain/composeResources/values/strings.xml` via `Res.string.*`.
 - No wildcard imports - import every symbol explicitly.
+- One data class per file, named after it - new ones from the start, and move them out of any
+  existing file you touch. Models go in `features/<feature>/model/`, UI state stays next to its
+  screen (§13).
+- ViewModels (`*ScreenModel`) live in `features/<feature>/viewmodel/` - new ones from the start,
+  existing ones moved when their file is touched (§14).
 - Check the platform first: before building a mechanism, find out whether Compose/Material3/Kotlin
   already provides it, and read the parameters of APIs already being called - the thing you need is
   often an argument that was there all along. Look the API up online against the versions in

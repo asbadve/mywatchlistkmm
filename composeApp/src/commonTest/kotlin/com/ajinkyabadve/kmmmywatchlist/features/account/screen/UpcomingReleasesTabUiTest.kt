@@ -16,16 +16,25 @@ import androidx.compose.ui.unit.width
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeReminderScheduler
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingDateKind
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingMediaItem
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedTvShowSummary
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingDateKind
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.UpcomingReleasesScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.ReleaseDateItem
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.ReleaseDatesResponse
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.ReleaseDatesResult
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Network
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.FakeTvDetailCacheRepository
 import kotlinx.datetime.LocalDate
@@ -42,7 +51,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(FakeTrackedMediaRepository(), FakeTvDetailCacheRepository()),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            FakeTrackedMediaRepository(),
+                            FakeTvDetailCacheRepository(),
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
             onNodeWithText("Nothing upcoming").assertExists()
@@ -78,7 +93,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, fakeTvDetailCacheRepository),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            fakeTvDetailCacheRepository,
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
 
@@ -116,7 +137,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, fakeTvDetailCacheRepository),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            fakeTvDetailCacheRepository,
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
 
@@ -155,7 +182,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, fakeTvDetailCacheRepository),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            fakeTvDetailCacheRepository,
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
 
@@ -188,7 +221,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, FakeTvDetailCacheRepository()),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            FakeTvDetailCacheRepository(),
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                     onMovieSelected = { selectedMovieId = it },
                     onTvSelected = { selectedTvId = it },
                 )
@@ -220,7 +259,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, fakeTvDetailCacheRepository),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            fakeTvDetailCacheRepository,
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                     onMovieSelected = { selectedMovieId = it },
                     onTvSelected = { selectedTvId = it },
                 )
@@ -262,7 +307,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, fakeTvDetailCacheRepository),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            fakeTvDetailCacheRepository,
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
 
@@ -298,7 +349,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.EXPANDED,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, FakeTvDetailCacheRepository()),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            FakeTvDetailCacheRepository(),
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
 
@@ -328,7 +385,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.COMPACT,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, FakeTvDetailCacheRepository()),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            FakeTvDetailCacheRepository(),
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
 
@@ -360,7 +423,13 @@ class UpcomingReleasesTabUiTest {
             setContent {
                 UpcomingReleasesTab(
                     windowSize = WindowSize.EXPANDED,
-                    viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, FakeTvDetailCacheRepository()),
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            FakeTvDetailCacheRepository(),
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
                 )
             }
 
@@ -401,6 +470,8 @@ class UpcomingReleasesTabUiTest {
                             scheduleJob = {},
                             cancelJob = {},
                         ),
+                    movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                    regionRepository = FakeRegionRepository(),
                 )
 
             setContent {
@@ -450,6 +521,8 @@ class UpcomingReleasesTabUiTest {
                             scheduleJob = {},
                             cancelJob = {},
                         ),
+                    movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                    regionRepository = FakeRegionRepository(),
                 )
 
             setContent {
@@ -490,7 +563,13 @@ class UpcomingReleasesTabUiTest {
                 Box(modifier = Modifier.width(MEDIUM_WIDTH)) {
                     UpcomingReleasesTab(
                         windowSize = WindowSize.MEDIUM,
-                        viewModel = UpcomingReleasesScreenModel(fakeTrackedMediaRepository, FakeTvDetailCacheRepository()),
+                        viewModel =
+                            UpcomingReleasesScreenModel(
+                                fakeTrackedMediaRepository,
+                                FakeTvDetailCacheRepository(),
+                                movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                                regionRepository = FakeRegionRepository(),
+                            ),
                     )
                 }
             }
@@ -501,7 +580,152 @@ class UpcomingReleasesTabUiTest {
             assertTrue(pill.left >= title.right)
         }
 
+    /** A movie re-dated to the viewer's region shows that region's flag beside the date. */
+    @Test
+    fun testMovieDatedByRegion_showsTheRegionFlag() =
+        runComposeUiTest {
+            val fakeTrackedMediaRepository =
+                FakeTrackedMediaRepository().apply {
+                    seedUpcoming(
+                        listOf(
+                            UpcomingMediaItem(
+                                id = FLAG_MOVIE_ID,
+                                mediaType = MediaTypeConstant.MOVIE,
+                                title = FLAG_MOVIE_TITLE,
+                                posterPath = null,
+                                date = LocalDate.parse(FLAG_PRIMARY_DATE),
+                                dateKind = UpcomingDateKind.MOVIE_RELEASE,
+                            ),
+                        ),
+                    )
+                }
+            val movieDetailCacheRepository =
+                FakeMovieDetailCacheRepository().apply {
+                    seedCached(
+                        FLAG_MOVIE_ID.toLong(),
+                        MovieDetail(
+                            releaseDate = FLAG_PRIMARY_DATE,
+                            releaseDates =
+                                ReleaseDatesResponse(
+                                    results =
+                                        listOf(
+                                            ReleaseDatesResult(
+                                                iso3166 = FLAG_REGION,
+                                                releaseDates =
+                                                    listOf(
+                                                        ReleaseDateItem(releaseDate = FLAG_REGIONAL_DATE, type = THEATRICAL_TYPE),
+                                                    ),
+                                            ),
+                                        ),
+                                ),
+                        ),
+                    )
+                }
+            setContent {
+                UpcomingReleasesTab(
+                    windowSize = WindowSize.COMPACT,
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            FakeTvDetailCacheRepository(),
+                            movieDetailCacheRepository = movieDetailCacheRepository,
+                            regionRepository = FakeRegionRepository(selectedRegion = FLAG_REGION),
+                        ),
+                )
+            }
+
+            onAllNodesWithText(FLAG_EMOJI, substring = true).assertCountEquals(EXPECTED_FLAGGED_LABELS)
+        }
+
+    /** No cached detail yet: the row keeps TMDB's primary date, which isn't any region's - no flag. */
+    @Test
+    fun testMovieOnItsPrimaryDate_showsNoFlag() =
+        runComposeUiTest {
+            val fakeTrackedMediaRepository =
+                FakeTrackedMediaRepository().apply {
+                    seedUpcoming(
+                        listOf(
+                            UpcomingMediaItem(
+                                id = FLAG_MOVIE_ID,
+                                mediaType = MediaTypeConstant.MOVIE,
+                                title = FLAG_MOVIE_TITLE,
+                                posterPath = null,
+                                date = LocalDate.parse(FLAG_PRIMARY_DATE),
+                                dateKind = UpcomingDateKind.MOVIE_RELEASE,
+                            ),
+                        ),
+                    )
+                }
+            setContent {
+                UpcomingReleasesTab(
+                    windowSize = WindowSize.COMPACT,
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            FakeTvDetailCacheRepository(),
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(selectedRegion = FLAG_REGION),
+                        ),
+                )
+            }
+
+            onAllNodesWithText(FLAG_MOVIE_TITLE, useUnmergedTree = true).assertCountEquals(EXPECTED_FLAGGED_LABELS)
+            onAllNodesWithText(FLAG_EMOJI, substring = true).assertCountEquals(0)
+        }
+
+    /** An episode is labelled with its network's country (where the air date applies). */
+    @Test
+    fun testEpisode_showsItsNetworksCountryFlag() =
+        runComposeUiTest {
+            val fakeTrackedMediaRepository =
+                FakeTrackedMediaRepository().apply {
+                    seedTrackedTvShows(listOf(TrackedTvShowSummary(id = FLAG_SHOW_ID, title = FLAG_SHOW_TITLE, posterPath = null)))
+                }
+            val fakeTvDetailCacheRepository =
+                FakeTvDetailCacheRepository().apply {
+                    seedCached(
+                        FLAG_SHOW_ID.toLong(),
+                        TvDetail(networks = listOf(Network(name = FLAG_NETWORK, originCountry = FLAG_REGION))),
+                    )
+                    seedCachedSeason(
+                        tvId = FLAG_SHOW_ID.toLong(),
+                        season =
+                            TvSeasonDetail(
+                                seasonNumber = 1,
+                                episodes = listOf(Episode(episodeNumber = 1, airDate = FLAG_PRIMARY_DATE)),
+                            ),
+                    )
+                }
+            setContent {
+                UpcomingReleasesTab(
+                    windowSize = WindowSize.COMPACT,
+                    viewModel =
+                        UpcomingReleasesScreenModel(
+                            fakeTrackedMediaRepository,
+                            fakeTvDetailCacheRepository,
+                            movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
+                            regionRepository = FakeRegionRepository(),
+                        ),
+                )
+            }
+
+            onAllNodesWithText(FLAG_EMOJI, substring = true).assertCountEquals(EXPECTED_FLAGGED_LABELS)
+        }
+
     private companion object {
+        const val FLAG_SHOW_ID = 88
+        const val FLAG_SHOW_TITLE = "Network Show"
+        const val FLAG_NETWORK = "Star"
+        const val FLAG_MOVIE_ID = 77
+        const val FLAG_MOVIE_TITLE = "Regional Movie"
+        const val FLAG_REGION = "IN"
+        const val FLAG_EMOJI = "\uD83C\uDDEE\uD83C\uDDF3"
+        const val FLAG_PRIMARY_DATE = "2099-01-01"
+        const val FLAG_REGIONAL_DATE = "2099-02-01T00:00:00.000Z"
+        const val THEATRICAL_TYPE = 3
+
+        // The movie shows twice: the Next-up banner and its timeline row.
+        const val EXPECTED_FLAGGED_LABELS = 2
         const val BELL_MOVIE_ID = 77
         const val BELL_MOVIE_TITLE = "Bell Movie"
         const val REMIND_ME_DESCRIPTION = "Remind me"

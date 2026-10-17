@@ -46,13 +46,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
 import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.design.calendar.MonthCalendarCard
 import com.ajinkyabadve.kmmmywatchlist.design.calendar.monthNameRes
@@ -61,17 +61,19 @@ import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.design.pill.StatusPill
 import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineEntryCard
 import com.ajinkyabadve.kmmmywatchlist.design.timeline.TimelineSectionHeader
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.UpcomingReleasesScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.reminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.formatFullReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.MediaTypeBadge
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
+import kotlinx.datetime.number
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_upcoming_empty_message
@@ -92,6 +94,7 @@ import mywatchlist.composeapp.generated.resources.upcoming_today
 import mywatchlist.composeapp.generated.resources.upcoming_tomorrow
 import mywatchlist.composeapp.generated.resources.upcoming_view_details_button
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 
 private object UpcomingReleasesTabConstant {
     const val NEXT_UP_TITLE_MAX_LINES = 2
@@ -109,77 +112,6 @@ private object UpcomingReleasesTabConstant {
     const val TIMELINE_WEIGHT = 1.45f
     const val RIGHT_COLUMN_WEIGHT = 1f
     const val NEXT_UP_GRADIENT_ALPHA = 0.35f
-}
-
-/**
- * Poster sizes and row shape per [WindowSize]. A phone keeps small posters and stacks each row's
- * badge, title and countdown pill in one column, so the title isn't squeezed. Wider windows have
- * room for bigger posters and the pill beside the title. Every poster is 2:3; [rowTargetWidthDp]
- * and [nextUpTargetWidthDp] pick the TMDB image size to download.
- */
-internal data class UpcomingLayoutSizes(
-    val rowPosterWidth: Dp,
-    val rowPosterHeight: Dp,
-    val rowTargetWidthDp: Int,
-    val nextUpPosterWidth: Dp,
-    val nextUpPosterHeight: Dp,
-    val nextUpTargetWidthDp: Int,
-    val stackedRows: Boolean,
-) {
-    /** A stacked row (badge+episode, title, pill) needs slightly more height than a phone's
-     *  poster alone; a side-by-side row is exactly as tall as its poster. */
-    val rowContentHeight: Dp
-        get() = if (stackedRows) maxOf(rowPosterHeight, STACKED_ROW_MIN_HEIGHT) else rowPosterHeight
-
-    companion object {
-        private val STACKED_ROW_MIN_HEIGHT = 104.dp
-
-        // Phone: the Next-up poster sits between the grid's 150dp and a row's - the full grid
-        // size made the card take most of a small screen.
-        private val COMPACT =
-            UpcomingLayoutSizes(
-                rowPosterWidth = 64.dp,
-                rowPosterHeight = 96.dp,
-                rowTargetWidthDp = 92,
-                nextUpPosterWidth = 96.dp,
-                nextUpPosterHeight = 144.dp,
-                nextUpTargetWidthDp = 96,
-                stackedRows = true,
-            )
-
-        // Unfolded foldable / small tablet: still a single column, but wide enough for bigger
-        // posters and the countdown pill beside the title.
-        private val MEDIUM =
-            UpcomingLayoutSizes(
-                rowPosterWidth = 80.dp,
-                rowPosterHeight = 120.dp,
-                rowTargetWidthDp = 120,
-                nextUpPosterWidth = 128.dp,
-                nextUpPosterHeight = 192.dp,
-                nextUpTargetWidthDp = 150,
-                stackedRows = false,
-            )
-
-        // Tablet / desktop: the Next-up spotlight matches the Favorites/Watchlist grid's 150dp
-        // poster (AccountMediaGridConstant); rows stay smaller so the spotlight stays the focus.
-        private val EXPANDED =
-            UpcomingLayoutSizes(
-                rowPosterWidth = 88.dp,
-                rowPosterHeight = 132.dp,
-                rowTargetWidthDp = 132,
-                nextUpPosterWidth = 150.dp,
-                nextUpPosterHeight = 225.dp,
-                nextUpTargetWidthDp = 150,
-                stackedRows = false,
-            )
-
-        fun forWindowSize(windowSize: WindowSize): UpcomingLayoutSizes =
-            when (windowSize) {
-                WindowSize.COMPACT -> COMPACT
-                WindowSize.MEDIUM -> MEDIUM
-                WindowSize.EXPANDED -> EXPANDED
-            }
-    }
 }
 
 /** All / Movie / TV - a closed set, driving [scrollableChips] over the already-loaded list. */
@@ -454,7 +386,7 @@ private fun UpcomingMediaRow(
             )
             Text(
                 text =
-                    item.date.dayOfMonth
+                    item.date.day
                         .toString()
                         .padStart(2, '0'),
                 style = MaterialTheme.typography.titleLarge,
@@ -506,7 +438,7 @@ private fun UpcomingMediaRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(vertical = 4.dp),
                 )
-                StatusPill(text = formatUpcomingDateLabel(item.date, today), highlighted = isNextUp)
+                StatusPill(text = upcomingDateText(item, today), highlighted = isNextUp)
             }
         } else {
             Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
@@ -525,7 +457,7 @@ private fun UpcomingMediaRow(
                     )
                 }
             }
-            UpcomingCountdownPill(date = item.date, today = today, highlighted = isNextUp)
+            UpcomingCountdownPill(text = upcomingDateText(item, today), highlighted = isNextUp)
         }
         if (showBell) {
             ReminderBellButton(isSet = isReminderSet, emphasized = isNextUp, onClick = onToggleReminder)
@@ -556,12 +488,11 @@ private fun ReminderBellButton(
 
 @Composable
 private fun UpcomingCountdownPill(
-    date: LocalDate,
-    today: LocalDate,
+    text: String,
     highlighted: Boolean,
 ) {
     StatusPill(
-        text = formatUpcomingDateLabel(date, today),
+        text = text,
         highlighted = highlighted,
         modifier = Modifier.padding(start = 8.dp),
     )
@@ -645,7 +576,7 @@ private fun NextUpCard(
                 // its own, which would take width the title needs on a phone.
                 Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = formatUpcomingDateLabel(item.date, today),
+                        text = upcomingDateText(item, today),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f),
@@ -691,13 +622,13 @@ private fun UpcomingCalendarCard(
     val releaseDays =
         remember(upcomingItems, today) {
             upcomingItems
-                .filter { it.date.year == today.year && it.date.monthNumber == today.monthNumber }
-                .map { it.date.dayOfMonth }
+                .filter { it.date.year == today.year && it.date.month == today.month }
+                .map { it.date.day }
                 .toSet()
         }
     MonthCalendarCard(
         year = today.year,
-        monthNumber = today.monthNumber,
+        monthNumber = today.month.number,
         markedDays = releaseDays,
         today = today,
         markedLabel = stringResource(Res.string.upcoming_calendar_legend_release),
@@ -711,7 +642,7 @@ private fun UpcomingMediaItem.toSearchMediaType(): SearchMediaType =
 /** (year, monthNumber) grouping key - pure so the grouping itself is unit-testable without a
  *  Compose test harness. [upcomingItems] is already date-sorted, so grouping preserves ascending
  *  month order for free. */
-internal fun monthGroupKey(date: LocalDate): Pair<Int, Int> = date.year to date.monthNumber
+internal fun monthGroupKey(date: LocalDate): Pair<Int, Int> = date.year to date.month.number
 
 /** Which relative-date label a header should show - a closed set resolved from a pure day-count
  *  comparison, kept separate from [formatUpcomingDateLabel]'s [stringResource] lookups so the
@@ -741,6 +672,26 @@ internal fun resolveUpcomingDateLabel(
         daysUntil in 2 until UpcomingReleasesTabConstant.DAYS_UNTIL_PLAIN_DATE_FALLBACK -> UpcomingDateLabel.InDays(daysUntil)
         else -> UpcomingDateLabel.PlainDate(date)
     }
+}
+
+/**
+ * The row's date label, prefixed with the flag of the country the date applies to (e.g.
+ * "🇮🇳 Oct 30") - the viewer's region or the US for a movie, its origin country for a movie on
+ * TMDB's primary date, the network's country for an episode. See [UpcomingMediaItem.releaseSource].
+ * Only a row whose title has never been fetched (no cached detail yet) has no flag.
+ */
+@Composable
+private fun upcomingDateText(
+    item: UpcomingMediaItem,
+    today: LocalDate,
+): String {
+    val label = formatUpcomingDateLabel(item.date, today)
+    val flag =
+        item.releaseSource
+            ?.regionCode
+            ?.toRegionFlagEmoji()
+            .orEmpty()
+    return if (flag.isEmpty()) label else "$flag $label"
 }
 
 @Composable

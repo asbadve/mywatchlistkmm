@@ -5,16 +5,22 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.createTestDatabase
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.todayIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 /**
  * Repository-level behavior not already covered by [TrackedMediaRemoteMediatorTest] (upsert/delete
@@ -343,6 +349,21 @@ class TrackedMediaRepositoryImplTest {
             assertTrue(repository.observeUpcoming().first().isEmpty())
         }
 
+    /** Primary date a month ago: may still be upcoming in the viewer's region, so it's a candidate. */
+    @Test
+    fun testObserveUpcoming_includesAMovieWhosePrimaryDatePassedRecently() =
+        runTest {
+            val database = createTestDatabase()
+            val recentPast =
+                Clock.System
+                    .todayIn(TimeZone.currentSystemDefault())
+                    .minus(RECENT_PAST_DAYS, DateTimeUnit.DAY)
+                    .toString()
+            seedMovie(database, id = REMOVED_ID, title = TRACKED_TITLE, releaseDate = recentPast)
+
+            assertEquals(listOf(TRACKED_TITLE), repository(database).observeUpcoming().first().map { it.title })
+        }
+
     private fun snapshot(
         mediaType: String,
         releaseDate: String,
@@ -366,6 +387,7 @@ class TrackedMediaRepositoryImplTest {
         const val PAGE_LIMIT = 100L
         const val TRACKED_ID = 33
         const val TRACKED_TITLE = "Just Favorited"
+        const val RECENT_PAST_DAYS = 30
 
         // Comfortably past/future relative to whenever this test actually runs, so
         // observeUpcoming's real Clock.System.todayIn(...) comparison never flakes.

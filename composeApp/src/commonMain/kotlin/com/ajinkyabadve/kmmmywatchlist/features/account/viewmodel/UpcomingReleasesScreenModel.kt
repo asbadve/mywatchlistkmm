@@ -1,12 +1,16 @@
-package com.ajinkyabadve.kmmmywatchlist.features.account.screen
+package com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.data.Resource
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingDateKind
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingMediaItem
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedTvShowSummary
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingDateKind
-import com.ajinkyabadve.kmmmywatchlist.features.account.repository.UpcomingMediaItem
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieDetailCacheRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseSource
@@ -16,6 +20,10 @@ import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.Release
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.resolveReleaseDate
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvDetailCacheRepositoryImpl
@@ -39,15 +47,18 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 private object UpcomingReleasesScreenModelConstant {
     /** Season fetches run at most this many at a time, so a big watchlist doesn't fire dozens of
      *  TMDB requests at once. */
     const val MAX_PARALLEL_SEASON_REFRESHES = 4
+
+    /** Whose release date a movie row falls back to when the viewer's own region has none. */
+    const val FALLBACK_RELEASE_REGION = "US"
 }
 
 /**
@@ -66,6 +77,8 @@ private object UpcomingReleasesScreenModelConstant {
 class UpcomingReleasesScreenModel(
     private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
     private val tvDetailCacheRepository: TvDetailCacheRepository = TvDetailCacheRepositoryImpl(),
+    private val movieDetailCacheRepository: MovieDetailCacheRepository = MovieDetailCacheRepositoryImpl(),
+    private val regionRepository: RegionRepository = RegionRepositoryImpl(),
     releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
     private val releaseReminderCoordinator: ReleaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository),
     private val notificationJobSync: NotificationJobSync = NotificationJobSync(releaseReminderRepository = releaseReminderRepository),
@@ -81,7 +94,8 @@ class UpcomingReleasesScreenModel(
     /**
      * Pulls fresh data from TMDB so the tab reflects the account without the user first opening
      * the Favorites/Watchlist grids or each show's page: re-syncs favorites/watchlist, then the
-     * newest seasons of every tracked show. Everything this tab renders is a live database read,
+     * newest seasons of every tracked show and the details (with regional release dates) of every
+     * upcoming movie. Everything this tab renders is a live database read,
      * so it simply re-renders as the sync writes rows. A refresh already in flight is not started
      * again.
      */
@@ -97,10 +111,23 @@ class UpcomingReleasesScreenModel(
                     trackedMediaRepository.refreshAll(accountId, sessionId)
                     val shows = trackedMediaRepository.observeTrackedTvShows().first()
                     val limit = Semaphore(UpcomingReleasesScreenModelConstant.MAX_PARALLEL_SEASON_REFRESHES)
+                    val movies = trackedMediaRepository.observeUpcoming().first()
                     coroutineScope {
-                        shows
-                            .map { show -> async { limit.withPermit { tvDetailCacheRepository.refreshLatestSeasons(show.id.toLong()) } } }
-                            .awaitAll()
+                        val seasonJobs =
+                            shows.map { show ->
+                                async { limit.withPermit { tvDetailCacheRepository.refreshLatestSeasons(show.id.toLong()) } }
+                            }
+                        // A failed fetch comes back as Resource.Error, not a throw - the row then
+                        // keeps whatever detail was cached, or its primary date.
+                        val movieJobs =
+                            movies.map { movie ->
+                                async {
+                                    limit.withPermit {
+                                        movieDetailCacheRepository.getMovieDetail(movie.id.toLong()).first { it !is Resource.Loading }
+                                    }
+                                }
+                            }
+                        (seasonJobs + movieJobs).awaitAll()
                     }
                 } finally {
                     _isRefreshing.value = false
@@ -134,23 +161,64 @@ class UpcomingReleasesScreenModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val upcomingItems: Flow<List<UpcomingMediaItem>> =
         combine(
-            trackedMediaRepository.observeUpcoming(),
+            trackedMediaRepository.observeUpcoming().flatMapLatest { movies ->
+                if (movies.isEmpty()) {
+                    flowOf(emptyList())
+                } else {
+                    combine(
+                        movies.map { movie -> movieDetailCacheRepository.observe(movie.id.toLong()).map { detail -> movie to detail } },
+                    ) { it.toList() }
+                }
+            },
             trackedMediaRepository.observeTrackedTvShows().flatMapLatest { shows ->
                 if (shows.isEmpty()) {
                     flowOf(emptyList())
                 } else {
                     combine(
                         shows.map { show ->
-                            tvDetailCacheRepository.observeSeasons(show.id.toLong()).map { seasons -> show to seasons }
+                            combine(
+                                tvDetailCacheRepository.observeSeasons(show.id.toLong()),
+                                tvDetailCacheRepository.observe(show.id.toLong()),
+                            ) { seasons, detail -> Triple(show, seasons, detail?.airingRegion()) }
                         },
                     ) { it.toList() }
                 }
             },
-        ) { movies, showsWithSeasons ->
+        ) { moviesWithDetails, shows ->
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-            (movies + buildUpcomingEpisodeItems(showsWithSeasons, today)).sortedBy { it.date }
+            val movies = resolveUpcomingMovieItems(moviesWithDetails, regionRepository.getSelectedRegion(), today)
+            val episodes =
+                buildUpcomingEpisodeItems(
+                    showsWithSeasons = shows.map { (show, seasons, _) -> show to seasons },
+                    today = today,
+                    airingRegions = shows.mapNotNull { (show, _, region) -> region?.let { show.id to it } }.toMap(),
+                )
+            (movies + episodes).sortedBy { it.date }
         }
 }
+
+/**
+ * Re-dates each upcoming movie to its release in [regionCode] - falling back to the US release,
+ * then to TMDB's primary date (all a movie with no cached detail has) - and drops the ones already
+ * out there. Theatrical beats digital and festival premieres never count; see
+ * [MovieDetail.resolveReleaseDate]. A primary date is labelled with the film's origin country,
+ * where it normally applies, so every row with a cached detail carries a flag. Extracted from [UpcomingReleasesScreenModel] so it's unit-testable
+ * without a Flow/Compose harness.
+ */
+internal fun resolveUpcomingMovieItems(
+    moviesWithDetails: List<Pair<UpcomingMediaItem, MovieDetail?>>,
+    regionCode: String,
+    today: LocalDate,
+): List<UpcomingMediaItem> =
+    moviesWithDetails.mapNotNull { (movie, detail) ->
+        val resolved = detail?.resolveReleaseDate(regionCode, UpcomingReleasesScreenModelConstant.FALLBACK_RELEASE_REGION)
+        val source =
+            resolved?.source?.let { source ->
+                if (source.regionCode != null) source else source.copy(regionCode = detail.originCountry.firstOrNull { it.isNotBlank() })
+            }
+        val item = if (resolved == null) movie else movie.copy(date = resolved.date, releaseSource = source)
+        item.takeIf { it.date >= today }
+    }
 
 /**
  * Every unreleased episode across [showsWithSeasons]' cached seasons, one [UpcomingMediaItem] per
@@ -160,6 +228,7 @@ class UpcomingReleasesScreenModel(
 internal fun buildUpcomingEpisodeItems(
     showsWithSeasons: List<Pair<TrackedTvShowSummary, Map<Int, TvSeasonDetail>>>,
     today: LocalDate,
+    airingRegions: Map<Int, String> = emptyMap(),
 ): List<UpcomingMediaItem> =
     showsWithSeasons.flatMap { (show, seasons) ->
         seasons.values.flatMap { season ->
@@ -175,6 +244,7 @@ internal fun buildUpcomingEpisodeItems(
                         dateKind = UpcomingDateKind.NEXT_EPISODE,
                         seasonNumber = season.seasonNumber,
                         episodeNumber = episode.episodeNumber,
+                        releaseSource = airingRegions[show.id]?.let { ReleaseSource(ReleaseSourceKind.EPISODE_AIR, it) },
                     )
                 } else {
                     null
@@ -182,6 +252,14 @@ internal fun buildUpcomingEpisodeItems(
             }
         }
     }
+
+/**
+ * Where this show's episode air dates apply: its (first) network's country (Fox -> US), or - for a
+ * streaming service TMDB gives no country, like Apple TV - the show's own origin country.
+ */
+internal fun TvDetail.airingRegion(): String? =
+    networks.orEmpty().firstNotNullOfOrNull { it.originCountry.takeIf(String::isNotBlank) }
+        ?: originCountry.firstOrNull { it.isNotBlank() }
 
 /** The reminder key for an Upcoming row: an episode row keys on its season/episode, so each
  *  unaired episode can be reminded about on its own. */
@@ -194,14 +272,18 @@ fun UpcomingMediaItem.reminderKey(): ReminderKey =
 
 internal fun UpcomingMediaItem.toReleaseReminder(): ReleaseReminder {
     val key = reminderKey()
-    // A movie row's date is TMDB's primary release date (that's what trackedMedia stores); the
-    // poller refines it to the viewer's regional theatrical/digital date on its next run.
-    val source = if (key.isEpisode) ReleaseSourceKind.EPISODE_AIR else ReleaseSourceKind.PRIMARY
+    // A movie row already carries the regional date it shows (releaseSource); one with no cached
+    // detail yet has TMDB's primary date, which the reminder poller refines on its next run.
+    val source =
+        when {
+            key.isEpisode -> ReleaseSource(ReleaseSourceKind.EPISODE_AIR)
+            else -> releaseSource ?: ReleaseSource(ReleaseSourceKind.PRIMARY)
+        }
     return ReleaseReminder(
         key = key,
         title = title,
         posterPath = posterPath,
         releaseDate = date,
-        releaseSource = ReleaseSource(source).encode(),
+        releaseSource = source.encode(),
     )
 }
