@@ -14,8 +14,8 @@ import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
+import kotlin.time.Clock
 
 /**
  * Paging3's network-side half for one (category, mediaType) slice of favorites/watchlist - see

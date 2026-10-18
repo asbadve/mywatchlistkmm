@@ -1,8 +1,8 @@
 package com.ajinkyabadve.kmmmywatchlist.features.notifications
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime

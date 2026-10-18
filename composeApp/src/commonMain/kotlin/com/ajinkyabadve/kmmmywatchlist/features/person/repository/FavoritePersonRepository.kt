@@ -6,29 +6,15 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.ajinkyabadve.kmmmywatchlist.db.AppDatabaseProvider
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
+import com.ajinkyabadve.kmmmywatchlist.features.person.model.FavoritePersonPollCandidate
+import com.ajinkyabadve.kmmmywatchlist.features.person.model.FavoritePersonRecord
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
-
-/** One followed person as a backup file carries it (item 15) - [addedAt] is kept so a restore
- *  preserves the "most-recently-followed first" order. */
-data class FavoritePersonRecord(
-    val id: Long,
-    val name: String,
-    val profilePath: String?,
-    val addedAt: Long,
-)
-
-/** One favorited person's poll-relevant state, as read by
- *  [FavoritePersonRepository.favoritePeopleForPolling]. */
-data class FavoritePersonPollCandidate(
-    val id: Long,
-    val lastKnownCreditIds: String?,
-)
+import kotlin.time.Clock
 
 /**
  * Local-only "favorite person" concept - see `MyDatabase.sq`'s `favoritePerson` table kdoc for

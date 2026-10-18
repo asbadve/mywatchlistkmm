@@ -11,6 +11,20 @@ Each entry: what you see, where it is, what has been ruled out, and the next con
 
 ---
 
+## Android — Discover filter dropdowns open at the far left of the screen
+
+**Symptom.** In Movies/TV → Discover → Filters, tapping the Year or Sort by field opens its menu
+at the left edge of the screen, narrower than the field and outside the dialog. Seen 2026-10-17 on
+the Pixel 10 Pro Fold emulator during item 20's runtime checks; iOS and desktop place it correctly.
+Selecting still works.
+
+**Where.** `features/discover/screen/DiscoverFilterDialog.kt` puts a generic `DropdownMenu` inside
+`ExposedDropdownMenuBox`. Material's `ExposedDropdownMenu` (from the box's scope) is the component
+that anchors to the field and matches its width.
+
+**Next step.** Swap both `DropdownMenu`s for `ExposedDropdownMenu`, then re-check on Android in both
+orientations and both themes.
+
 ## Offline favorite/watchlist changes are never sent to TMDB
 
 **Symptom.** Favorite, unfavorite, watchlist or un-watchlist a title while offline: the icon keeps

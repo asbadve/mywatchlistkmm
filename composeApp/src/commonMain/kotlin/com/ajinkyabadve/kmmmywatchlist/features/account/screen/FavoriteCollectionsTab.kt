@@ -25,14 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FollowedCollection
+import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.FavoriteCollectionsScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.mediaPersonRow
-import kotlinx.coroutines.flow.Flow
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.collection_favorites_empty_message
 import mywatchlist.composeapp.generated.resources.collection_favorites_empty_title
@@ -43,20 +39,6 @@ private object FavoriteCollectionsTabConstant {
     const val GRID_CELL_MIN_SIZE_DP = 150
     const val POSTER_TARGET_WIDTH_DP = 150
     val EMPTY_STATE_ICON_SIZE = 48.dp
-}
-
-/**
- * The "Collections" tab under My Fav (requested alongside Favorites/Watchlist/Lists) - lists every
- * locally-followed collection via [FavoriteCollectionRepository.observeFavoriteCollections],
- * reusing [mediaPersonRow] (poster + name + click - not actually person-specific despite its
- * package) so the grid looks and behaves identically to [PersonFavoritesTab][com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonFavoritesTab]'s
- * equivalent for people. Reads local SQLite directly, no network call, so there's no
- * loading/error state to render - the list is simply empty until something is followed.
- */
-class FavoriteCollectionsScreenModel(
-    private val favoriteCollectionRepository: FavoriteCollectionRepository = FavoriteCollectionRepositoryImpl(),
-) : ViewModel() {
-    val favoriteCollections: Flow<List<FollowedCollection>> = favoriteCollectionRepository.observeFavoriteCollections()
 }
 
 @Composable

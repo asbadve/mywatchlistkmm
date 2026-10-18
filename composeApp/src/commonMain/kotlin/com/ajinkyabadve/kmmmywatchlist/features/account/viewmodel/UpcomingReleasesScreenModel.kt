@@ -15,11 +15,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSyn
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseSource
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseSourceKind
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.resolveReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl

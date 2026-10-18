@@ -54,6 +54,17 @@ import compose.icons.feathericons.ZoomIn
 import compose.icons.feathericons.ZoomOut
 import kotlinx.coroutines.launch
 
+private object FullscreenMediaGalleryConstant {
+    const val MIN_ZOOM = 1f
+    const val MAX_ZOOM = 5f
+
+    // Just above 1x, so float rounding after a pinch back out still counts as "not zoomed".
+    const val ZOOMED_THRESHOLD = 1.02f
+
+    /** How much one zoom-button tap adds. */
+    const val ZOOM_STEP = 0.5f
+}
+
 /**
  * Reusable full-screen media/photo gallery component supporting pinch-to-zoom gestures,
  * panning, and a custom action callback (e.g. download trigger).
@@ -111,12 +122,21 @@ fun FullscreenMediaGallery(
 
                 var hasMultiplePointers by remember { mutableStateOf(false) }
 
+                // Deprecated on desktop/iOS (foundation 1.11.1) in favour of the overload that also
+                // passes the pinch centroid - but Android resolves androidx foundation 1.10.0 and web
+                // 1.9.1, which don't have that overload, so common code can't switch yet. Revisit
+                // once every target resolves foundation 1.11+ (future_features_checklist.md item 20).
+                @Suppress("DEPRECATION")
                 val state =
                     rememberTransformableState { zoomChange, offsetChange, _ ->
                         if (isCurrent) {
-                            activeScale = (activeScale * zoomChange).coerceIn(1f, 5f)
-                            isZoomed = activeScale > 1.02f
-                            if (activeScale > 1.02f) {
+                            activeScale =
+                                (activeScale * zoomChange).coerceIn(
+                                    FullscreenMediaGalleryConstant.MIN_ZOOM,
+                                    FullscreenMediaGalleryConstant.MAX_ZOOM,
+                                )
+                            isZoomed = activeScale > FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD
+                            if (activeScale > FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD) {
                                 activeOffset += offsetChange
                             } else {
                                 activeOffset = Offset.Zero
@@ -137,7 +157,7 @@ fun FullscreenMediaGallery(
                                     }
                                 }
                             }.let { modifier ->
-                                if (isCurrent && scale > 1.02f) {
+                                if (isCurrent && scale > FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD) {
                                     modifier.pointerInput(scale) {
                                         detectDragGestures { change, dragAmount ->
                                             change.consume()
@@ -164,9 +184,13 @@ fun FullscreenMediaGallery(
                                                                 ?.y ?: 0f
                                                         if (scrollDelta != 0f) {
                                                             val zoomFactor = if (scrollDelta > 0) 0.9f else 1.1f
-                                                            activeScale = (activeScale * zoomFactor).coerceIn(1f, 5f)
-                                                            isZoomed = activeScale > 1.02f
-                                                            if (activeScale <= 1.02f) {
+                                                            activeScale =
+                                                                (activeScale * zoomFactor).coerceIn(
+                                                                    FullscreenMediaGalleryConstant.MIN_ZOOM,
+                                                                    FullscreenMediaGalleryConstant.MAX_ZOOM,
+                                                                )
+                                                            isZoomed = activeScale > FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD
+                                                            if (activeScale <= FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD) {
                                                                 activeOffset = Offset.Zero
                                                             }
                                                             event.changes.forEach { it.consume() }
@@ -296,8 +320,12 @@ fun FullscreenMediaGallery(
                 // Zoom In Button
                 IconButton(
                     onClick = {
-                        activeScale = (activeScale + 0.5f).coerceIn(1f, 5f)
-                        isZoomed = activeScale > 1.02f
+                        activeScale =
+                            (activeScale + FullscreenMediaGalleryConstant.ZOOM_STEP).coerceIn(
+                                FullscreenMediaGalleryConstant.MIN_ZOOM,
+                                FullscreenMediaGalleryConstant.MAX_ZOOM,
+                            )
+                        isZoomed = activeScale > FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD
                     },
                     modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape),
                 ) {
@@ -311,9 +339,10 @@ fun FullscreenMediaGallery(
                 // Zoom Out Button
                 IconButton(
                     onClick = {
-                        activeScale = (activeScale - 0.5f).coerceIn(1f, 5f)
-                        isZoomed = activeScale > 1.02f
-                        if (activeScale <= 1.02f) {
+                        activeScale =
+                            (activeScale - 0.5f).coerceIn(FullscreenMediaGalleryConstant.MIN_ZOOM, FullscreenMediaGalleryConstant.MAX_ZOOM)
+                        isZoomed = activeScale > FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD
+                        if (activeScale <= FullscreenMediaGalleryConstant.ZOOMED_THRESHOLD) {
                             activeScale = 1f
                             activeOffset = Offset.Zero
                         }

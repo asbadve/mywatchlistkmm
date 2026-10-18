@@ -1,7 +1,9 @@
-package com.ajinkyabadve.kmmmywatchlist.features.backup.screen
+package com.ajinkyabadve.kmmmywatchlist.features.backup.viewmodel
 
-import com.ajinkyabadve.kmmmywatchlist.features.backup.repository.BackupSummary
-import com.ajinkyabadve.kmmmywatchlist.features.backup.repository.RestoreOutcome
+import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupSummary
+import com.ajinkyabadve.kmmmywatchlist.features.backup.model.RestoreOutcome
+import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupTestConstant
+import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupTestFixture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

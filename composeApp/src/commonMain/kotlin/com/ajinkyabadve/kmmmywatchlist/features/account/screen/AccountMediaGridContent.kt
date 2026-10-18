@@ -31,12 +31,12 @@ import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.UpcomingBadge
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.searchMediaRow
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_retry
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 
 private object AccountMediaGridConstant {
     const val POSTER_TARGET_WIDTH_DP = 150

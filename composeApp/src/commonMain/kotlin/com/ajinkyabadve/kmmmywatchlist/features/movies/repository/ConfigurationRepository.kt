@@ -17,9 +17,9 @@ import io.ktor.http.URLProtocol
 import io.ktor.http.encodedPath
 import io.ktor.utils.io.errors.IOException
 import kotlinproject.composeapp.BuildConfig
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
 
 interface ConfigurationRepository {
     suspend fun getConfiguration(): ImagesConfig

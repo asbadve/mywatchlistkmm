@@ -1,9 +1,9 @@
 package com.ajinkyabadve.kmmmywatchlist.core.notification
 
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import platform.Foundation.NSDateComponents
 import platform.Foundation.timeIntervalSince1970
@@ -11,6 +11,7 @@ import platform.UserNotifications.UNCalendarNotificationTrigger
 import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNUserNotificationCenter
 import kotlin.coroutines.resume
+import kotlin.time.Instant
 
 private object IosReminderSchedulerConstant {
     /** Every reminder id starts with this (see `ReleaseReminderSchedule.requestId`), which is how
@@ -39,8 +40,8 @@ internal object IosReminderScheduler : ReminderScheduler {
         val components =
             NSDateComponents().apply {
                 year = at.year.toLong()
-                month = at.monthNumber.toLong()
-                day = at.dayOfMonth.toLong()
+                month = at.month.number.toLong()
+                day = at.day.toLong()
                 hour = at.hour.toLong()
                 minute = at.minute.toLong()
             }

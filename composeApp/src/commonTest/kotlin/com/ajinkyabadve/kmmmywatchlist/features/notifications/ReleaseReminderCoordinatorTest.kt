@@ -11,8 +11,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderTes
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderTestConstant.REMINDER_TIME
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderTestConstant.episodeReminder
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderTestConstant.movieReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime

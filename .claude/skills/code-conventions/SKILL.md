@@ -416,11 +416,12 @@ import kotlin.time.Clock
 val now = Clock.System.now()
 ```
 
-Known existing offenders to clean up (2026-10-04): `kotlinx.datetime.Clock` / `kotlinx.datetime.Instant`
-(-> `kotlin.time`), `LocalDate.dayOfMonth` / `monthNumber` (-> `day` / `month`),
-`Icons.Filled.List` / `KeyboardArrowRight` (-> `Icons.AutoMirrored.Filled.*`),
-`LocalClipboardManager` (-> `LocalClipboard`), `LocalLifecycleOwner` from compose-ui
-(-> lifecycle-runtime-compose), `currentWindowAdaptiveInfo()` (-> the V2 variant).
+The existing offenders were cleared 2026-10-17 (`future_features_checklist.md` item 20) - the build
+prints no deprecation warnings. One deliberate exception: `rememberTransformableState` in
+`FullscreenMediaGallery.kt` is `@Suppress("DEPRECATION")`ed because its replacement doesn't exist yet
+in the foundation versions Android (1.10.0) and web (1.9.1) resolve. In shared code, check a
+replacement compiles on **every** target before switching - a newer overload can exist on
+desktop/iOS only.
 
 ## 13. One data class per file (agreed 2026-10-17)
 

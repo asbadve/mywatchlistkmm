@@ -23,11 +23,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.error_unexpected_tv_details
+import kotlin.time.Clock
 
 private object TvDetailCacheRepositoryConstant {
     const val TAG = "TvDetailCacheRepository"

@@ -3,6 +3,9 @@ package com.ajinkyabadve.kmmmywatchlist.features.notifications.repository
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.createTestDatabase
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.DatePeriod

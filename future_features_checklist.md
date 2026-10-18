@@ -1181,19 +1181,33 @@ from a user observation; small.
 
 ---
 
-## 20. Remove Existing Deprecated API Usages (next task, queued 2026-10-04)
+## 20. Remove Existing Deprecated API Usages (done 2026-10-17)
 **Goal**: Clear the deprecation warnings the build already prints, now that
 `.claude/skills/code-conventions/SKILL.md` §12 forbids new ones. Pure cleanup, no behaviour change.
 
-- [ ] `kotlinx.datetime.Clock` / `kotlinx.datetime.Instant` -> `kotlin.time.Clock` / `kotlin.time.Instant`
-  (repositories, screen models, pollers, tests).
-- [ ] `LocalDate.dayOfMonth` / `monthNumber` -> `day` / `month` (e.g. `design/calendar/MonthCalendar.kt`).
-- [ ] `Icons.Filled.List`, `Icons.Filled.KeyboardArrowRight` -> `Icons.AutoMirrored.Filled.*`.
-- [ ] `LocalClipboardManager` -> `LocalClipboard` (`core/ui/LongPressToCopy.kt`, suspend API).
-- [ ] compose-ui `LocalLifecycleOwner` -> lifecycle-runtime-compose's (`AutoScrollCarousel.kt`).
-- [ ] `currentWindowAdaptiveInfo()` -> the V2 variant (`App.kt`).
-- [ ] Verify: `compileKotlinDesktop 2>&1 | grep "^w:.*deprecated"` is empty for `composeApp/src`,
-  plus the usual test/compile/ktlint tasks.
+161 warnings across all five targets before; **0** after (`compileKotlinDesktop`,
+`compileTestKotlinDesktop`, `compileDebugKotlinAndroid`, `compileKotlinJs`,
+`compileKotlinIosSimulatorArm64`).
+
+- [x] `kotlinx.datetime.Clock` / `Instant` -> `kotlin.time.Clock` / `Instant` (35 files, ~130 warnings).
+- [x] `LocalDate.dayOfMonth` / `monthNumber` -> `day` / `month.number` (`MonthCalendar.kt`, iOS `ReminderScheduler`).
+- [x] `Icons.Filled.List`, `KeyboardArrowRight` -> `Icons.AutoMirrored.Filled.*`.
+- [x] `LocalClipboardManager` -> `LocalClipboard` + new `expect fun plainTextClipEntry` (Compose has no
+  common plain-text `ClipEntry` factory); clipboard UI test moved to `desktopTest`.
+- [x] compose-ui `LocalLifecycleOwner` -> lifecycle-runtime-compose's, and the hand-written observer
+  in `AutoScrollCarousel` replaced by `currentStateAsState()`; artifact now declared in `commonMain`.
+- [x] `currentWindowAdaptiveInfo()` -> `currentWindowAdaptiveInfoV2()` (`App.kt` only reads the posture).
+- [x] Also: `menuAnchor()` -> `menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)`; desktop
+  `@Preview` -> `androidx.compose.ui.tooling.preview.Preview`; `runComposeUiTest` -> the `v2` one;
+  `ACTION_MEDIA_SCANNER_SCAN_FILE` -> `MediaScannerConnection.scanFile`; removed a no-op clear of the
+  deprecated `FLAG_TRANSLUCENT_*` window flags; removed the deprecated `kotlin.js.compiler=ir` property.
+- **Blocked, suppressed on purpose:** `rememberTransformableState` (`FullscreenMediaGallery.kt`). The
+  replacement overload (with the pinch centroid) exists in foundation 1.11, but Android resolves
+  androidx foundation 1.10.0 and web 1.9.1, so common code can't switch. Revisit when every target
+  resolves 1.11+ - drop the `@Suppress("DEPRECATION")` there.
+- Per code-conventions §13-14, every touched file was also brought in line: 12 more data classes into
+  their own files (models into `features/<feature>/model/`), `BackupScreenModel` and
+  `FavoriteCollectionsScreenModel` into `viewmodel/`.
 
 ---
 
@@ -1225,3 +1239,18 @@ uploaded debug symbols"*, so native crashes and ANRs in Play Vitals have readabl
   track and confirm the warning is gone (or explained).
 
 ---
+
+## 22. Move `com.android.application` Out of the KMP Module (queued 2026-10-17)
+**Goal**: Clear the Gradle warning "The 'org.jetbrains.kotlin.multiplatform' plugin is not compatible
+with 'com.android.application' starting with Android Gradle Plugin 9.0.0". Not a code deprecation -
+a build-structure migration, which is why item 20 didn't do it.
+
+- [ ] New `:androidApp` module applying `com.android.application`, depending on `:composeApp`; move
+  `AndroidManifest.xml`, the Activity/Application classes, resources the app needs, signing and
+  versioning (`release-process` skill) there.
+- [ ] `:composeApp` switches to the Android KMP *library* plugin (`com.android.kotlin.multiplatform.library`).
+- [ ] Update `ci.yml`/`release.yml` task paths (`:composeApp:assembleRelease` etc.) and
+  `docs/ci-yml-explained.md` in the same change.
+- [ ] Check JetBrains' guide first: https://kotl.in/kmp-project-structure-migration
+- [ ] Then drop the AGP 9 compatibility switches in `gradle.properties` - `android.builtInKotlin=false`
+  and `android.newDsl=false` - which AGP already reports as deprecated (seen 2026-10-17).

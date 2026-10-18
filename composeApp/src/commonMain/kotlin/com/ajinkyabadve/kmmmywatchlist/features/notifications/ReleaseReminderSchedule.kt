@@ -1,6 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.notifications
 
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime

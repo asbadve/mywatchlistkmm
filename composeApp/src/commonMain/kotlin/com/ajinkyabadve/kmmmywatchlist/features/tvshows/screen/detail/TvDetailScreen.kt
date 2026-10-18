@@ -59,7 +59,6 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.TvDetailScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.TvDetailState
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
@@ -67,6 +66,7 @@ import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.section_backdrops
 import mywatchlist.composeapp.generated.resources.section_posters
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -15,11 +15,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.resolveReleaseDate
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
@@ -37,9 +37,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 sealed interface TvDetailState {
     data object Loading : TvDetailState

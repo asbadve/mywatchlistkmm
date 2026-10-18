@@ -23,9 +23,9 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.UpcomingBadge
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 private object DiscoverMovieTabConstant {
     const val PAGINATION_LOOKAHEAD_ITEMS = 3

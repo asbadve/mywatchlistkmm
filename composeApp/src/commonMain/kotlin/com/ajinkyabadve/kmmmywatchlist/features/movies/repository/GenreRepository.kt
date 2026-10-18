@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.ConfigurationConstants
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.GenreListResponse
 import com.ajinkyabadve.kmmmywatchlist.network.client.TmdbClient
 import com.ajinkyabadve.kmmmywatchlist.network.constant.NetworkConstant
 import com.russhwolf.settings.Settings
@@ -16,11 +17,10 @@ import io.ktor.http.URLProtocol
 import io.ktor.http.encodedPath
 import io.ktor.utils.io.errors.IOException
 import kotlinproject.composeapp.BuildConfig
-import kotlinx.datetime.Clock
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
 
 interface GenreRepository {
     suspend fun getMovieGenres(): List<Genre>
@@ -116,11 +116,6 @@ class GenreRepositoryImpl(
         const val TV_GENRES_PATH = "/3/genre/tv/list"
     }
 }
-
-@Serializable
-private data class GenreListResponse(
-    val genres: List<Genre> = emptyList(),
-)
 
 private object GenreConstant {
     const val KEY_MOVIE_GENRES = "discover_movie_genres_json"

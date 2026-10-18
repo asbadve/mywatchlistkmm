@@ -18,10 +18,10 @@ import io.ktor.http.URLProtocol
 import io.ktor.http.encodedPath
 import io.ktor.utils.io.errors.IOException
 import kotlinproject.composeapp.BuildConfig
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
 
 interface RegionRepository {
     suspend fun getAvailableRegions(): List<WatchProviderRegion>

@@ -15,7 +15,6 @@ import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlinx.serialization.SerializationException
@@ -25,6 +24,7 @@ import mywatchlist.composeapp.generated.resources.notification_episode_airing_ti
 import mywatchlist.composeapp.generated.resources.notification_episode_announced_body
 import mywatchlist.composeapp.generated.resources.notification_episode_announced_title
 import org.jetbrains.compose.resources.getString
+import kotlin.time.Clock
 
 private object TvEpisodeNotificationPollerConstant {
     const val TAG = "TvEpisodeNotificationPoller"
