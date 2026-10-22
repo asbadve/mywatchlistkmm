@@ -14,11 +14,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.error_unexpected_movie_details
+import kotlin.time.Clock
 
 private object MovieDetailCacheRepositoryConstant {
     const val TAG = "MovieDetailCacheRepository"

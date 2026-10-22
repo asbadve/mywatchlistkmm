@@ -1,5 +1,8 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FavoriteCollectionPollCandidate
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FavoriteCollectionRecord
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FollowedCollection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map

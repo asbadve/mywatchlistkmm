@@ -28,8 +28,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.ReleaseDatesResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode

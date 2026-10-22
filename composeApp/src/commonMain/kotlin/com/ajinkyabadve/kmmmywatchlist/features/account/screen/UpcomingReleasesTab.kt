@@ -65,7 +65,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingMediaItem
 import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.UpcomingReleasesScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.reminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.formatFullReleaseDate
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.MediaTypeBadge
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform

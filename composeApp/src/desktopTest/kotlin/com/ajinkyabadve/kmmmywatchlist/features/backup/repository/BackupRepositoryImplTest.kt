@@ -7,11 +7,12 @@ import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.createTestDatabase
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthConstant
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeSettings
+import com.ajinkyabadve.kmmmywatchlist.features.backup.model.RestoreOutcome
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepositoryImpl
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest

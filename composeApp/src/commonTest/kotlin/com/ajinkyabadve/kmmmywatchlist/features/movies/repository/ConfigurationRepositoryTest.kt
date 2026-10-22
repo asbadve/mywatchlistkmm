@@ -2,12 +2,12 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.ConfigurationConstants
 import com.ajinkyabadve.kmmmywatchlist.core.model.ImagesConfig
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 class ConfigurationRepositoryTest {
     // Simple Map-based fake settings implementation

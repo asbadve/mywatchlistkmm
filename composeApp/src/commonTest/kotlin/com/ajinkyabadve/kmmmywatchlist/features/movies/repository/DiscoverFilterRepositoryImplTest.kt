@@ -3,12 +3,12 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeSettings
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Keyword
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 class DiscoverFilterRepositoryImplTest {
     @Test

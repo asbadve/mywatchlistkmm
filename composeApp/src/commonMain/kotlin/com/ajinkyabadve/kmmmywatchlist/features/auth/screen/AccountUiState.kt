@@ -1,8 +1,8 @@
 package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
 
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderConstant
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 
 /**
  * Everything the account screen's settings rows and dialogs show.

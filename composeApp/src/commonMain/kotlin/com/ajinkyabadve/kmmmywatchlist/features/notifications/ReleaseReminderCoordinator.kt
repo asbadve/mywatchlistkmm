@@ -7,11 +7,10 @@ import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingReminder
 import com.ajinkyabadve.kmmmywatchlist.core.notification.ReminderContent
 import com.ajinkyabadve.kmmmywatchlist.core.notification.ReminderScheduler
 import com.ajinkyabadve.kmmmywatchlist.core.notification.platformReminderScheduler
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -31,6 +30,7 @@ import mywatchlist.composeapp.generated.resources.notification_release_body_thea
 import mywatchlist.composeapp.generated.resources.notification_release_today_title
 import mywatchlist.composeapp.generated.resources.notification_release_tomorrow_title
 import org.jetbrains.compose.resources.getString
+import kotlin.time.Clock
 
 internal object ReleaseReminderCoordinatorConstant {
     /** The debug "Fire test reminder" row's request id - outside the `release:<type>:...` shape so

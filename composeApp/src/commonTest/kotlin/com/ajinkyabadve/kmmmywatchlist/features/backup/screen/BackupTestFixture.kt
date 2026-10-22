@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.backup.screen
 import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeReminderScheduler
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeSettings
 import com.ajinkyabadve.kmmmywatchlist.features.backup.repository.BackupRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.backup.viewmodel.BackupScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeFavoriteCollectionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator

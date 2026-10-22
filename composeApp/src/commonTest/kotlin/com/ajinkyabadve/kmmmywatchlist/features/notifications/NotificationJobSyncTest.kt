@@ -2,8 +2,8 @@ package com.ajinkyabadve.kmmmywatchlist.features.notifications
 
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderTestConstant.REMINDER_TIME
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderTestConstant.movieReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeReleaseReminderRepository
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test

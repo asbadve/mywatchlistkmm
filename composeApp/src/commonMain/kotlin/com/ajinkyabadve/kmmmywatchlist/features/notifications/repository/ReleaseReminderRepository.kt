@@ -7,16 +7,19 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.ajinkyabadve.kmmmywatchlist.db.AppDatabaseProvider
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.minus
+import kotlin.time.Clock
 import com.ajinkyabadve.kmmmywatchlist.db.ReleaseReminder as ReleaseReminderRow
 import com.ajinkyabadve.kmmmywatchlist.db.ReminderPreference as ReminderPreferenceRow
 
@@ -36,35 +39,6 @@ internal object ReleaseReminderConstant {
 
     const val MINUTES_PER_HOUR = 60
 }
-
-/**
- * Identifies one reminder: a movie, a show (its premiere), or one episode of a show
- * ([seasonNumber] and [episodeNumber] both set).
- */
-data class ReminderKey(
-    val mediaId: Long,
-    val mediaType: String,
-    val seasonNumber: Int? = null,
-    val episodeNumber: Int? = null,
-) {
-    val isEpisode: Boolean get() = seasonNumber != null && episodeNumber != null
-}
-
-/** One stored release reminder. [releaseSource] says which date won (e.g. `theatrical:IN`). */
-data class ReleaseReminder(
-    val key: ReminderKey,
-    val title: String,
-    val posterPath: String?,
-    val releaseDate: LocalDate,
-    val releaseSource: String?,
-)
-
-/** The global release-reminder preferences: whether reminders are on, and when in the day they
- *  fire (local time). */
-data class ReminderPreference(
-    val enabled: Boolean,
-    val time: LocalTime,
-)
 
 /**
  * Local-only store for checklist item 16's release reminders and their delivery preference. The

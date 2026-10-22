@@ -1181,19 +1181,33 @@ from a user observation; small.
 
 ---
 
-## 20. Remove Existing Deprecated API Usages (next task, queued 2026-10-04)
+## 20. Remove Existing Deprecated API Usages (done 2026-10-17)
 **Goal**: Clear the deprecation warnings the build already prints, now that
 `.claude/skills/code-conventions/SKILL.md` §12 forbids new ones. Pure cleanup, no behaviour change.
 
-- [ ] `kotlinx.datetime.Clock` / `kotlinx.datetime.Instant` -> `kotlin.time.Clock` / `kotlin.time.Instant`
-  (repositories, screen models, pollers, tests).
-- [ ] `LocalDate.dayOfMonth` / `monthNumber` -> `day` / `month` (e.g. `design/calendar/MonthCalendar.kt`).
-- [ ] `Icons.Filled.List`, `Icons.Filled.KeyboardArrowRight` -> `Icons.AutoMirrored.Filled.*`.
-- [ ] `LocalClipboardManager` -> `LocalClipboard` (`core/ui/LongPressToCopy.kt`, suspend API).
-- [ ] compose-ui `LocalLifecycleOwner` -> lifecycle-runtime-compose's (`AutoScrollCarousel.kt`).
-- [ ] `currentWindowAdaptiveInfo()` -> the V2 variant (`App.kt`).
-- [ ] Verify: `compileKotlinDesktop 2>&1 | grep "^w:.*deprecated"` is empty for `composeApp/src`,
-  plus the usual test/compile/ktlint tasks.
+161 warnings across all five targets before; **0** after (`compileKotlinDesktop`,
+`compileTestKotlinDesktop`, `compileDebugKotlinAndroid`, `compileKotlinJs`,
+`compileKotlinIosSimulatorArm64`).
+
+- [x] `kotlinx.datetime.Clock` / `Instant` -> `kotlin.time.Clock` / `Instant` (35 files, ~130 warnings).
+- [x] `LocalDate.dayOfMonth` / `monthNumber` -> `day` / `month.number` (`MonthCalendar.kt`, iOS `ReminderScheduler`).
+- [x] `Icons.Filled.List`, `KeyboardArrowRight` -> `Icons.AutoMirrored.Filled.*`.
+- [x] `LocalClipboardManager` -> `LocalClipboard` + new `expect fun plainTextClipEntry` (Compose has no
+  common plain-text `ClipEntry` factory); clipboard UI test moved to `desktopTest`.
+- [x] compose-ui `LocalLifecycleOwner` -> lifecycle-runtime-compose's, and the hand-written observer
+  in `AutoScrollCarousel` replaced by `currentStateAsState()`; artifact now declared in `commonMain`.
+- [x] `currentWindowAdaptiveInfo()` -> `currentWindowAdaptiveInfoV2()` (`App.kt` only reads the posture).
+- [x] Also: `menuAnchor()` -> `menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)`; desktop
+  `@Preview` -> `androidx.compose.ui.tooling.preview.Preview`; `runComposeUiTest` -> the `v2` one;
+  `ACTION_MEDIA_SCANNER_SCAN_FILE` -> `MediaScannerConnection.scanFile`; removed a no-op clear of the
+  deprecated `FLAG_TRANSLUCENT_*` window flags; removed the deprecated `kotlin.js.compiler=ir` property.
+- **Blocked, suppressed on purpose:** `rememberTransformableState` (`FullscreenMediaGallery.kt`). The
+  replacement overload (with the pinch centroid) exists in foundation 1.11, but Android resolves
+  androidx foundation 1.10.0 and web 1.9.1, so common code can't switch. Revisit when every target
+  resolves 1.11+ - drop the `@Suppress("DEPRECATION")` there.
+- Per code-conventions §13-14, every touched file was also brought in line: 12 more data classes into
+  their own files (models into `features/<feature>/model/`), `BackupScreenModel` and
+  `FavoriteCollectionsScreenModel` into `viewmodel/`.
 
 ---
 
@@ -1226,7 +1240,114 @@ uploaded debug symbols"*, so native crashes and ANRs in Play Vitals have readabl
 
 ---
 
-## 22. Settings Toggle to Turn Off Trending Carousel Autoscroll (queued 2026-10-17)
+## 22. Move `com.android.application` Out of the KMP Module (queued 2026-10-17)
+**Goal**: Clear the Gradle warning "The 'org.jetbrains.kotlin.multiplatform' plugin is not compatible
+with 'com.android.application' starting with Android Gradle Plugin 9.0.0". Not a code deprecation -
+a build-structure migration, which is why item 20 didn't do it.
+
+- [ ] New `:androidApp` module applying `com.android.application`, depending on `:composeApp`; move
+  `AndroidManifest.xml`, the Activity/Application classes, resources the app needs, signing and
+  versioning (`release-process` skill) there.
+- [ ] `:composeApp` switches to the Android KMP *library* plugin (`com.android.kotlin.multiplatform.library`).
+- [ ] Update `ci.yml`/`release.yml` task paths (`:composeApp:assembleRelease` etc.) and
+  `docs/ci-yml-explained.md` in the same change.
+- [ ] Check JetBrains' guide first: https://kotl.in/kmp-project-structure-migration
+- [ ] Then drop the AGP 9 compatibility switches in `gradle.properties` - `android.builtInKotlin=false`
+  and `android.newDsl=false` - which AGP already reports as deprecated (seen 2026-10-17).
+
+---
+
+## 23. UI Automation on Every Platform (planned 2026-10-20)
+**Goal**: The UI tests that exist today (251 Compose UI cases in 53 files under `commonTest`) run
+only on desktop JVM in CI. Run the same tests on every target the app ships to, and add a few
+full-flow tests, so a UI regression on any platform fails a build instead of being found by hand.
+
+**Requirements (from the user)**: flows persist on disk and cost almost no tokens to run; cover
+every target platform; easy to configure and run.
+
+**Decision: Compose Multiplatform UI tests (`runComposeUiTest`)**, extended to every target. They
+are Kotlin files in git and Gradle reports pass/fail, so no screenshots or AI reading is needed.
+Options considered and rejected as the main tool:
+- **Maestro** - YAML flows, cheap to run, but Android/iOS only; can't drive the Compose desktop
+  window or the web canvas (tried 2026-10-17). Kept as an optional release-build smoke layer.
+- **Appium (+ Mac2Driver for desktop)** - covers Android/iOS/desktop but not web; heavy setup
+  (server, drivers, macOS automation-mode permission). Kept as a manual tool only.
+- **Android CLI journeys** - an AI evaluates every step, so token-heavy; Android only.
+
+**Platform support** (JetBrains docs, checked 2026-10-20 against Compose Multiplatform 1.11.1):
+desktop `desktopTest`; iOS `iosSimulatorArm64Test`; Android only as instrumented tests
+(`connectedAndroidTest`, `androidDeviceTest` source set - common tests can't run as local Android
+unit tests); web **Wasm only** (`wasmJsTest`) - the plain `js` target this project uses is not
+supported, and it renders blank today anyway (`KNOWN_BUGS.md`).
+
+**Limits to keep in mind**: these render real screens in-process with fakes for the network. They
+don't test the packaged/minified app or OS features (camera permission, notification delivery).
+
+### Implementation Checklist
+- [ ] **Step 1 - iOS simulator**: run the shared UI tests with `:composeApp:iosSimulatorArm64Test`
+  locally; fix whatever is desktop-only in them (file paths, `createTestDatabase()` -> a native
+  driver or an `expect` helper); add a macOS CI job.
+- [ ] **Step 2 - Android emulator**: add the device-test source set
+  (`androidDeviceTest` / `testInstrumentationRunner`), make it depend on the shared UI tests, run
+  `:composeApp:connectedAndroidTest` locally; add an emulator CI job
+  (`reactivecircus/android-emulator-runner`). Coordinate with item 22 - the module split changes
+  where this configuration lives, so do whichever lands first carefully.
+- [ ] **Step 3 - full-flow tests** in `commonTest`, through `App()`-level navigation with fakes:
+  favorite -> appears in Upcoming; Settings region picker; Discover filters (Year / Sort by);
+  long-press copy on a detail title. These are the flows checked by hand on 2026-10-17.
+- [ ] **Step 4 - web**: add a `wasmJs` target (JetBrains' recommended Compose web target) next to
+  or replacing `js`, then `:composeApp:wasmJsTest` in CI. Its own decision - check library
+  support (Ktor, SQLDelight web driver, Coil, Napier) for wasmJs first.
+- [ ] **Optional - Maestro smoke suite** (`.maestro/` in the repo): 3-5 flows on the release build
+  for Android and iOS, run before tagging a release.
+- [ ] Every `ci.yml` change updates `docs/ci-yml-explained.md` in the same change.
+- [ ] Update `.claude/skills/testing-conventions/SKILL.md` and CLAUDE.md "Verify" with the new
+  per-platform tasks.
+
+---
+
+## 24. Dedicated `:uiTests` Module (planned 2026-10-20, after items 22 and 23)
+**Goal**: Keep all UI automation in one clearly separate place, away from app code and unit
+tests, with its own Gradle tasks - without losing what makes the Compose UI tests fast and cheap
+(in-process rendering, fakes, test tags).
+
+**Why a module and not a separate repo** (decided 2026-10-20): a separate repo can only test the
+built apps from outside (Maestro/Appium/Playwright). That works on Android/iOS, barely on desktop
+(Appium Mac2Driver: macOS only, automation-mode permission, fragile), and not at all on web -
+Compose draws the page onto one canvas, so browser tools find no elements. It would also mean
+building/installing every app per run, testing against the live TMDB API, and keeping two repos
+in step. A module in this repo keeps every platform covered.
+
+**Depends on**: item 22 (`:composeApp` as a KMP library makes a separate Android device-test
+module straightforward) and item 23 (tests already run on every platform before they move).
+
+### Implementation Checklist
+- [ ] **Step 1 - create the module**: `:uiTests` as a KMP module with the same targets as
+  `:composeApp` (desktop, iOS simulator, Android, wasmJs once item 23 step 4 lands), depending on
+  `:composeApp` and the Compose UI test libraries; add it to `settings.gradle.kts`.
+- [ ] **Step 2 - expose what the tests need**: the composables, screen models and repository
+  interfaces tests use are `internal` today - either make the needed ones `public` or add a small
+  test-fixtures surface (fake repositories, `createTestDatabase()`, `TestConstant` objects) in
+  `:composeApp` that `:uiTests` depends on. Prefer the narrowest surface; no `@VisibleForTesting`
+  leaks into production APIs.
+- [ ] **Step 3 - move the UI tests**: move every `*UiTest.kt` (and their shared helpers/fakes)
+  from `composeApp/src/commonTest` to `uiTests/src/commonTest`, keeping packages; unit tests stay
+  in `:composeApp`. Do it in one commit with a before/after test count (251 cases on 2026-10-20).
+- [ ] **Step 4 - per-platform tasks**: `:uiTests:desktopTest`, `:uiTests:iosSimulatorArm64Test`,
+  `:uiTests:connectedAndroidTest`, `:uiTests:wasmJsTest`; optionally one aggregate task
+  (`./gradlew :uiTests:allUiTests`) that runs whichever targets the host machine supports.
+- [ ] **Step 5 - CI**: point the UI-test jobs from item 23 at `:uiTests`; keep `:composeApp`
+  unit tests in the existing verify job. Update `docs/ci-yml-explained.md` in the same change.
+- [ ] **Step 6 - conventions**: update `.claude/skills/testing-conventions/SKILL.md` (new UI
+  tests go in `:uiTests`) and CLAUDE.md "Verify".
+- [ ] **Optional - black-box release smoke suite**: a `.maestro/` folder in this repo with 3-5
+  YAML flows (launch, browse, open detail, favorite, settings) run against the release build on
+  Android and iOS before tagging - the one case where outside-in testing earns its cost.
+- [ ] Verify: both modules' tests pass on every platform with the same case count as before.
+
+---
+
+## 25. Settings Toggle to Turn Off Trending Carousel Autoscroll (queued 2026-10-17)
 **Goal**: Let users switch off the Trending tab's carousel autoscroll
 ([shipped item 14](shipped_features.md#14-autoscroll-the-trending-media-carousels--done-2026-09-27))
 from the account screen's settings list. Today it can only be stopped indirectly (reduce motion /
@@ -1249,5 +1370,3 @@ endpoint, no DB schema change.
   default is on; screen model persists the change. Compose UI - settings switch renders and
   toggles; carousel does not advance when disabled.
 - [ ] Verify the usual Gradle tasks (desktopTest, compileKotlinDesktop, assembleDebug, ktlintCheck).
-
----

@@ -55,6 +55,8 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation(libs.lifecycle.viewmodel.compose)
+                // LocalLifecycleOwner's home since compose-ui deprecated its copy (AutoScrollCarousel).
+                implementation(libs.lifecycle.runtime.compose)
                 implementation(libs.material3.adaptive.navigation.suite)
                 implementation(libs.adaptive)
                 implementation(libs.adaptive.layout)

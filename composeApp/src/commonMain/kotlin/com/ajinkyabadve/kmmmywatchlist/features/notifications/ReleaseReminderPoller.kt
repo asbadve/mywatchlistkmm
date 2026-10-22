@@ -3,7 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.notifications
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepository
@@ -14,11 +14,11 @@ import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlinx.serialization.SerializationException
+import kotlin.time.Clock
 
 private object ReleaseReminderPollerConstant {
     const val TAG = "ReleaseReminderPoller"

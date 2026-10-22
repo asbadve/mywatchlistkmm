@@ -1,5 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.person.repository
 
+import com.ajinkyabadve.kmmmywatchlist.features.person.model.FavoritePersonPollCandidate
+import com.ajinkyabadve.kmmmywatchlist.features.person.model.FavoritePersonRecord
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

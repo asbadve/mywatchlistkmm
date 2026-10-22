@@ -6,35 +6,15 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.ajinkyabadve.kmmmywatchlist.db.AppDatabaseProvider
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FavoriteCollectionPollCandidate
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FavoriteCollectionRecord
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FollowedCollection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
-
-/** A locally-followed collection, for the "Collections" tab under My Fav. */
-data class FollowedCollection(
-    val id: Long,
-    val name: String,
-    val posterPath: String?,
-)
-
-/** One favorited collection's poll-relevant state, as read by
- *  [FavoriteCollectionRepository.favoriteCollectionsForPolling]. */
-data class FavoriteCollectionPollCandidate(
-    val id: Long,
-    val lastKnownPartIds: String?,
-)
-
-/** One followed collection as a backup file carries it (item 15) - same reason as
- *  `FavoritePersonRecord` for keeping [addedAt]. */
-data class FavoriteCollectionRecord(
-    val id: Long,
-    val name: String,
-    val posterPath: String?,
-    val addedAt: Long,
-)
+import kotlin.time.Clock
 
 /**
  * Local-only "favorite collection" concept - see `MyDatabase.sq`'s `favoriteCollection` table

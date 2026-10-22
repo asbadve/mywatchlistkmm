@@ -69,7 +69,6 @@ actual fun ConfigureDialogWindow() {
 
         window?.let { w ->
             try {
-                w.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
                 w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 w.setBackgroundDrawable(ColorDrawable(Color.BLACK))
 

@@ -3,15 +3,11 @@ package com.ajinkyabadve.kmmmywatchlist.core.ui.carousel
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import com.ajinkyabadve.kmmmywatchlist.isReducedMotionEnabled
 import com.ajinkyabadve.kmmmywatchlist.isScreenReaderActive
 import kotlinx.coroutines.delay
@@ -46,13 +42,10 @@ internal fun isAutoScrollAllowed(
  * and composition disposal (leaving the Trending tab) cancels it via structured concurrency with no
  * extra visibility plumbing needed.
  *
- * Tracks the lifecycle state by hand via [LifecycleEventObserver] rather than the newer
- * `androidx.lifecycle.compose.currentStateAsState()` extension - the latter needs the
- * `lifecycle-runtime-compose` artifact resolving in the IDE's editor classpath, which this
- * project's Android Studio setup was not picking up even after a clean Gradle sync (the
- * command-line build always resolved it correctly). `LocalLifecycleOwner`/`Lifecycle`/
- * `LifecycleEventObserver` come from the older, already-working `lifecycle-runtime`/compose-ui
- * classpath every other lifecycle-aware composable in this codebase already relies on.
+ * Reads the lifecycle state through lifecycle-runtime-compose's `currentStateAsState()` (and its
+ * `LocalLifecycleOwner`, which replaced compose-ui's deprecated copy), so the loop pauses while the
+ * app is in the background. The artifact is now declared in `commonMain` explicitly - it used to
+ * arrive only transitively, which is why an earlier version observed the lifecycle by hand.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,13 +53,7 @@ internal fun AutoScrollCarouselEffect(
     state: CarouselState,
     itemCount: Int,
 ) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var lifecycleState by remember { mutableStateOf(lifecycleOwner.lifecycle.currentState) }
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event -> lifecycleState = event.targetState }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val autoScrollAllowed =
         isAutoScrollAllowed(
             itemCount = itemCount,

@@ -28,6 +28,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
+import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
 
@@ -45,14 +46,6 @@ private object MonthCalendarConstant {
     val LEGEND_DOT_TEXT_SPACING = 6.dp
 }
 
-/** One cell of a [MonthCalendarCard] grid - a `null` [dayOfMonth] is a leading blank before the
- *  1st, so the days line up under the right weekday column. */
-internal data class CalendarDay(
-    val dayOfMonth: Int?,
-    val isToday: Boolean,
-    val isMarked: Boolean,
-)
-
 /** The Monday-first day grid for one month. Pure, so the geometry (weekday alignment, today,
  *  marks, month length) can be asserted without a Compose harness. */
 internal fun buildCalendarDays(
@@ -63,13 +56,13 @@ internal fun buildCalendarDays(
 ): List<CalendarDay> {
     val firstOfMonth = LocalDate(year, monthNumber, 1)
     val leadingBlanks = firstOfMonth.dayOfWeek.ordinal
-    val daysInMonth = firstOfMonth.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).dayOfMonth
+    val daysInMonth = firstOfMonth.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
     val blanks = List(leadingBlanks) { CalendarDay(dayOfMonth = null, isToday = false, isMarked = false) }
     val days =
         (1..daysInMonth).map { day ->
             CalendarDay(
                 dayOfMonth = day,
-                isToday = today.year == year && today.monthNumber == monthNumber && today.dayOfMonth == day,
+                isToday = today.year == year && today.month.number == monthNumber && today.day == day,
                 isMarked = day in markedDays,
             )
         }

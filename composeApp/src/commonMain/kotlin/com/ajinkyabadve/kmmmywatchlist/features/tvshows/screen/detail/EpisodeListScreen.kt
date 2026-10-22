@@ -54,7 +54,6 @@ import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.openUrl
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
@@ -67,6 +66,7 @@ import mywatchlist.composeapp.generated.resources.no_overview_available_episode
 import mywatchlist.composeapp.generated.resources.title_episodes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable

@@ -9,11 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -72,7 +72,7 @@ private object MediaActionButtonsConstant {
  * not before, the rest of the detail load (see `MovieDetailScreenModel`'s `init` block), so this
  * only ever gates the icons themselves - the rest of the screen never waits on it.
  *
- * Watchlist uses [Icons.Filled.List]/[Icons.Filled.CheckCircle] rather than a bookmark glyph:
+ * Watchlist uses [Icons.AutoMirrored.Filled.List]/[Icons.Filled.CheckCircle] rather than a bookmark glyph:
  * `material-icons-core` (the dependency this project uses, not `-extended`) ships a small, fixed
  * icon set with no `Bookmark`/`BookmarkBorder`/`PlaylistAdd` - confirmed by listing
  * `material-icons-core-1.7.3-sources.jar`'s `filled/` package rather than assuming from memory.
@@ -102,7 +102,7 @@ internal fun MediaActionButtons(
                 onClick = onFavoriteClick,
             )
             MediaActionIconButton(
-                icon = if (isInWatchlist) Icons.Filled.CheckCircle else Icons.Filled.List,
+                icon = if (isInWatchlist) Icons.Filled.CheckCircle else Icons.AutoMirrored.Filled.List,
                 contentDescription = stringResource(Res.string.watchlist_content_description),
                 colors = colors,
                 onClick = onWatchlistClick,

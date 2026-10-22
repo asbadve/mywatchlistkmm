@@ -7,8 +7,8 @@ import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarge
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationReason
+import com.ajinkyabadve.kmmmywatchlist.features.person.model.FavoritePersonPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
-import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.PersonRepository
@@ -17,12 +17,12 @@ import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.notification_person_new_credit_body
 import mywatchlist.composeapp.generated.resources.notification_person_new_credit_title
 import org.jetbrains.compose.resources.getString
+import kotlin.time.Clock
 
 private object PersonCreditNotificationPollerConstant {
     const val TAG = "PersonCreditNotificationPoller"

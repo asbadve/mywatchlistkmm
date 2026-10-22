@@ -11,30 +11,32 @@ import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupPerson
 import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupReminder
 import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupSettings
+import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupSummary
+import com.ajinkyabadve.kmmmywatchlist.features.backup.model.RestoreOutcome
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FavoriteCollectionRecord
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.DiscoverFilterConstant
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRecord
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReleaseReminder
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
+import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.parseDateOrNull
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminder
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderKey
-import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.toLocalTime
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.toMinutesOfDay
-import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRecord
+import com.ajinkyabadve.kmmmywatchlist.features.person.model.FavoritePersonRecord
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepositoryImpl
 import com.russhwolf.settings.Settings
-import kotlinx.datetime.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
 
 object BackupConstant {
     /** The backup contract's version - see [BackupEnvelope]'s KDoc for why it isn't the DB schema version. */
@@ -46,14 +48,6 @@ object BackupConstant {
     internal const val MINUTES_PER_DAY = 24 * 60
     internal val REGION_CODE = Regex("^[A-Z]{2}$")
 }
-
-/** How many of each thing a backup file holds - shown in the restore confirmation. */
-data class BackupSummary(
-    val people: Int,
-    val collections: Int,
-    val reminders: Int,
-    val settings: Int,
-)
 
 sealed interface BackupDecodeResult {
     data class Valid(
@@ -71,15 +65,6 @@ sealed interface BackupDecodeResult {
     /** Not a backup file, or a hand-edited one with an invalid field. Nothing is written. */
     data object Malformed : BackupDecodeResult
 }
-
-/** What a restore actually added - lower than [BackupSummary]'s counts when some items were
- *  already on this device (restore merges, it never overwrites). */
-data class RestoreOutcome(
-    val peopleAdded: Int,
-    val collectionsAdded: Int,
-    val remindersAdded: Int,
-    val settingsApplied: Int,
-)
 
 /**
  * Export and restore of the device-only data (item 15). Composes the existing repositories rather

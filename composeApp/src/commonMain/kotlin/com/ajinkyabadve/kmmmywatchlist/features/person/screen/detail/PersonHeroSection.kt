@@ -39,7 +39,6 @@ import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.firstFilmYear
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.heroBackdropCredit
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.yearsBetween
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
@@ -55,6 +54,7 @@ import mywatchlist.composeapp.generated.resources.person_stat_known_credits
 import mywatchlist.composeapp.generated.resources.person_stat_popularity
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 
 private object PersonHeroConstant {
     // Width-relative like the movie and TV heroes, rather than a fixed dp - a fixed height keeps

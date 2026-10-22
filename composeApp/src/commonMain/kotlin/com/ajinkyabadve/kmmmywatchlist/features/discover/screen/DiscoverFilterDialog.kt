@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
@@ -44,7 +45,6 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Keyword
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.KeywordRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.KeywordRepositoryImpl
 import kotlinx.coroutines.delay
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import mywatchlist.composeapp.generated.resources.Res
@@ -72,6 +72,7 @@ import mywatchlist.composeapp.generated.resources.discover_sort_vote_count_desc
 import mywatchlist.composeapp.generated.resources.discover_title
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
 
 private object DiscoverFilterDialogConstant {
     const val YEAR_RANGE_SIZE = 60
@@ -233,7 +234,7 @@ fun DiscoverFilterDialog(
                         readOnly = true,
                         label = { Text(stringResource(Res.string.discover_filter_year_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearMenuExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                     )
                     DropdownMenu(expanded = yearMenuExpanded, onDismissRequest = { yearMenuExpanded = false }) {
                         DropdownMenuItem(
@@ -267,7 +268,7 @@ fun DiscoverFilterDialog(
                         readOnly = true,
                         label = { Text(stringResource(Res.string.discover_filter_sort_by_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sortMenuExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                     )
                     DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
                         sortOptions.forEach { option ->

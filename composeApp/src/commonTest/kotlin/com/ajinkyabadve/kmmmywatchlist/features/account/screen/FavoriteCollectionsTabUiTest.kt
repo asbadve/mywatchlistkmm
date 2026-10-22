@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.FavoriteCollectionsScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeFavoriteCollectionRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals

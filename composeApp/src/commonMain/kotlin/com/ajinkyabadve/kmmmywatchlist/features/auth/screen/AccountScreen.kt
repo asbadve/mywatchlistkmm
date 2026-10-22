@@ -54,7 +54,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupRestoreDialogs
-import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.backup.viewmodel.BackupScreenModel
 import com.ajinkyabadve.kmmmywatchlist.openUrl
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.account_screen_title
