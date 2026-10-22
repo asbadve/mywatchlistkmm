@@ -1344,3 +1344,29 @@ module straightforward) and item 23 (tests already run on every platform before 
   YAML flows (launch, browse, open detail, favorite, settings) run against the release build on
   Android and iOS before tagging - the one case where outside-in testing earns its cost.
 - [ ] Verify: both modules' tests pass on every platform with the same case count as before.
+
+---
+
+## 25. Settings Toggle to Turn Off Trending Carousel Autoscroll (queued 2026-10-17)
+**Goal**: Let users switch off the Trending tab's carousel autoscroll
+([shipped item 14](shipped_features.md#14-autoscroll-the-trending-media-carousels--done-2026-09-27))
+from the account screen's settings list. Today it can only be stopped indirectly (reduce motion /
+screen reader). Default stays **on**, so nothing changes for existing users. Small; no TMDB
+endpoint, no DB schema change.
+
+- [ ] **Storage**: a repository in `features/settings/repository/` next to
+  `RestrictedModeRepository` (same multiplatform-settings pattern), e.g.
+  `isTrendingAutoScrollEnabled()` / `setTrendingAutoScrollEnabled()`, exposed as a `Flow`/
+  `StateFlow` so the Trending tab reacts without a restart. Key name as a `private const val`.
+- [ ] **Gate**: add an `autoScrollEnabled: Boolean` parameter to `isAutoScrollAllowed`
+  (`core/ui/carousel/AutoScrollCarousel.kt`) and include it in `AutoScrollCarouselEffect`'s keys so
+  flipping the switch stops/starts the loop immediately. Feed it from `TrendingScreenTabViewModel`
+  state down through `TrendingMediaCarousel`.
+- [ ] **UI**: a switch row in `SettingsList.kt` (label + description in `strings.xml`), wired
+  through `AccountUiState` / `AccountScreenModel.onTrendingAutoScrollChanged`.
+- [ ] **Backup**: include the flag in the backup file (`features/backup/model/Backup.kt`) alongside
+  `restrictedModeEnabled`, defaulting to `true` when an older backup lacks it.
+- [ ] Tests: unit - `isAutoScrollAllowed` returns false when the setting is off; repository
+  default is on; screen model persists the change. Compose UI - settings switch renders and
+  toggles; carousel does not advance when disabled.
+- [ ] Verify the usual Gradle tasks (desktopTest, compileKotlinDesktop, assembleDebug, ktlintCheck).
