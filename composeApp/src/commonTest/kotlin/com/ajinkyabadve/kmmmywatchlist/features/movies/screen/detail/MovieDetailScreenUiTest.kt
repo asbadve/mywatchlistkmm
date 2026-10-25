@@ -2,7 +2,6 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasScrollAction
-import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +19,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.MovieDetailScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
+import com.ajinkyabadve.kmmmywatchlist.testing.isVerticalLazyList
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
@@ -179,7 +179,7 @@ class MovieDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(6)
+            onNode(isVerticalLazyList).performScrollToIndex(6)
             onNodeWithText("Actor One").performClick()
             assertEquals(301L, personId)
         }
@@ -240,7 +240,7 @@ class MovieDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(7)
+            onNode(isVerticalLazyList).performScrollToIndex(7)
             onNodeWithText("Rec Movie X").performClick()
             assertEquals(201L, clickedMovieId)
         }
@@ -270,7 +270,7 @@ class MovieDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(8)
+            onNode(isVerticalLazyList).performScrollToIndex(8)
             onNodeWithText("Similar Movie Y").performClick()
             assertEquals(202L, clickedMovieId)
         }

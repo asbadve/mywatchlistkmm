@@ -3,7 +3,6 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasScrollAction
-import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -22,6 +21,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeFavoriteCollectionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.testing.isVerticalLazyList
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
@@ -101,7 +101,7 @@ class CollectionDetailScreenUiTest {
             // The header grew a FollowCollectionButton, so "Part One" (the next LazyColumn item)
             // is no longer in the initially-composed viewport - same scroll-into-view need as the
             // featuredCastClick test below.
-            onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+            onNode(isVerticalLazyList).performScrollToIndex(1)
             onNodeWithText("Part One").performClick()
             assertEquals(201L, clickedMovieId)
         }

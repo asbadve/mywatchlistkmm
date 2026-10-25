@@ -23,6 +23,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class TrendingScreenContentTrailersUiTest {
@@ -117,7 +118,9 @@ class TrendingScreenContentTrailersUiTest {
                 )
             }
 
-            onAllNodesWithTag(LatestTrailersConstant.PLACEHOLDER_TAG).assertCountEquals(LatestTrailersConstant.EMPTY_PLACEHOLDER_COUNT)
+            // At least one, not EMPTY_PLACEHOLDER_COUNT: the rail is a LazyRow, so it only composes the
+            // cards that fit. A phone-width window fits 2 of the 280dp cards, a wide one all 3.
+            assertTrue(onAllNodesWithTag(LatestTrailersConstant.PLACEHOLDER_TAG).fetchSemanticsNodes().isNotEmpty())
             gate.complete(Unit)
 
             waitUntil { onAllNodesWithText(MOVIE_TITLE).fetchSemanticsNodes().isNotEmpty() }

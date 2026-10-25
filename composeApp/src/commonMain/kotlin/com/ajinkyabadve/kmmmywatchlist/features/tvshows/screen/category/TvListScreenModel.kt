@@ -12,6 +12,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
+import io.github.aakira.napier.Napier
 import io.github.aakira.napier.log
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
@@ -20,6 +21,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
+
+// Logged through Napier rather than printStackTrace(): Napier is silent until initLogging()
+// installs a backend, and raw stdout stack traces from a finished coroutine break Gradle's
+// Kotlin/Native test-output parser (failed the iOS CI job on PR #23).
+private const val LOG_HTTP_ERROR = "Http error loading list page"
+private const val LOG_NETWORK_ERROR = "Network error loading list page"
 
 class TvListScreenModel(
     private val tvFetchType: String,
@@ -56,7 +63,7 @@ class TvListScreenModel(
                             ListState.PAGINATION_EXHAUST
                         }
                 } catch (httpExceptions: HttpExceptions) {
-                    httpExceptions.printStackTrace()
+                    Napier.e(throwable = httpExceptions) { LOG_HTTP_ERROR }
                     listState =
                         if (httpExceptions.isServerError()) {
                             ListState.NETWORK_ERROR
@@ -64,8 +71,7 @@ class TvListScreenModel(
                             ListState.ERROR
                         }
                 } catch (e: IOException) {
-                    e.printStackTrace()
-                    log { "IOException" }
+                    Napier.e(throwable = e) { LOG_NETWORK_ERROR }
                     listState = ListState.NETWORK_ERROR
                 } catch (e: ContentConvertException) {
                     log { "Malformed response: ${e.message}" }

@@ -1,7 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.detail
 
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,6 +17,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.FakeTvDetailCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.TvDetailScreenModel
+import com.ajinkyabadve.kmmmywatchlist.testing.isVerticalLazyList
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
@@ -112,7 +112,7 @@ class TvDetailScreenUiTest {
 
             onNodeWithText("Fake Tv Detail").assertExists()
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(4)
+            onNode(isVerticalLazyList).performScrollToIndex(4)
             onNodeWithText("Season 1").assertExists()
         }
 
@@ -136,7 +136,7 @@ class TvDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+            onNode(isVerticalLazyList).performScrollToIndex(1)
             onNodeWithText("IMDb").assertExists()
         }
 
@@ -157,7 +157,7 @@ class TvDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+            onNode(isVerticalLazyList).performScrollToIndex(1)
             onNodeWithText("IMDb").assertDoesNotExist()
         }
 
@@ -188,7 +188,7 @@ class TvDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(4)
+            onNode(isVerticalLazyList).performScrollToIndex(4)
             // Clicks the season card body rather than the "View All" TextButton - the two now
             // trigger different callbacks (this jumps straight into the season's episodes), but the
             // TextButton's ripple/indication machinery doesn't reliably deliver its click in this
@@ -224,7 +224,7 @@ class TvDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(7)
+            onNode(isVerticalLazyList).performScrollToIndex(7)
             onNodeWithText("Actor One").performClick()
             assertEquals(301L, personId)
         }
@@ -255,7 +255,7 @@ class TvDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(8)
+            onNode(isVerticalLazyList).performScrollToIndex(8)
             onNodeWithText("Rec Tv Show X").performClick()
             assertEquals(201L, clickedTvShowId)
         }
@@ -286,7 +286,7 @@ class TvDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(9)
+            onNode(isVerticalLazyList).performScrollToIndex(9)
             onNodeWithText("Similar Tv Show Y").performClick()
             assertEquals(202L, clickedTvShowId)
         }

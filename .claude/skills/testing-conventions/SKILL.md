@@ -69,6 +69,9 @@ executable, not an app bundle, so:
   (e.g. `UpcomingReleasesTab(showReminderControls = false)`) instead of relying on running as desktop.
 - **Compare state lists with `.toList()`.** `assertEquals(listOf(...), mutableStateListOf(...))`
   passes on the JVM but fails on Kotlin/Native.
+- **Nothing in app or test code may write raw stack traces to stdout** (`printStackTrace()`).
+  On iOS it can crash Gradle's test reporter and fail the task with no failing test. Log through
+  Napier instead (code-conventions §1).
 
 ### ...and on an Android device (item 23 step 2, 2026-10-25)
 
@@ -90,10 +93,27 @@ the first run:
   `Box(Modifier.size(PHONE_WIDTH, PHONE_HEIGHT))` when the test is about truncation), and a fixed
   `performScrollToIndex(n)` may not bring a node on screen - prefer `performScrollToNode(hasText(...))`.
   `performScrollToNode` only scrolls forward; to go back up, use `performScrollToIndex`.
+  It cuts both ways: CI runs on a phone (Pixel 6), where a different set of horizontal rails is
+  composed. To scroll a screen's vertical lazy list, use `onNode(isVerticalLazyList)` (in
+  `testing/`), not `onNode(hasScrollToIndexAction())`. Don't count lazy-row items, which depend on
+  width. Before pushing a UI test change, also run it at phone size:
+  `adb shell wm size 1080x2400 && adb shell wm density 420`, then `wm size reset` / `wm density reset`.
 - **Bounds are whole pixels:** compare dp sizes with a tolerance (about 1.dp), not exactly.
 - **Android framework bugs:** skip just that test on Android with
   `skipOnAndroid("<issue link>")` (reports "skipped", still runs elsewhere) and log it in
-  `KNOWN_BUGS.md`. Currently: typing into a dialog (issuetracker 325299275).
+  `KNOWN_BUGS.md`. Currently: interacting with a dialog (issuetracker 325299275). It hit only
+  typing tests locally, but on the slower CI emulator a plain click hit it too. It **crashes the
+  whole instrumentation run**: the first CI run stopped at 258/767, which hid ~500 tests. So when
+  the reported total is short of the full count, look for a process crash, not just the listed
+  failures.
+- **Device settings change app behaviour.** Animator duration scale 0 (the usual "disable
+  animations for tests" advice) is what `isReducedMotionEnabled()` reads as reduce-motion, so the
+  carousel stops auto-scrolling. Keep animations on: the tests use a virtual clock and don't
+  need them off. Before writing a test that depends on an OS setting (reduce motion, screen
+  reader, dark mode, locale), check what the CI emulator sets.
+- **Passing locally isn't proof.** Each of the first three CI runs found failures the local
+  foldable emulator didn't (emulator settings, timing, screen size). Treat the PR's
+  `android-device-tests` / `ios-tests` result as the real check.
 
 ### Known pitfalls (all found the hard way this session)
 
