@@ -1292,8 +1292,8 @@ don't test the packaged/minified app or OS features (camera permission, notifica
   `MediaActionButtonsSection(scheduleNotificationJob)`, `PrivacyConsentGate(policyContent)`;
   plus `.toList()` on state-list assertions and an explicit `showReminderControls`. Rules added to
   the testing-conventions skill.
-- [ ] **Step 2 - Android emulator** - *done locally 2026-10-25, CI job awaiting its first run*: all 767
-  `commonTest` tests run with `:composeApp:connectedDebugAndroidTest` (764 pass, 3 skipped on
+- [ ] **Step 2 - Android emulator** - *done locally 2026-10-25; first CI run failed 2 tests (animations-off CI setting, dialog race), fixed*: all 767
+  `commonTest` tests run with `:composeApp:connectedDebugAndroidTest` (763 pass, 4 skipped on
   Android for a Compose framework bug - see `KNOWN_BUGS.md`). Needed: Espresso 3.7.0 (3.5.0 breaks
   on recent Android), no `Dispatchers.setMain` in UI tests (hung every ViewModel screen), and
   screen-size-independent tests. Found and fixed a real bug on the way: every list tab fetched

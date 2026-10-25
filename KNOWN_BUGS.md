@@ -82,10 +82,11 @@ On the last page `page == totalPages`, so it stays `true` and scrolling to the e
 **Next step:** change `<=` to `<` in the five models, drop the `totalPages = 0` workaround from
 the tests, add a unit test that the last page doesn't paginate.
 
-## Android tests — 3 region-picker UI tests are skipped (Compose test-framework race)
-**What you see:** on an Android device/emulator, `RegionPickerDialogUiTest`'s three tests that
-type into the dialog report "skipped". They still run on desktop and iOS.
-**Where:** typing into a dialog intermittently crashes the test process with
+## Android tests — 4 region-picker UI tests are skipped (Compose test-framework race)
+**What you see:** on an Android device/emulator, 4 of the 5 `RegionPickerDialogUiTest` tests report
+"skipped": the three that type into the dialog, plus the tap-a-region test, which hit the same race
+on the slower CI emulator (2026-10-25, PR #23). They still run on desktop and iOS.
+**Where:** interacting with a dialog intermittently crashes the test process with
 `IllegalArgumentException: performMeasureAndLayout called during measure layout` - the test
 thread measures while the main thread lays out the dialog window. Not app code:
 https://issuetracker.google.com/issues/325299275. Skipped with `skipOnAndroid(...)`.

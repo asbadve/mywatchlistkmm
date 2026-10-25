@@ -153,7 +153,10 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          disable-animations: true
+          # Kept on: the Compose tests drive their own virtual clock, so system animations can't
+          # make them flaky. Animator scale 0 also counts as the OS reduce-motion setting
+          # (isReducedMotionEnabled), which turns off the carousel auto-scroll its test checks.
+          disable-animations: false
           script: ./gradlew :composeApp:connectedDebugAndroidTest
 
       - name: Upload test results
