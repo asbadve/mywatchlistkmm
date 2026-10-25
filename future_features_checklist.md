@@ -1284,10 +1284,21 @@ supported, and it renders blank today anyway (`KNOWN_BUGS.md`).
 don't test the packaged/minified app or OS features (camera permission, notification delivery).
 
 ### Implementation Checklist
-- [ ] **Step 1 - iOS simulator**: run the shared UI tests with `:composeApp:iosSimulatorArm64Test`
-  locally; fix whatever is desktop-only in them (file paths, `createTestDatabase()` -> a native
-  driver or an `expect` helper); add a macOS CI job.
-- [ ] **Step 2 - Android emulator**: add the device-test source set
+- [x] **Step 1 - iOS simulator** (done 2026-10-20): all 767 `commonTest` tests pass with
+  `:composeApp:iosSimulatorArm64Test`; new `ios-tests` CI job on `macos-latest` (PR-only into
+  `master`/`release/*` since 2026-10-25). The first run
+  found tests reaching app-bundle-only APIs (abort the test binary) and JVM-only assumptions -
+  fixed with seams: `LocalNotificationPermissionRequester`, a `Notifier` interface for the pollers,
+  `MediaActionButtonsSection(scheduleNotificationJob)`, `PrivacyConsentGate(policyContent)`;
+  plus `.toList()` on state-list assertions and an explicit `showReminderControls`. Rules added to
+  the testing-conventions skill.
+- [ ] **Step 2 - Android emulator** - *done locally 2026-10-25; first CI run failed 2 tests (animations-off CI setting, dialog race), fixed*: all 767
+  `commonTest` tests run with `:composeApp:connectedDebugAndroidTest` (763 pass, 4 skipped on
+  Android for a Compose framework bug - see `KNOWN_BUGS.md`). Needed: Espresso 3.7.0 (3.5.0 breaks
+  on recent Android), no `Dispatchers.setMain` in UI tests (hung every ViewModel screen), and
+  screen-size-independent tests. Found and fixed a real bug on the way: every list tab fetched
+  page 1 twice. CI: `android-device-tests` job (API 35 emulator, Linux + KVM) runs only on pull
+  requests into `master` or `release/*` - added 2026-10-25, not yet run on GitHub. Original plan: add the device-test source set
   (`androidDeviceTest` / `testInstrumentationRunner`), make it depend on the shared UI tests, run
   `:composeApp:connectedAndroidTest` locally; add an emulator CI job
   (`reactivecircus/android-emulator-runner`). Coordinate with item 22 - the module split changes

@@ -1,10 +1,13 @@
 package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotificationPermissionRequester
+import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotificationPermissionRequester
 import kotlinx.datetime.LocalTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,7 +19,14 @@ class ReleaseReminderHeroActionUiTest {
         runComposeUiTest {
             val calls = mutableListOf<Boolean>()
             setContent {
-                ReleaseReminderHeroAction(isSet = false, reminderTime = null, contentColor = Color.Black, onSetReminder = { calls.add(it) })
+                CompositionLocalProvider(LocalNotificationPermissionRequester provides FakeNotificationPermissionRequester()) {
+                    ReleaseReminderHeroAction(
+                        isSet = false,
+                        reminderTime = null,
+                        contentColor = Color.Black,
+                        onSetReminder = { calls.add(it) },
+                    )
+                }
             }
 
             onNodeWithText(REMIND_ME).performClick()
@@ -31,12 +41,14 @@ class ReleaseReminderHeroActionUiTest {
         runComposeUiTest {
             val calls = mutableListOf<Boolean>()
             setContent {
-                ReleaseReminderHeroAction(
-                    isSet = true,
-                    reminderTime = NINE_AM,
-                    contentColor = Color.Black,
-                    onSetReminder = { calls.add(it) },
-                )
+                CompositionLocalProvider(LocalNotificationPermissionRequester provides FakeNotificationPermissionRequester()) {
+                    ReleaseReminderHeroAction(
+                        isSet = true,
+                        reminderTime = NINE_AM,
+                        contentColor = Color.Black,
+                        onSetReminder = { calls.add(it) },
+                    )
+                }
             }
 
             onNodeWithText(TIME_CAPTION).assertExists()

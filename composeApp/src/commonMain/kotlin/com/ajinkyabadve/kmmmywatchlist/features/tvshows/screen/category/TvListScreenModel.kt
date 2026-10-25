@@ -12,6 +12,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
+import io.github.aakira.napier.Napier
 import io.github.aakira.napier.log
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
@@ -20,6 +21,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
+
+// Logged through Napier rather than printStackTrace(): Napier is silent until initLogging()
+// installs a backend, and raw stdout stack traces from a finished coroutine break Gradle's
+// Kotlin/Native test-output parser (failed the iOS CI job on PR #23).
+private const val LOG_HTTP_ERROR = "Http error loading list page"
+private const val LOG_NETWORK_ERROR = "Network error loading list page"
 
 class TvListScreenModel(
     private val tvFetchType: String,
@@ -38,7 +45,7 @@ class TvListScreenModel(
 
     internal fun loadTvShows() {
         viewModelScope.launch(Dispatchers.Main) {
-            if (isFirstPage() || isNotFirstPageAndCanPaginate() && (isListStateLoadable())) {
+            if (!isLoadInFlightOrExhausted() && (isFirstPage() || isNotFirstPageAndCanPaginate() && isListStateLoadable())) {
                 listState = if (isFirstPage()) ListState.LOADING else ListState.PAGINATING
 
                 try {
@@ -56,7 +63,7 @@ class TvListScreenModel(
                             ListState.PAGINATION_EXHAUST
                         }
                 } catch (httpExceptions: HttpExceptions) {
-                    httpExceptions.printStackTrace()
+                    Napier.e(throwable = httpExceptions) { LOG_HTTP_ERROR }
                     listState =
                         if (httpExceptions.isServerError()) {
                             ListState.NETWORK_ERROR
@@ -64,8 +71,7 @@ class TvListScreenModel(
                             ListState.ERROR
                         }
                 } catch (e: IOException) {
-                    e.printStackTrace()
-                    log { "IOException" }
+                    Napier.e(throwable = e) { LOG_NETWORK_ERROR }
                     listState = ListState.NETWORK_ERROR
                 } catch (e: ContentConvertException) {
                     log { "Malformed response: ${e.message}" }
@@ -79,6 +85,12 @@ class TvListScreenModel(
     }
 
     private fun isListStateLoadable() = isListStateIdle() || isListStateNetworkError()
+
+    // init's first load and the screen's pagination effect can both call this before either runs.
+    // A first-page load never checked the state, so page 1 was fetched twice - and when page 1 was
+    // also the last, `page` stays 1, so the queued second call refetched it after it finished.
+    private fun isLoadInFlightOrExhausted() =
+        listState == ListState.LOADING || listState == ListState.PAGINATING || listState == ListState.PAGINATION_EXHAUST
 
     private fun isNotFirstPageAndCanPaginate() = (page != 1 && canPaginate)
 

@@ -133,6 +133,10 @@ internal fun MediaActionButtons(
  * doubles as the gate for [EpisodeAlertOptInDialog]: `null` for movies means the prompt can never
  * show there, matching [MediaActionsState.shouldPromptForEpisodeAlerts] only ever going true for
  * `MediaTypeConstant.TV`.
+ *
+ * [scheduleNotificationJob] is a seam for UI tests, the same shape as `NotificationJobSync`'s
+ * `scheduleJob`: on iOS the real `NotificationScheduler` registers with `BGTaskScheduler`, which
+ * aborts a test binary that isn't an app bundle.
  */
 @Composable
 internal fun MediaActionButtonsSection(
@@ -145,6 +149,7 @@ internal fun MediaActionButtonsSection(
     tvShowName: String? = null,
     listsRepository: ListsRepository = ListsRepositoryImpl(),
     notificationSettingsRepository: NotificationSettingsRepository = NotificationSettingsRepositoryImpl(),
+    scheduleNotificationJob: () -> Unit = { NotificationScheduler.schedule() },
 ) {
     val authScreenModel =
         viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) }
@@ -209,7 +214,7 @@ internal fun MediaActionButtonsSection(
                         if (notificationPermissionRequester.request()) {
                             notificationSettingsRepository.setEpisodeNotificationsEnabled(true)
                             notificationSettingsRepository.markEpisodeAlertOptInPromptSeen()
-                            NotificationScheduler.schedule()
+                            scheduleNotificationJob()
                         }
                     }
                 },

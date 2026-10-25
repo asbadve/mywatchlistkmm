@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.notifications
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotifier
+import com.ajinkyabadve.kmmmywatchlist.core.notification.Notifier
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepositoryImpl
@@ -50,7 +51,7 @@ class PersonCreditNotificationPoller(
     private val favoritePersonRepository: FavoritePersonRepository = FavoritePersonRepositoryImpl(),
     private val personRepository: PersonRepository = PersonRepositoryImpl(),
     private val notificationLedgerRepository: NotificationLedgerRepository = NotificationLedgerRepositoryImpl(),
-    private val notifier: LocalNotifier = LocalNotifier,
+    private val notifier: Notifier = LocalNotifier,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     suspend fun poll() {

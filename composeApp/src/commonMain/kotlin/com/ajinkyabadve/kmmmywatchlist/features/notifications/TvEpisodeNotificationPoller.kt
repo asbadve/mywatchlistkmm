@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotifier
+import com.ajinkyabadve.kmmmywatchlist.core.notification.Notifier
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationLedgerRepository
@@ -53,7 +54,7 @@ class TvEpisodeNotificationPoller(
     private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
     private val tvRepository: TvRepository = TvRepositoryImpl(),
     private val notificationLedgerRepository: NotificationLedgerRepository = NotificationLedgerRepositoryImpl(),
-    private val notifier: LocalNotifier = LocalNotifier,
+    private val notifier: Notifier = LocalNotifier,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     private val today: () -> String = { Clock.System.todayIn(TimeZone.currentSystemDefault()).toString() },
 ) {

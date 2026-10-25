@@ -52,6 +52,69 @@ unit tests - this makes the ViewModel's `init { load...() }` (and any nested
 `coroutineScope { async {}.awaitAll() }` fan-out, e.g. TvDetailScreenModel's per-season fetch)
 resolve synchronously before `setContent` even runs, no `runTest`/`advanceUntilIdle()` needed.
 
+### Tests must pass on the iOS simulator too (item 23, 2026-10-20)
+
+`commonTest` runs on desktop (`desktopTest`) **and** the iOS simulator
+(`:composeApp:iosSimulatorArm64Test`, CI job `ios-tests`). The iOS tests run as a plain
+executable, not an app bundle, so:
+
+- **Never let a test reach an app-bundle-only API** - `UNUserNotificationCenter`,
+  `BGTaskScheduler`, `UIKitView` (embedded `WKWebView`). The process aborts and every later test is
+  lost. Use the seams: `CompositionLocalProvider(LocalNotificationPermissionRequester provides
+  FakeNotificationPermissionRequester())` for any test that taps through to a permission request;
+  `FakeNotifier` for pollers; `scheduleNotificationJob`/`NotificationJobSync(scheduleJob = {})` for
+  the background job; `PrivacyConsentGate(policyContent = ...)` for the policy web view. New code
+  that calls such an API from common code needs a seam the same way.
+- **Don't assume the platform.** `isMobilePlatform()` is `true` on iOS - pass the flag explicitly
+  (e.g. `UpcomingReleasesTab(showReminderControls = false)`) instead of relying on running as desktop.
+- **Compare state lists with `.toList()`.** `assertEquals(listOf(...), mutableStateListOf(...))`
+  passes on the JVM but fails on Kotlin/Native.
+- **Nothing in app or test code may write raw stack traces to stdout** (`printStackTrace()`).
+  On iOS it can crash Gradle's test reporter and fail the task with no failing test. Log through
+  Napier instead (code-conventions §1).
+
+### ...and on an Android device (item 23 step 2, 2026-10-25)
+
+`commonTest` also runs as Android instrumented tests: `./gradlew :composeApp:connectedDebugAndroidTest`
+(needs a running emulator/device; one class: add
+`-Pandroid.testInstrumentationRunnerArguments.class=<fully.qualified.Class>`). Rules learned on
+the first run:
+
+- **Never `Dispatchers.setMain(...)` in a Compose UI test.** A `TestDispatcher` as Main is a
+  second clock nothing drives on a device: Paging/ViewModel work never finishes and every
+  `waitForIdle()` times out (`ComposeNotIdleException`). Let ViewModels use the real main
+  dispatcher, as in production. (ScreenModel *unit* tests without Compose may still use it.)
+- **So wait for async results instead of asserting at once:** `waitUntilExactlyOneExists(hasText(...))`
+  for UI that appears after a load, `waitUntil { condition }` for a value set by a coroutine.
+  `waitForIdle()` alone does not wait for ViewModel coroutines on the real main dispatcher.
+- **Don't assume the screen size.** The emulator may be a foldable/tablet: more rails are on
+  screen (`onNode(hasScrollAction())` then matches several - use `onAllNodes(hasScrollAction())[0]`
+  for the outer list), text that truncates on a phone may fit (wrap the content in
+  `Box(Modifier.size(PHONE_WIDTH, PHONE_HEIGHT))` when the test is about truncation), and a fixed
+  `performScrollToIndex(n)` may not bring a node on screen - prefer `performScrollToNode(hasText(...))`.
+  `performScrollToNode` only scrolls forward; to go back up, use `performScrollToIndex`.
+  It cuts both ways: CI runs on a phone (Pixel 6), where a different set of horizontal rails is
+  composed. To scroll a screen's vertical lazy list, use `onNode(isVerticalLazyList)` (in
+  `testing/`), not `onNode(hasScrollToIndexAction())`. Don't count lazy-row items, which depend on
+  width. Before pushing a UI test change, also run it at phone size:
+  `adb shell wm size 1080x2400 && adb shell wm density 420`, then `wm size reset` / `wm density reset`.
+- **Bounds are whole pixels:** compare dp sizes with a tolerance (about 1.dp), not exactly.
+- **Android framework bugs:** skip just that test on Android with
+  `skipOnAndroid("<issue link>")` (reports "skipped", still runs elsewhere) and log it in
+  `KNOWN_BUGS.md`. Currently: interacting with a dialog (issuetracker 325299275). It hit only
+  typing tests locally, but on the slower CI emulator a plain click hit it too. It **crashes the
+  whole instrumentation run**: the first CI run stopped at 258/767, which hid ~500 tests. So when
+  the reported total is short of the full count, look for a process crash, not just the listed
+  failures.
+- **Device settings change app behaviour.** Animator duration scale 0 (the usual "disable
+  animations for tests" advice) is what `isReducedMotionEnabled()` reads as reduce-motion, so the
+  carousel stops auto-scrolling. Keep animations on: the tests use a virtual clock and don't
+  need them off. Before writing a test that depends on an OS setting (reduce motion, screen
+  reader, dark mode, locale), check what the CI emulator sets.
+- **Passing locally isn't proof.** Each of the first three CI runs found failures the local
+  foldable emulator didn't (emulator settings, timing, screen size). Treat the PR's
+  `android-device-tests` / `ios-tests` result as the real check.
+
 ### Known pitfalls (all found the hard way this session)
 
 - **Off-screen `LazyColumn`/`LazyRow` items are composed but not click-reachable.** Compose

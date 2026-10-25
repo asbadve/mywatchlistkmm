@@ -8,30 +8,12 @@ import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.FakePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class PersonScreenTabUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     @Test
     fun testPersonScreenTab_personClick_invokesOnPersonSelected() =
         runComposeUiTest {

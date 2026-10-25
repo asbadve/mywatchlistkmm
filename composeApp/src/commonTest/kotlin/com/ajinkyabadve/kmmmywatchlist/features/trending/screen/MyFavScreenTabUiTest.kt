@@ -13,31 +13,19 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMe
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class MyFavScreenTabUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var fakeWebAuthLauncher: WebAuthLauncher
 
     @BeforeTest
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
         fakeAuthRepository = FakeAuthRepository()
         fakeWebAuthLauncher = FakeWebAuthLauncher()
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     @Test

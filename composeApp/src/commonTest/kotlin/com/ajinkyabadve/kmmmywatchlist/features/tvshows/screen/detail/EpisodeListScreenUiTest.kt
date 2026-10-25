@@ -12,30 +12,12 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.ExternalIds
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import io.ktor.utils.io.errors.IOException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class EpisodeListScreenUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     private fun successfulSeasonWithEpisodes() =
         TvSeasonDetail(
             id = 1,

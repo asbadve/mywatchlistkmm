@@ -12,29 +12,13 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.text.TextRange
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class SearchScreenUiTest {
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     private val mixedResults =
         SearchPageResult(
             page = 1,

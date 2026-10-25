@@ -21,29 +21,12 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class TrendingScreenContentTrailersUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     // A ViewModel with a trailer already loaded, so the only thing under test is whether the
     // showTrailers flag decides to render the rail.
     private fun viewModelWithTrailer(videosGate: CompletableDeferred<Unit>? = null): TrendingScreenTabViewModel {
@@ -135,7 +118,9 @@ class TrendingScreenContentTrailersUiTest {
                 )
             }
 
-            onAllNodesWithTag(LatestTrailersConstant.PLACEHOLDER_TAG).assertCountEquals(LatestTrailersConstant.EMPTY_PLACEHOLDER_COUNT)
+            // At least one, not EMPTY_PLACEHOLDER_COUNT: the rail is a LazyRow, so it only composes the
+            // cards that fit. A phone-width window fits 2 of the 280dp cards, a wide one all 3.
+            assertTrue(onAllNodesWithTag(LatestTrailersConstant.PLACEHOLDER_TAG).fetchSemanticsNodes().isNotEmpty())
             gate.complete(Unit)
 
             waitUntil { onAllNodesWithText(MOVIE_TITLE).fetchSemanticsNodes().isNotEmpty() }
@@ -213,9 +198,10 @@ class TrendingScreenContentTrailersUiTest {
             waitUntil { onAllNodesWithText(OLDER_TITLE, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
             // Newest-first: this card is inserted ahead of the one already shown.
             newerGate.complete(Unit)
-            waitForIdle()
 
-            onNodeWithText(NEWER_TITLE).assertIsDisplayed()
+            // The insert and the rail's scroll back to the start both land after the gate opens.
+            waitUntil { onAllNodesWithText(NEWER_TITLE).fetchSemanticsNodes().isNotEmpty() }
+            waitUntil { runCatching { onNodeWithText(NEWER_TITLE).assertIsDisplayed() }.isSuccess }
         }
 
     private companion object {

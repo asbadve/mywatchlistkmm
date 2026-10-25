@@ -8,7 +8,7 @@ package com.ajinkyabadve.kmmmywatchlist.core.notification
  * [rememberNotificationPermissionRequester] instead, precisely because that part - unlike posting -
  * needs an Activity/composition context on Android.
  */
-expect object LocalNotifier {
+expect object LocalNotifier : Notifier {
     /**
      * [notificationId] should be a stable hash of whatever this notification is about (e.g.
      * `Triple(mediaId, mediaType, reason).hashCode()`) so a genuinely new notification about the
@@ -32,7 +32,7 @@ expect object LocalNotifier {
      * `suspend` (unlike the rest of this `expect`/`actual` pattern's siblings) because fetching that
      * image is itself a network call - every caller already runs inside a coroutine (the poller).
      */
-    suspend fun post(
+    override suspend fun post(
         notificationId: Int,
         title: String,
         body: String,

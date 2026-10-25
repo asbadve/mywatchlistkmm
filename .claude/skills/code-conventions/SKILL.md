@@ -25,6 +25,13 @@ enumerate the known types; do not add a `catch (e: Exception)` fallback. The exi
 `@Suppress("detekt:TooGenericExceptionCaught")` blocks are legacy - do not copy that pattern
 into new code.
 
+**Log a caught exception through Napier, never `printStackTrace()`** (learned 2026-10-25, PR #23):
+`Napier.e(tag = TAG, throwable = e) { MESSAGE_CONSTANT }`. A raw stdout stack trace printed from a
+coroutine that finishes after its test has ended breaks Gradle's Kotlin/Native test-output parser
+("Received output for test that is not running"). That failed the whole `iosSimulatorArm64Test`
+task with no test actually failing, and only intermittently. Napier stays silent in tests, because
+`initLogging()` never runs there, and still shows the error in the app's log.
+
 ## 2. No magic strings
 
 - **Not user-facing** (log tags, API paths/params, TMDB job/department names, map keys):

@@ -1,14 +1,19 @@
 package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotificationPermissionRequester
+import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CastMember
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Credits
@@ -16,31 +21,14 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeFavoriteCollectionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
+import com.ajinkyabadve.kmmmywatchlist.testing.isVerticalLazyList
 import io.ktor.utils.io.errors.IOException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class CollectionDetailScreenUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     private fun successfulCollectionDetail() =
         CollectionDetail(
             id = 1,
@@ -113,7 +101,7 @@ class CollectionDetailScreenUiTest {
             // The header grew a FollowCollectionButton, so "Part One" (the next LazyColumn item)
             // is no longer in the initially-composed viewport - same scroll-into-view need as the
             // featuredCastClick test below.
-            onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+            onNode(isVerticalLazyList).performScrollToIndex(1)
             onNodeWithText("Part One").performClick()
             assertEquals(201L, clickedMovieId)
         }
@@ -140,7 +128,9 @@ class CollectionDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollToIndexAction()).performScrollToIndex(2)
+            // Scroll to the node itself, not a fixed list index: how far down the cast rail sits
+            // depends on the screen size, and an off-screen click silently does nothing.
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Actor One"))
             onNodeWithText("Actor One").performClick()
             assertEquals(301L, personId)
         }
@@ -236,14 +226,16 @@ class CollectionDetailScreenUiTest {
             val viewModel = CollectionDetailScreenModel(1, buildRepository(), favoriteCollectionRepository)
 
             setContent {
-                CollectionDetailScreen(
-                    collectionId = 1,
-                    windowSize = WindowSize.COMPACT,
-                    onBackClicked = {},
-                    onMovieClicked = {},
-                    viewModel = viewModel,
-                    notificationSettingsRepository = FakeNotificationSettingsRepository(),
-                )
+                CompositionLocalProvider(LocalNotificationPermissionRequester provides FakeNotificationPermissionRequester()) {
+                    CollectionDetailScreen(
+                        collectionId = 1,
+                        windowSize = WindowSize.COMPACT,
+                        onBackClicked = {},
+                        onMovieClicked = {},
+                        viewModel = viewModel,
+                        notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                    )
+                }
             }
 
             onNodeWithText("Follow").performClick()

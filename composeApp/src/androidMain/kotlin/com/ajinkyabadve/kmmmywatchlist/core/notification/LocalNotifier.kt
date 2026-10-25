@@ -39,8 +39,8 @@ internal object AndroidNotificationConstant {
     const val PERSON_GROUP_KEY_PREFIX = "person_notifications_group_"
 }
 
-actual object LocalNotifier {
-    actual suspend fun post(
+actual object LocalNotifier : Notifier {
+    actual override suspend fun post(
         notificationId: Int,
         title: String,
         body: String,

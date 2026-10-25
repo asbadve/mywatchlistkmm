@@ -12,4 +12,7 @@ private object DesktopNotificationPermissionRequester : NotificationPermissionRe
 }
 
 @Composable
-actual fun rememberNotificationPermissionRequester(): NotificationPermissionRequester = remember { DesktopNotificationPermissionRequester }
+actual fun rememberPlatformNotificationPermissionRequester(): NotificationPermissionRequester =
+    remember {
+        DesktopNotificationPermissionRequester
+    }

@@ -48,6 +48,8 @@ optional.
   versioning in `composeApp/build.gradle.kts`.
 
 ## Verify
-`./gradlew :composeApp:desktopTest` (tests), `:composeApp:compileKotlinDesktop` +
+`./gradlew :composeApp:desktopTest` (tests; also `:composeApp:iosSimulatorArm64Test` on macOS - the
+same tests on the iOS simulator, and `:composeApp:connectedDebugAndroidTest` with an emulator running -
+the same tests on Android; see testing-conventions), `:composeApp:compileKotlinDesktop` +
 `:composeApp:assembleDebug` (compile checks), and `:composeApp:ktlintCheck` (lint - must be
 zero violations before finalizing; `ktlintFormat` auto-fixes most).

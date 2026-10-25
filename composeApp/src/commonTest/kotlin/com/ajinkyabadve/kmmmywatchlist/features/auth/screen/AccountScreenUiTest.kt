@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isToggleable
@@ -11,15 +12,12 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.auth.FakeWebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
 import com.ajinkyabadve.kmmmywatchlist.core.file.FakeBackupFileLauncher
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotificationPermissionRequester
+import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupTestFixture
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,22 +25,15 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class AccountScreenUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var fakeWebAuthLauncher: WebAuthLauncher
     private lateinit var fixture: AccountTestFixture
 
     @BeforeTest
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
         fakeAuthRepository = FakeAuthRepository()
         fakeWebAuthLauncher = FakeWebAuthLauncher()
         fixture = AccountTestFixture()
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     @Test
@@ -170,13 +161,15 @@ class AccountScreenUiTest {
             val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
 
             setContent {
-                AccountScreen(
-                    isDialogPresentation = false,
-                    onBackClicked = {},
-                    webAuthLauncher = fakeWebAuthLauncher,
-                    accountScreenModel = fixture.screenModel,
-                    screenModel = screenModel,
-                )
+                CompositionLocalProvider(LocalNotificationPermissionRequester provides FakeNotificationPermissionRequester()) {
+                    AccountScreen(
+                        isDialogPresentation = false,
+                        onBackClicked = {},
+                        webAuthLauncher = fakeWebAuthLauncher,
+                        accountScreenModel = fixture.screenModel,
+                        screenModel = screenModel,
+                    )
+                }
             }
 
             onAllNodes(isToggleable())[1].performClick()
@@ -479,13 +472,15 @@ class AccountScreenUiTest {
     fun testFireTestReminderShowsWhenItWillFire() =
         runComposeUiTest {
             setContent {
-                AccountScreen(
-                    isDialogPresentation = false,
-                    onBackClicked = {},
-                    webAuthLauncher = fakeWebAuthLauncher,
-                    accountScreenModel = fixture.screenModel,
-                    screenModel = AuthScreenModel(authRepository = fakeAuthRepository),
-                )
+                CompositionLocalProvider(LocalNotificationPermissionRequester provides FakeNotificationPermissionRequester()) {
+                    AccountScreen(
+                        isDialogPresentation = false,
+                        onBackClicked = {},
+                        webAuthLauncher = fakeWebAuthLauncher,
+                        accountScreenModel = fixture.screenModel,
+                        screenModel = AuthScreenModel(authRepository = fakeAuthRepository),
+                    )
+                }
             }
 
             onNodeWithText(DEBUG_FIRE_TEST_REMINDER).performScrollTo().performClick()

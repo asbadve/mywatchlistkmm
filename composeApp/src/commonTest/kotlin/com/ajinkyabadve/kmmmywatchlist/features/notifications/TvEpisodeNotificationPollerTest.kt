@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.notifications
 
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotifier
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeNotificationLedgerRepository
@@ -26,6 +27,7 @@ class TvEpisodeNotificationPollerTest {
         tvRepository: TvRepository,
         notificationLedgerRepository: FakeNotificationLedgerRepository,
     ) = TvEpisodeNotificationPoller(
+        notifier = FakeNotifier(),
         trackedMediaRepository = trackedMediaRepository,
         tvRepository = tvRepository,
         notificationLedgerRepository = notificationLedgerRepository,

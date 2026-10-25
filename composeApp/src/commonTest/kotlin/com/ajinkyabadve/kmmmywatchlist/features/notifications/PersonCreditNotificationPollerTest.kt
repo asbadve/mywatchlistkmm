@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.notifications
 
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotifier
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeNotificationLedgerRepository
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.NotificationReason
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCombinedCredits
@@ -25,6 +26,7 @@ class PersonCreditNotificationPollerTest {
         personRepository: PersonRepository,
         notificationLedgerRepository: FakeNotificationLedgerRepository,
     ) = PersonCreditNotificationPoller(
+        notifier = FakeNotifier(),
         favoritePersonRepository = favoritePersonRepository,
         personRepository = personRepository,
         notificationLedgerRepository = notificationLedgerRepository,

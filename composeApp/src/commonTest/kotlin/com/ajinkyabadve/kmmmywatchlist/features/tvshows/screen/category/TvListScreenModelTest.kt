@@ -54,7 +54,7 @@ class TvListScreenModelTest {
             val viewModel = TvListScreenModel(FETCH_TYPE, fakeRepository)
 
             assertEquals(ListState.IDLE, viewModel.listState)
-            assertEquals(listOf(Tv(id = 1, title = "Tv A")), viewModel.tvList)
+            assertEquals(listOf(Tv(id = 1, title = "Tv A")), viewModel.tvList.toList())
             assertEquals(listOf(1 to FETCH_TYPE), fakeRepository.getTvShowsCalls)
         }
 
@@ -101,7 +101,7 @@ class TvListScreenModelTest {
                 )
             viewModel.loadTvShows()
 
-            assertEquals(listOf(Tv(id = 1, title = "Tv A"), Tv(id = 2, title = "Tv B")), viewModel.tvList)
+            assertEquals(listOf(Tv(id = 1, title = "Tv A"), Tv(id = 2, title = "Tv B")), viewModel.tvList.toList())
             assertEquals(listOf(1 to FETCH_TYPE, 2 to FETCH_TYPE), fakeRepository.getTvShowsCalls)
         }
 

@@ -54,7 +54,7 @@ class PersonListScreenModelTest {
             val viewModel = PersonListScreenModel(fakeRepository)
 
             assertEquals(ListState.IDLE, viewModel.listState)
-            assertEquals(listOf(Person(id = 1, name = "Person X")), viewModel.personList)
+            assertEquals(listOf(Person(id = 1, name = "Person X")), viewModel.personList.toList())
             assertEquals(listOf(1), fakeRepository.getPopularPeopleCalls)
         }
 
@@ -90,7 +90,7 @@ class PersonListScreenModelTest {
 
             assertEquals(
                 listOf(Person(id = 1, name = "Person X"), Person(id = 2, name = "Person Y")),
-                viewModel.personList,
+                viewModel.personList.toList(),
             )
             assertEquals(listOf(1, 2), fakeRepository.getPopularPeopleCalls)
         }

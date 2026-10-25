@@ -22,6 +22,7 @@ import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -149,10 +150,11 @@ class CollapsibleBarUiTest {
             repeat(3) { onNodeWithTag(LIST_TAG).performTouchInput { swipeUp() } }
 
             val footerHeight = onNodeWithTag(FOOTER_TAG).getBoundsInRoot().height
-            assertEquals(
-                FOOTER_FLOOR,
-                footerHeight,
-                "footer should hold at the inset floor rather than collapsing away entirely",
+            // Within a pixel, not exact: bounds are measured in whole pixels, so at a device density
+            // like 2.625 the 24dp floor reads back as 24.2dp.
+            assertTrue(
+                abs((footerHeight - FOOTER_FLOOR).value) <= PIXEL_ROUNDING_TOLERANCE.value,
+                "footer should hold at the inset floor rather than collapsing away entirely, was $footerHeight",
             )
         }
 
@@ -219,6 +221,7 @@ class CollapsibleBarUiTest {
         const val FOOTER_TAG = "footer"
         const val FOOTER_CONTENT_TAG = "footerContent"
         val FOOTER_FLOOR = 24.dp
+        val PIXEL_ROUNDING_TOLERANCE = 1.dp
 
         /** Enough items to overflow the test root many times over, so the list definitely scrolls. */
         const val ITEM_COUNT = 100
