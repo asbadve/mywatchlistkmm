@@ -1,14 +1,15 @@
-package com.ajinkyabadve.kmmmywatchlist.features.person.screen.category
+package com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.ajinkyabadve.kmmmywatchlist.core.util.addAllNewBy
+import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
-import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
-import com.ajinkyabadve.kmmmywatchlist.features.person.repository.PersonRepository
-import com.ajinkyabadve.kmmmywatchlist.features.person.repository.PersonRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
 import io.github.aakira.napier.Napier
@@ -21,41 +22,32 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 
-// Logged through Napier rather than printStackTrace(): Napier is silent until initLogging()
-// installs a backend, and raw stdout stack traces from a finished coroutine break Gradle's
-// Kotlin/Native test-output parser (failed the iOS CI job on PR #23).
-private const val LOG_HTTP_ERROR = "Http error loading list page"
-private const val LOG_NETWORK_ERROR = "Network error loading list page"
-
-class PersonListScreenModel(
-    private val personRepository: PersonRepository = PersonRepositoryImpl(),
+class MovieListScreenModel(
+    private val movieFetchType: String,
+    private val movieRepository: MovieRepository = MovieRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
-    internal val personList = mutableStateListOf<Person>()
+    internal val movieList = mutableStateListOf<Movie>()
 
     private var page by mutableStateOf(1)
     private var canPaginate by mutableStateOf(false)
     var listState by mutableStateOf(ListState.IDLE)
 
     init {
-        loadPopularPeople()
+        loadMovies()
     }
 
-    internal fun loadPopularPeople() {
+    internal fun loadMovies() {
         viewModelScope.launch(Dispatchers.Main) {
             if (!isLoadInFlightOrExhausted() && (isFirstPage() || isNotFirstPageAndCanPaginate() && isListStateLoadable())) {
                 listState = if (isFirstPage()) ListState.LOADING else ListState.PAGINATING
 
                 try {
-                    val response = personRepository.getPopularPeople(page)
+                    val response = movieRepository.getMovies(page, movieFetchType)
                     response.list?.let {
-                        canPaginate = response.page <= (response.totalPages ?: 0)
-                        if (isFirstPage()) {
-                            personList.clear()
-                            personList.addAll(it)
-                        } else {
-                            personList.addAll(it)
-                        }
+                        canPaginate = response.page <= response.totalPages
+                        if (isFirstPage()) movieList.clear()
+                        movieList.addAllNewBy(it) { movie -> movie.id }
                     }
                     listState =
                         if (canPaginate) {
@@ -65,14 +57,18 @@ class PersonListScreenModel(
                             ListState.PAGINATION_EXHAUST
                         }
                 } catch (httpExceptions: HttpExceptions) {
+                    // todo find another exception solution
                     Napier.e(throwable = httpExceptions) { LOG_HTTP_ERROR }
                     listState =
                         if (httpExceptions.isServerError()) {
+                            // todo check network error specific and add retry button if its not last one
                             ListState.NETWORK_ERROR
                         } else {
                             ListState.ERROR
                         }
                 } catch (e: IOException) {
+                    // todo catch //java.net.UnknownHostException: Unable to resolve host
+                    //  "api.themoviedb.org": No address associated with hostname
                     Napier.e(throwable = e) { LOG_NETWORK_ERROR }
                     listState = ListState.NETWORK_ERROR
                 } catch (e: ContentConvertException) {
@@ -108,5 +104,13 @@ class PersonListScreenModel(
         canPaginate = false
         viewModelScope.cancel()
         super.onCleared()
+    }
+
+    private companion object {
+        // Logged through Napier rather than printStackTrace(): Napier is silent until initLogging()
+        // installs a backend, and raw stdout stack traces from a finished coroutine break Gradle's
+        // Kotlin/Native test-output parser (failed the iOS CI job on PR #23).
+        const val LOG_HTTP_ERROR = "Http error loading list page"
+        const val LOG_NETWORK_ERROR = "Network error loading list page"
     }
 }

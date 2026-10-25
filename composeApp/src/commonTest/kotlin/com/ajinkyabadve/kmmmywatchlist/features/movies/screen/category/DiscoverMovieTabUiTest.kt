@@ -9,6 +9,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverFilterRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeGenreRepository
+import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.DiscoverMovieScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test

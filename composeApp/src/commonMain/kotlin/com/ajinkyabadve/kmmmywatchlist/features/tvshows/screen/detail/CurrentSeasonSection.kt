@@ -38,14 +38,22 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
+import com.ajinkyabadve.kmmmywatchlist.core.ui.text.ExpandableText
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.SectionHeaderWithScrollHint
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Episode
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.action_view_all
 import mywatchlist.composeapp.generated.resources.baseline_tv_24
+import mywatchlist.composeapp.generated.resources.no_overview_available_season
+import mywatchlist.composeapp.generated.resources.section_current_season
+import mywatchlist.composeapp.generated.resources.title_episodes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+private object CurrentSeasonSectionConstant {
+    const val OVERVIEW_PREVIEW_LINES = 4
+}
 
 @Composable
 fun CurrentSeasonSection(
@@ -67,7 +75,7 @@ fun CurrentSeasonSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Current Season",
+                text = stringResource(Res.string.section_current_season),
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -140,11 +148,10 @@ fun CurrentSeasonSection(
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = season.overview.ifEmpty { "No overview available for this season." },
+                ExpandableText(
+                    text = season.overview.ifEmpty { stringResource(Res.string.no_overview_available_season) },
+                    collapsedMaxLines = CurrentSeasonSectionConstant.OVERVIEW_PREVIEW_LINES,
                     fontSize = 13.sp,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                 )
             }
@@ -154,7 +161,7 @@ fun CurrentSeasonSection(
             Spacer(modifier = Modifier.height(16.dp))
             val lazyRowState = rememberLazyListState()
             SectionHeaderWithScrollHint(
-                title = "Episodes",
+                title = stringResource(Res.string.title_episodes),
                 listSize = season.episodes.size,
                 lazyRowState = lazyRowState,
                 scrollStep = 2,

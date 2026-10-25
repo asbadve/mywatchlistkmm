@@ -24,7 +24,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeGenreRepos
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
-import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category.DiscoverTvScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.DiscoverTvScreenModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
 import kotlin.test.assertEquals

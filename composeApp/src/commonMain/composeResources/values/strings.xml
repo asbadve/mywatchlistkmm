@@ -163,6 +163,7 @@
     <string name="justwatch_attribution">Streaming availability by JustWatch</string>
     <string name="hero_watch_on">Watch on %1$s</string>
     <string name="hero_play_trailer">Play trailer</string>
+    <string name="trailer_open_details_action">Open details</string>
     <string name="hero_runtime_hours_minutes">%1$dh %2$dm</string>
     <string name="hero_runtime_minutes">%1$dm</string>
     <string name="hero_rating">\u2605 %1$s</string>
@@ -178,6 +179,8 @@
     <string name="no_episodes_available">No episodes available for this season.</string>
     <string name="no_overview_available">No overview available.</string>
     <string name="no_overview_available_episode">No overview available for this episode.</string>
+    <string name="no_overview_available_season">No overview available for this season.</string>
+    <string name="section_current_season">Current Season</string>
     <string name="no_filmography_matches">No credits match the selected filters.</string>
 
     <!-- Filters -->

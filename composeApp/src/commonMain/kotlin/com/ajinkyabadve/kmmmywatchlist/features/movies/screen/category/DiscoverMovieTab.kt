@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
+import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.DiscoverMovieScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.UpcomingBadge
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn

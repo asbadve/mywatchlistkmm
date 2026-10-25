@@ -23,6 +23,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.search.screen.UpcomingBadge
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.DiscoverTvScreenModel
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock

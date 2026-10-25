@@ -154,7 +154,13 @@ fun TrendingScreenContent(
             }
 
             if (showTrailers) {
-                trailersViewModel?.let { LatestTrailersSection(viewModel = it) }
+                trailersViewModel?.let {
+                    LatestTrailersSection(
+                        viewModel = it,
+                        onMovieSelected = onMovieSelected,
+                        onTvShowSelected = onTvShowSelected,
+                    )
+                }
             }
 
             sections.forEach { section ->

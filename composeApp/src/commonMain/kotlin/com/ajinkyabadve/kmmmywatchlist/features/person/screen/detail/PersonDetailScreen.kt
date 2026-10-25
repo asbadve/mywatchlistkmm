@@ -70,6 +70,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.DetailTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.collapsingTopBar
 import com.ajinkyabadve.kmmmywatchlist.core.ui.hero.NotificationOptInDialog
 import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
+import com.ajinkyabadve.kmmmywatchlist.core.ui.text.ExpandableText
 import com.ajinkyabadve.kmmmywatchlist.design.util.FullscreenMediaGallery
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.detail.MovieImagesSection
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
@@ -82,8 +83,6 @@ import com.ajinkyabadve.kmmmywatchlist.openUrl
 import com.ajinkyabadve.kmmmywatchlist.util.ImageDownloader
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
-import mywatchlist.composeapp.generated.resources.action_read_less
-import mywatchlist.composeapp.generated.resources.action_read_more
 import mywatchlist.composeapp.generated.resources.action_retry
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
 import mywatchlist.composeapp.generated.resources.filter_all
@@ -410,8 +409,6 @@ private fun PersonLinksRow(person: PersonDetail) {
 private fun BiographySection(biography: String) {
     if (biography.isEmpty()) return
     // Long biographies collapse to a preview with a Read more toggle, like themoviedb.org.
-    var expanded by remember { mutableStateOf(false) }
-    var hasOverflow by remember { mutableStateOf(false) }
     Column(
         modifier =
             Modifier
@@ -425,28 +422,12 @@ private fun BiographySection(biography: String) {
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
+        ExpandableText(
             text = biography,
+            collapsedMaxLines = PersonDetailConstant.BIOGRAPHY_PREVIEW_LINES,
             fontSize = 14.sp,
-            maxLines = if (expanded) Int.MAX_VALUE else PersonDetailConstant.BIOGRAPHY_PREVIEW_LINES,
-            overflow = TextOverflow.Ellipsis,
-            onTextLayout = { layoutResult ->
-                if (!expanded) hasOverflow = layoutResult.hasVisualOverflow
-            },
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
         )
-        if (hasOverflow || expanded) {
-            Text(
-                text = stringResource(if (expanded) Res.string.action_read_less else Res.string.action_read_more),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier =
-                    Modifier
-                        .padding(top = 4.dp)
-                        .clickable { expanded = !expanded },
-            )
-        }
     }
 }
 
