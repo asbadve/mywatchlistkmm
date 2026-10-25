@@ -36,8 +36,8 @@ internal object IosNotificationUserInfoKeyConstant {
 private const val LOCAL_NOTIFIER_TAG = "LocalNotifierIos"
 
 @OptIn(ExperimentalForeignApi::class)
-actual object LocalNotifier {
-    actual suspend fun post(
+actual object LocalNotifier : Notifier {
+    actual override suspend fun post(
         notificationId: Int,
         title: String,
         body: String,

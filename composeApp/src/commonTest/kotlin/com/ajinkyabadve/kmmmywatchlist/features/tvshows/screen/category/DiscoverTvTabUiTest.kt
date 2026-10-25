@@ -10,29 +10,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeGenreRepos
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class DiscoverTvTabUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     @Test
     fun testResultsAlreadyLoadedOnFirstOpen() =
         runComposeUiTest {

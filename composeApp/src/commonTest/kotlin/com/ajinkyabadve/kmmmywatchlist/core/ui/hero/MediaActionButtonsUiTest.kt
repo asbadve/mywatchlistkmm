@@ -1,12 +1,15 @@
 package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotificationPermissionRequester
+import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
@@ -15,12 +18,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -131,10 +130,11 @@ class MediaActionButtonsUiTest {
 class MediaActionButtonsSectionUiTest {
     private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var fakeAccountMediaRepository: FakeAccountMediaRepository
+    private var scheduledJobCount = 0
 
     @BeforeTest
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        scheduledJobCount = 0
         fakeAuthRepository = FakeAuthRepository()
         fakeAuthRepository.saveSession(
             UserSession(
@@ -145,11 +145,6 @@ class MediaActionButtonsSectionUiTest {
             ),
         )
         fakeAccountMediaRepository = FakeAccountMediaRepository()
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     private fun colors() = HeroColors.forTheme(isDark = true, colorScheme = lightColorScheme(), hasSystemStatusBar = false)
@@ -245,6 +240,7 @@ class MediaActionButtonsSectionUiTest {
                     tvShowName = MediaActionButtonsUiTestConstant.TV_SHOW_NAME,
                     listsRepository = FakeListsRepository(),
                     notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                    scheduleNotificationJob = { scheduledJobCount++ },
                 )
             }
 
@@ -267,6 +263,7 @@ class MediaActionButtonsSectionUiTest {
                     mediaActionsState = mediaActionsState,
                     listsRepository = FakeListsRepository(),
                     notificationSettingsRepository = FakeNotificationSettingsRepository(),
+                    scheduleNotificationJob = { scheduledJobCount++ },
                 )
             }
 
@@ -291,6 +288,7 @@ class MediaActionButtonsSectionUiTest {
                     tvShowName = MediaActionButtonsUiTestConstant.TV_SHOW_NAME,
                     listsRepository = FakeListsRepository(),
                     notificationSettingsRepository = fakeNotificationSettingsRepository,
+                    scheduleNotificationJob = { scheduledJobCount++ },
                 )
             }
             onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).performClick()
@@ -310,16 +308,19 @@ class MediaActionButtonsSectionUiTest {
             val mediaActionsState = preloadedTvMediaActionsState()
             val fakeNotificationSettingsRepository = FakeNotificationSettingsRepository()
             setContent {
-                MediaActionButtonsSection(
-                    mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,
-                    colors = colors(),
-                    showAddToList = false,
-                    authRepository = fakeAuthRepository,
-                    mediaActionsState = mediaActionsState,
-                    tvShowName = MediaActionButtonsUiTestConstant.TV_SHOW_NAME,
-                    listsRepository = FakeListsRepository(),
-                    notificationSettingsRepository = fakeNotificationSettingsRepository,
-                )
+                CompositionLocalProvider(LocalNotificationPermissionRequester provides FakeNotificationPermissionRequester()) {
+                    MediaActionButtonsSection(
+                        mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,
+                        colors = colors(),
+                        showAddToList = false,
+                        authRepository = fakeAuthRepository,
+                        mediaActionsState = mediaActionsState,
+                        tvShowName = MediaActionButtonsUiTestConstant.TV_SHOW_NAME,
+                        listsRepository = FakeListsRepository(),
+                        notificationSettingsRepository = fakeNotificationSettingsRepository,
+                        scheduleNotificationJob = { scheduledJobCount++ },
+                    )
+                }
             }
             onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).performClick()
 
@@ -330,6 +331,7 @@ class MediaActionButtonsSectionUiTest {
             waitForIdle()
 
             assertTrue(fakeNotificationSettingsRepository.hasSeenEpisodeAlertOptInPrompt())
+            assertEquals(1, scheduledJobCount)
             onNodeWithText(MediaActionButtonsUiTestConstant.EPISODE_ALERT_PROMPT_TITLE).assertDoesNotExist()
         }
 }

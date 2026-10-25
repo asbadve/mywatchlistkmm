@@ -62,3 +62,43 @@ jobs:
           name: jacoco-coverage-report
           path: composeApp/build/reports/jacoco/desktopTestCoverage/**
           if-no-files-found: ignore
+
+  ios-tests:
+    # The same commonTest suite as verify (UI tests included), run on the iOS simulator - catches
+    # code and tests that only work on the JVM. A separate job so it runs in parallel on macOS.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          # Gradle configures every target, Android included, even for an iOS-only task.
+          packages: 'platform-tools'
+
+      - name: Cache Gradle and Kotlin/Native
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: gradle-konan-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml') }}
+          restore-keys: gradle-konan-${{ runner.os }}-
+
+      - name: Run tests on the iOS simulator
+        run: ./gradlew :composeApp:iosSimulatorArm64Test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: composeApp/build/test-results/iosSimulatorArm64Test/**
+          if-no-files-found: ignore

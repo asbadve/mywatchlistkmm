@@ -9,31 +9,13 @@ import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.FakePersonRepository
 import io.ktor.utils.io.errors.IOException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class CommonPersonListScreenContentUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     @Test
     fun testPersonListScreenContent_personClick_invokesOnPersonSelected() =
         runComposeUiTest {

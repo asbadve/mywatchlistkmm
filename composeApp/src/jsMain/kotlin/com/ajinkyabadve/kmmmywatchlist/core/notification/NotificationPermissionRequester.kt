@@ -15,4 +15,7 @@ private class JsNotificationPermissionRequester : NotificationPermissionRequeste
 }
 
 @Composable
-actual fun rememberNotificationPermissionRequester(): NotificationPermissionRequester = remember { JsNotificationPermissionRequester() }
+actual fun rememberPlatformNotificationPermissionRequester(): NotificationPermissionRequester =
+    remember {
+        JsNotificationPermissionRequester()
+    }

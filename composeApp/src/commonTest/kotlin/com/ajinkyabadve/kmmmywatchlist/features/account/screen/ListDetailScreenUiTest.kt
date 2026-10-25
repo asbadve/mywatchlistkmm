@@ -2,20 +2,17 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.waitUntilExactlyOneExists
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbListDetail
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeCustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -27,20 +24,13 @@ private object ListDetailScreenUiTestConstant {
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class ListDetailScreenUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeListsRepository: FakeListsRepository
     private lateinit var fakeCustomListRepository: FakeCustomListRepository
 
     @BeforeTest
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
         fakeListsRepository = FakeListsRepository()
         fakeCustomListRepository = FakeCustomListRepository()
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     private fun buildModel() =
@@ -91,9 +81,10 @@ class ListDetailScreenUiTest {
                 )
             }
 
+            waitUntilExactlyOneExists(hasContentDescription("Remove from list"))
             onNodeWithContentDescription("Remove from list").performClick()
 
-            assertTrue(fakeListsRepository.removeMovieFromListCalls.contains(1L))
+            waitUntil { fakeListsRepository.removeMovieFromListCalls.contains(1L) }
         }
 
     @Test

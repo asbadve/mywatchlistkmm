@@ -52,7 +52,7 @@ class DiscoverMovieScreenModelTest {
             val viewModel = screenModel(FakeDiscoverFilterRepository(movieFilters = persisted))
 
             assertEquals(persisted, viewModel.filters)
-            assertEquals(listOf(Movie(id = 1, title = "Movie A")), viewModel.movieList)
+            assertEquals(listOf(Movie(id = 1, title = "Movie A")), viewModel.movieList.toList())
             assertEquals(listOf(Triple(1, persisted, false)), fakeDiscoverRepository.discoverMoviesCalls)
         }
 
@@ -71,7 +71,7 @@ class DiscoverMovieScreenModelTest {
 
             assertEquals(newFilters, viewModel.filters)
             assertEquals(listOf(newFilters), filterRepository.setMovieFiltersCalls)
-            assertEquals(listOf(Movie(id = 2, title = "New")), viewModel.movieList)
+            assertEquals(listOf(Movie(id = 2, title = "New")), viewModel.movieList.toList())
             assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
         }
 

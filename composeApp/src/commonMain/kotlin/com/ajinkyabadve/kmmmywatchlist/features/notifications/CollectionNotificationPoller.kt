@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.ImageConfigResolver
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.notification.CollectionNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotifier
+import com.ajinkyabadve.kmmmywatchlist.core.notification.Notifier
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.FavoriteCollectionPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FavoriteCollectionRepository
@@ -50,7 +51,7 @@ class CollectionNotificationPoller(
     private val favoriteCollectionRepository: FavoriteCollectionRepository = FavoriteCollectionRepositoryImpl(),
     private val movieRepository: MovieRepository = MovieRepositoryImpl(),
     private val notificationLedgerRepository: NotificationLedgerRepository = NotificationLedgerRepositoryImpl(),
-    private val notifier: LocalNotifier = LocalNotifier,
+    private val notifier: Notifier = LocalNotifier,
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     suspend fun poll() {

@@ -1,5 +1,6 @@
 package com.ajinkyabadve.kmmmywatchlist.features.notifications
 
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotifier
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.CollectionDetail
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeFavoriteCollectionRepository
@@ -24,6 +25,7 @@ class CollectionNotificationPollerTest {
         movieRepository: MovieRepository,
         notificationLedgerRepository: FakeNotificationLedgerRepository,
     ) = CollectionNotificationPoller(
+        notifier = FakeNotifier(),
         favoriteCollectionRepository = favoriteCollectionRepository,
         movieRepository = movieRepository,
         notificationLedgerRepository = notificationLedgerRepository,

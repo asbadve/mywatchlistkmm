@@ -25,13 +25,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverRe
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeGenreRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.DiscoverMovieScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -39,18 +33,6 @@ import kotlin.test.assertEquals
 class MovieScreenTabsUiTest {
     private companion object {
         const val MANY_MOVIES_COUNT = 30
-    }
-
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     // totalPages = 0 marks pagination as exhausted after the first load - otherwise the fake's

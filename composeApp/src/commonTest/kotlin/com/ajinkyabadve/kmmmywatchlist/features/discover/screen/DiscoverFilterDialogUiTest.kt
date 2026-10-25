@@ -9,35 +9,18 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Keyword
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.KeywordRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class DiscoverFilterDialogUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
     private val noopKeywordRepository =
         object : KeywordRepository {
             override suspend fun searchKeywords(query: String): List<Keyword> = emptyList()
         }
     private val genres = listOf(Genre(id = 28, name = "Action"), Genre(id = 35, name = "Comedy"))
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
 
     @Test
     fun testReopeningShowsPreviouslyAppliedGenreAndKeywordAsRemovableChips() =

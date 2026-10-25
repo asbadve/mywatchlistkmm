@@ -2,6 +2,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
@@ -15,7 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeReminderScheduler
+import com.ajinkyabadve.kmmmywatchlist.core.notification.LocalNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingDateKind
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.UpcomingMediaItem
@@ -399,11 +402,11 @@ class UpcomingReleasesTabUiTest {
         }
 
     @Test
-    fun testDesktop_doesNotRenderReminderControls() =
+    fun testRemindersUnavailable_doesNotRenderReminderControls() =
         runComposeUiTest {
-            // A local reminder notification has nothing to schedule against on desktop - the
-            // not-yet-built reminder UI (item 16) must not render here, not even as a disabled
-            // placeholder. This test runs as desktopTest, where isMobilePlatform() is false.
+            // Desktop and web have nothing to schedule a reminder against, so the reminder UI must
+            // not render there, not even as a disabled placeholder. Passed explicitly rather than
+            // relying on isMobilePlatform(): this suite also runs on the iOS simulator.
             val fakeTrackedMediaRepository =
                 FakeTrackedMediaRepository().apply {
                     seedUpcoming(
@@ -430,6 +433,7 @@ class UpcomingReleasesTabUiTest {
                             movieDetailCacheRepository = FakeMovieDetailCacheRepository(),
                             regionRepository = FakeRegionRepository(),
                         ),
+                    showReminderControls = false,
                 )
             }
 
@@ -475,7 +479,9 @@ class UpcomingReleasesTabUiTest {
                 )
 
             setContent {
-                UpcomingReleasesTab(windowSize = WindowSize.COMPACT, viewModel = viewModel, showReminderControls = true)
+                CompositionLocalProvider(LocalNotificationPermissionRequester provides FakeNotificationPermissionRequester()) {
+                    UpcomingReleasesTab(windowSize = WindowSize.COMPACT, viewModel = viewModel, showReminderControls = true)
+                }
             }
 
             // The compact Next-up card and the timeline row both carry a bell for this title.

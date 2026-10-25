@@ -29,7 +29,7 @@ private class AndroidNotificationPermissionRequester(
 }
 
 @Composable
-actual fun rememberNotificationPermissionRequester(): NotificationPermissionRequester {
+actual fun rememberPlatformNotificationPermissionRequester(): NotificationPermissionRequester {
     val context = LocalContext.current
     var pendingContinuation by remember { mutableStateOf<CancellableContinuation<Boolean>?>(null) }
     val launcher =

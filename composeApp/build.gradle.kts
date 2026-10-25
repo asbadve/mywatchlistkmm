@@ -27,6 +27,10 @@ kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
+        // Runs commonTest (UI tests included) as instrumented tests on a device/emulator:
+        // `./gradlew :composeApp:connectedDebugAndroidTest`. Common Compose tests can't run as local
+        // Android unit tests. After item 22 this becomes the library plugin's withDeviceTestBuilder.
+        instrumentedTestVariant.sourceSetTree.set(org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.test)
     }
 
     jvm("desktop")
@@ -293,6 +297,7 @@ android {
         applicationId = "com.ajinkyabadve.kmmmywatchlist.androidApp"
         versionCode = releaseVersionCode
         versionName = releaseVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     sourceSets["main"].apply {
         manifest.srcFile("src/androidMain/AndroidManifest.xml")
@@ -371,6 +376,11 @@ if (!hasAndroidReleaseSigningConfig) {
 
 dependencies {
     implementation(libs.androidx.material3.window.size.class1.android)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4.android)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    // Declares the empty ComponentActivity runComposeUiTest launches; debug builds only.
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 compose.desktop {

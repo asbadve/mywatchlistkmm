@@ -6,8 +6,8 @@ import org.w3c.notifications.Notification
 import org.w3c.notifications.NotificationOptions
 import org.w3c.notifications.NotificationPermission
 
-actual object LocalNotifier {
-    actual suspend fun post(
+actual object LocalNotifier : Notifier {
+    actual override suspend fun post(
         notificationId: Int,
         title: String,
         body: String,

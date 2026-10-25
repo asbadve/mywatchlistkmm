@@ -1,22 +1,18 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.waitUntilExactlyOneExists
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -26,17 +22,6 @@ class AccountFavoritesWatchlistTabUiTest {
     // live coroutine on `Dispatchers.Main` to actually pull from the upstream Flow - same reason
     // MovieDetailScreenUiTest sets this, just newly load-bearing here (the pre-Paging3 version of
     // this ScreenModel didn't depend on a long-lived Main-dispatcher coroutine the same way).
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
 
     private fun testSession() = UserSession(sessionId = "session", accountId = 1L, username = "u", name = "n")
 
@@ -59,7 +44,7 @@ class AccountFavoritesWatchlistTabUiTest {
                     trackedMediaRepository = fake,
                 )
             }
-            waitForIdle()
+            waitUntilExactlyOneExists(hasText(MOVIE_TITLE))
 
             onNodeWithText(MOVIE_TITLE).performClick()
 
@@ -122,8 +107,7 @@ class AccountFavoritesWatchlistTabUiTest {
                     trackedMediaRepository = fake,
                 )
             }
-            waitForIdle()
-            onNodeWithText(OLD_TITLE).assertExists()
+            waitUntilExactlyOneExists(hasText(OLD_TITLE))
 
             // A different title gets favorited elsewhere (e.g. from a detail screen) - modeled as a
             // write to the same local table this tab's PagingSource reads from.
@@ -132,9 +116,7 @@ class AccountFavoritesWatchlistTabUiTest {
                 SearchMediaType.MOVIE,
                 listOf(SearchResultItem(id = 2, mediaTypeRaw = MediaTypeConstant.MOVIE, title = NEW_TITLE)),
             )
-            waitForIdle()
-
-            onNodeWithText(NEW_TITLE).assertExists()
+            waitUntilExactlyOneExists(hasText(NEW_TITLE))
         }
 
     @Test
@@ -163,9 +145,7 @@ class AccountFavoritesWatchlistTabUiTest {
                     trackedMediaRepository = fake,
                 )
             }
-            waitForIdle()
-
-            onNodeWithText(UPCOMING_BADGE_TEXT).assertExists()
+            waitUntilExactlyOneExists(hasText(UPCOMING_BADGE_TEXT))
         }
 
     private companion object {

@@ -43,10 +43,15 @@ object PrivacyConsentGateConstant {
  * install: [PrivacyConsentRepository] persists acceptance, so a later launch skips straight to
  * [content]. There is deliberately no way to see [content] without accepting - no back-press
  * dismissal, no skip action, no dialog-style "outside tap to close".
+ *
+ * [policyContent] renders the policy itself - the platform's [PrivacyPolicyContent] in the app. UI
+ * tests pass [PrivacyPolicySummaryContent] instead: the iOS/Android renderers embed a native web
+ * view, which the Compose test harness can't host.
  */
 @Composable
 fun PrivacyConsentGate(
     privacyConsentRepository: PrivacyConsentRepository = remember { PrivacyConsentRepositoryImpl() },
+    policyContent: @Composable (url: String, modifier: Modifier) -> Unit = { url, modifier -> PrivacyPolicyContent(url, modifier) },
     content: @Composable () -> Unit,
 ) {
     var accepted by remember { mutableStateOf(privacyConsentRepository.hasAcceptedPrivacyPolicy()) }
@@ -54,6 +59,7 @@ fun PrivacyConsentGate(
         content()
     } else {
         PrivacyConsentScreen(
+            policyContent = policyContent,
             onAccept = {
                 privacyConsentRepository.markPrivacyPolicyAccepted()
                 accepted = true
@@ -63,7 +69,10 @@ fun PrivacyConsentGate(
 }
 
 @Composable
-private fun PrivacyConsentScreen(onAccept: () -> Unit) {
+private fun PrivacyConsentScreen(
+    policyContent: @Composable (url: String, modifier: Modifier) -> Unit,
+    onAccept: () -> Unit,
+) {
     var checked by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -106,9 +115,9 @@ private fun PrivacyConsentScreen(onAccept: () -> Unit) {
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(16.dp),
             )
-            PrivacyPolicyContent(
-                url = PrivacyConsentConstant.PRIVACY_POLICY_URL,
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+            policyContent(
+                PrivacyConsentConstant.PRIVACY_POLICY_URL,
+                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
             )
         }
     }

@@ -71,7 +71,7 @@ class DiscoverTvScreenModelTest {
             val viewModel = screenModel(FakeDiscoverFilterRepository(tvFilters = persisted))
 
             assertEquals(persisted, viewModel.filters)
-            assertEquals(listOf(Tv(id = 1, title = "Show A")), viewModel.tvList)
+            assertEquals(listOf(Tv(id = 1, title = "Show A")), viewModel.tvList.toList())
             assertEquals(listOf(Triple(1, persisted, false)), fakeDiscoverRepository.discoverTvShowsCalls)
         }
 
@@ -90,7 +90,7 @@ class DiscoverTvScreenModelTest {
 
             assertEquals(newFilters, viewModel.filters)
             assertEquals(listOf(newFilters), filterRepository.setTvFiltersCalls)
-            assertEquals(listOf(Tv(id = 2, title = "New")), viewModel.tvList)
+            assertEquals(listOf(Tv(id = 2, title = "New")), viewModel.tvList.toList())
             assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
         }
 

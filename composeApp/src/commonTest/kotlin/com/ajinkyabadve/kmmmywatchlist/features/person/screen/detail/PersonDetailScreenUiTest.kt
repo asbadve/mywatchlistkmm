@@ -1,5 +1,8 @@
 package com.ajinkyabadve.kmmmywatchlist.features.person.screen.detail
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -11,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCombinedCredits
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonCredit
@@ -19,30 +23,12 @@ import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FakeFavoritePe
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.FakePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import io.ktor.utils.io.errors.IOException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class PersonDetailScreenUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     private val longBiography =
         "A remarkably long biography sentence describing a whole career. ".repeat(20)
 
@@ -109,14 +95,18 @@ class PersonDetailScreenUiTest {
             val viewModel = PersonDetailScreenModel(personId = 1, personRepository = fakeRepository)
 
             setContent {
-                PersonDetailScreen(
-                    personId = 1,
-                    windowSize = WindowSize.COMPACT,
-                    onBackClicked = {},
-                    onMovieClicked = {},
-                    onTvShowClicked = {},
-                    viewModel = viewModel,
-                )
+                // Phone-sized whatever the device: on a tablet/foldable the whole biography fits and
+                // there is no "Read more" to test.
+                Box(modifier = Modifier.size(PHONE_WIDTH, PHONE_HEIGHT)) {
+                    PersonDetailScreen(
+                        personId = 1,
+                        windowSize = WindowSize.COMPACT,
+                        onBackClicked = {},
+                        onMovieClicked = {},
+                        onTvShowClicked = {},
+                        viewModel = viewModel,
+                    )
+                }
             }
 
             // The hero banner fills the first screenful, so the biography is below the fold and the
@@ -125,8 +115,13 @@ class PersonDetailScreenUiTest {
             onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Read more"))
             onNodeWithText("Read more").assertExists()
             onNodeWithText("Read more").performClick()
-            onNodeWithText("Read less").assertExists()
+            // Expanded, the biography pushes its link below a phone-sized viewport, and a click on an
+            // off-screen node silently does nothing (testing-conventions skill) - scroll to it first.
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Read less"))
             onNodeWithText("Read less").performClick()
+            // Collapsing shrinks the item and leaves it above a phone-sized viewport, where
+            // performScrollToNode (which scrolls forward) can't find it - jump back by index.
+            onAllNodes(hasScrollAction())[0].performScrollToIndex(BIOGRAPHY_ITEM_INDEX)
             onNodeWithText("Read more").assertExists()
         }
 
@@ -348,5 +343,8 @@ class PersonDetailScreenUiTest {
         // for, photos, filmography - the last of which isn't composed within the default test
         // viewport, so it must be scrolled into view before its contents can be interacted with.
         const val FILMOGRAPHY_ITEM_INDEX = 5
+        const val BIOGRAPHY_ITEM_INDEX = 2
+        val PHONE_WIDTH = 360.dp
+        val PHONE_HEIGHT = 640.dp
     }
 }

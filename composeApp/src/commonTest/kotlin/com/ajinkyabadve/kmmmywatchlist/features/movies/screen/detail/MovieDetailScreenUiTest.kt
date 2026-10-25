@@ -21,30 +21,12 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeMovieDetai
 import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.MovieDetailScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.CrewMember
 import io.ktor.utils.io.errors.IOException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class MovieDetailScreenUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     private fun successfulMovieDetail() =
         MovieDetail(
             id = 1,
@@ -134,9 +116,9 @@ class MovieDetailScreenUiTest {
             // The title is in the hero, which fills most of the first screenful; the tagline and
             // collection banner sit below it, so the lazy list has to be scrolled before they exist.
             onNodeWithText("Fake Movie Detail").assertExists()
-            onNode(hasScrollAction()).performScrollToNode(hasText("Every story has an end."))
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Every story has an end."))
             onNodeWithText("Every story has an end.").assertExists()
-            onNode(hasScrollAction()).performScrollToNode(hasText("View collection", substring = true))
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("View collection", substring = true))
             onNodeWithText("View collection", substring = true).assertExists()
         }
 
@@ -166,7 +148,7 @@ class MovieDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollAction()).performScrollToNode(hasText("View collection", substring = true))
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("View collection", substring = true))
             onNodeWithText("View collection", substring = true).performClick()
             assertEquals(501L, collectionId)
         }
@@ -228,7 +210,7 @@ class MovieDetailScreenUiTest {
                 )
             }
 
-            onNode(hasScrollAction()).performScrollToNode(hasText("Director One", substring = true))
+            onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Director One", substring = true))
             onNodeWithText("Director One").performClick()
             assertEquals(401L, personId)
         }

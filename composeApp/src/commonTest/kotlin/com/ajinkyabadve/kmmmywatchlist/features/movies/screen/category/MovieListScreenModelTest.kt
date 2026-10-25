@@ -58,7 +58,7 @@ class MovieListScreenModelTest {
             val viewModel = MovieListScreenModel(FETCH_TYPE, fakeRepository)
 
             assertEquals(ListState.IDLE, viewModel.listState)
-            assertEquals(listOf(Movie(id = 1, title = "Movie A")), viewModel.movieList)
+            assertEquals(listOf(Movie(id = 1, title = "Movie A")), viewModel.movieList.toList())
             assertEquals(listOf(1 to FETCH_TYPE), fakeRepository.getMoviesCalls)
         }
 
@@ -94,7 +94,7 @@ class MovieListScreenModelTest {
 
             assertEquals(
                 listOf(Movie(id = 1, title = "Movie A"), Movie(id = 2, title = "Movie B")),
-                viewModel.movieList,
+                viewModel.movieList.toList(),
             )
             assertEquals(listOf(1 to FETCH_TYPE, 2 to FETCH_TYPE), fakeRepository.getMoviesCalls)
         }

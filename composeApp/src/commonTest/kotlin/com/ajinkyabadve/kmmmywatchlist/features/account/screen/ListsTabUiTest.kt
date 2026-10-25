@@ -2,23 +2,19 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.waitUntilExactlyOneExists
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TmdbList
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeCustomListRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertTrue
 
 private object ListsTabUiTestConstant {
     const val ACCOUNT_ID = 100L
@@ -27,7 +23,6 @@ private object ListsTabUiTestConstant {
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class ListsTabUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var fakeListsRepository: FakeListsRepository
     private lateinit var fakeCustomListRepository: FakeCustomListRepository
     private val session =
@@ -40,14 +35,8 @@ class ListsTabUiTest {
 
     @BeforeTest
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
         fakeListsRepository = FakeListsRepository()
         fakeCustomListRepository = FakeCustomListRepository()
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     @Test
@@ -65,7 +54,8 @@ class ListsTabUiTest {
             setContent {
                 ListsTab(session = session, onListSelected = {}, screenModel = screenModel)
             }
-            waitForIdle()
+            // The paged list loads on the real main dispatcher - wait for it rather than asserting at once.
+            waitUntilExactlyOneExists(hasText("Marvel Movies"))
 
             onNodeWithText("Marvel Movies").assertIsDisplayed()
             onNodeWithText("New list").assertIsDisplayed()
@@ -92,6 +82,6 @@ class ListsTabUiTest {
             onNodeWithText("Name").performTextInput("My New List")
             onNodeWithText("Create").performClick()
 
-            assertTrue(selectedListId == 555L)
+            waitUntil { selectedListId == 555L }
         }
 }

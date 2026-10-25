@@ -36,7 +36,7 @@ class PersonListScreenModel(
 
     internal fun loadPopularPeople() {
         viewModelScope.launch(Dispatchers.Main) {
-            if (isFirstPage() || isNotFirstPageAndCanPaginate() && (isListStateLoadable())) {
+            if (!isLoadInFlightOrExhausted() && (isFirstPage() || isNotFirstPageAndCanPaginate() && isListStateLoadable())) {
                 listState = if (isFirstPage()) ListState.LOADING else ListState.PAGINATING
 
                 try {
@@ -81,6 +81,12 @@ class PersonListScreenModel(
     }
 
     private fun isListStateLoadable() = isListStateIdle() || isListStateNetworkError()
+
+    // init's first load and the screen's pagination effect can both call this before either runs.
+    // A first-page load never checked the state, so page 1 was fetched twice - and when page 1 was
+    // also the last, `page` stays 1, so the queued second call refetched it after it finished.
+    private fun isLoadInFlightOrExhausted() =
+        listState == ListState.LOADING || listState == ListState.PAGINATING || listState == ListState.PAGINATION_EXHAUST
 
     private fun isNotFirstPageAndCanPaginate() = (page != 1 && canPaginate)
 

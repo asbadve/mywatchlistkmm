@@ -24,4 +24,7 @@ private class IosNotificationPermissionRequester : NotificationPermissionRequest
 }
 
 @Composable
-actual fun rememberNotificationPermissionRequester(): NotificationPermissionRequester = remember { IosNotificationPermissionRequester() }
+actual fun rememberPlatformNotificationPermissionRequester(): NotificationPermissionRequester =
+    remember {
+        IosNotificationPermissionRequester()
+    }

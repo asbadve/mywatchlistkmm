@@ -21,29 +21,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class TrendingScreenContentTrailersUiTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     // A ViewModel with a trailer already loaded, so the only thing under test is whether the
     // showTrailers flag decides to render the rail.
     private fun viewModelWithTrailer(videosGate: CompletableDeferred<Unit>? = null): TrendingScreenTabViewModel {
@@ -213,9 +195,10 @@ class TrendingScreenContentTrailersUiTest {
             waitUntil { onAllNodesWithText(OLDER_TITLE, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
             // Newest-first: this card is inserted ahead of the one already shown.
             newerGate.complete(Unit)
-            waitForIdle()
 
-            onNodeWithText(NEWER_TITLE).assertIsDisplayed()
+            // The insert and the rail's scroll back to the start both land after the gate opens.
+            waitUntil { onAllNodesWithText(NEWER_TITLE).fetchSemanticsNodes().isNotEmpty() }
+            waitUntil { runCatching { onNodeWithText(NEWER_TITLE).assertIsDisplayed() }.isSuccess }
         }
 
     private companion object {

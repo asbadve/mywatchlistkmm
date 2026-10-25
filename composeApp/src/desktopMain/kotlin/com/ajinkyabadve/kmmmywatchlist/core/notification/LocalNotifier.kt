@@ -36,13 +36,13 @@ private val trayIcon: TrayIcon? by lazy {
 
 private var lastPostedDeepLink: NotificationTarget? = null
 
-actual object LocalNotifier {
+actual object LocalNotifier : Notifier {
     // posterUrl unused: java.awt.TrayIcon.displayMessage has no image parameter at all - AWT/Swing
     // tray balloons are text-only, unlike Android's BigPictureStyle or the browser Notification
     // API's icon/image options. deepLink already nullable on this platform even before LocalNotifier's
     // shared signature became nullable too - TrayIcon's single icon-wide ActionListener already
     // means "no deep link" and "an unfired click" are indistinguishable here regardless.
-    actual suspend fun post(
+    actual override suspend fun post(
         notificationId: Int,
         title: String,
         body: String,
