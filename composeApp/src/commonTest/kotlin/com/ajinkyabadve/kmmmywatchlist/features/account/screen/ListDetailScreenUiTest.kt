@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.screen
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -58,6 +59,9 @@ class ListDetailScreenUiTest {
                 )
             }
 
+            // The list loads in the ViewModel's coroutine: wait for it instead of asserting at once
+            // (failed intermittently on the iOS CI simulator).
+            waitUntilExactlyOneExists(hasText("Iron Man"))
             onNodeWithText("Marvel Movies").assertIsDisplayed()
             onNodeWithText("Iron Man").assertIsDisplayed()
         }
