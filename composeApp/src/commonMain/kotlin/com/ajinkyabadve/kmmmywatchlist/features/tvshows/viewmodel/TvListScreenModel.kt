@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -6,20 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.util.addAllNewBy
-import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
-import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
-import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.DiscoverFilterRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.DiscoverFilterRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.DiscoverRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.DiscoverRepositoryImpl
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.GenreRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.GenreRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
-import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepository
-import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepository
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.repository.TvRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.network.isServerError
+import io.github.aakira.napier.Napier
 import io.github.aakira.napier.log
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
@@ -29,70 +22,32 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 
-/**
- * Mirrors [MovieListScreenModel]'s pagination shape, but sourced from `/3/discover/movie` with a
- * user-adjustable [DiscoverFilters] instead of a fixed category fetch-type. The filter set is
- * pre-loaded from [DiscoverFilterRepository] (last-applied, or "last year, popularity descending"
- * if nothing has been applied yet) and the first page loads immediately in [init] - the grid is
- * already populated before the user ever opens the filter dialog.
- */
-class DiscoverMovieScreenModel(
-    private val discoverRepository: DiscoverRepository = DiscoverRepositoryImpl(),
-    private val genreRepository: GenreRepository = GenreRepositoryImpl(),
-    private val discoverFilterRepository: DiscoverFilterRepository = DiscoverFilterRepositoryImpl(),
-    private val restrictedModeRepository: RestrictedModeRepository = RestrictedModeRepositoryImpl(),
+class TvListScreenModel(
+    private val tvFetchType: String,
+    private val tvRepository: TvRepository = TvRepositoryImpl(),
 ) : ViewModel() {
     private val viewModelScope = CoroutineScope(Dispatchers.Main)
-    internal val movieList = mutableStateListOf<Movie>()
+    internal val tvList = mutableStateListOf<Tv>()
 
     private var page by mutableStateOf(1)
     private var canPaginate by mutableStateOf(false)
     var listState by mutableStateOf(ListState.IDLE)
-    var filters by mutableStateOf(discoverFilterRepository.getSelectedMovieFilters())
-        private set
-    var genres by mutableStateOf<List<Genre>>(emptyList())
-        private set
 
     init {
-        loadMovies()
-        loadGenres()
+        loadTvShows()
     }
 
-    private fun loadGenres() {
-        viewModelScope.launch(Dispatchers.Main) {
-            try {
-                genres = genreRepository.getMovieGenres()
-            } catch (e: HttpExceptions) {
-                log { "Http error loading movie genres: ${e.message}" }
-            } catch (e: IOException) {
-                log { "Network error loading movie genres" }
-            }
-        }
-    }
-
-    /** Persists [newFilters] as the last-applied set and reloads from page one. */
-    fun applyFilters(newFilters: DiscoverFilters) {
-        discoverFilterRepository.setSelectedMovieFilters(newFilters)
-        filters = newFilters
-        page = 1
-        canPaginate = false
-        movieList.clear()
-        listState = ListState.IDLE
-        loadMovies()
-    }
-
-    internal fun loadMovies() {
+    internal fun loadTvShows() {
         viewModelScope.launch(Dispatchers.Main) {
             if (!isLoadInFlightOrExhausted() && (isFirstPage() || isNotFirstPageAndCanPaginate() && isListStateLoadable())) {
                 listState = if (isFirstPage()) ListState.LOADING else ListState.PAGINATING
 
                 try {
-                    val includeAdult = !restrictedModeRepository.isRestrictedModeEnabled()
-                    val response = discoverRepository.getDiscoverMovies(page, filters, includeAdult)
+                    val response = tvRepository.getTvShows(page, tvFetchType)
                     response.list?.let {
-                        canPaginate = response.page <= response.totalPages
-                        if (isFirstPage()) movieList.clear()
-                        movieList.addAllNewBy(it) { movie -> movie.id }
+                        canPaginate = response.page <= (response.totalPages ?: 0)
+                        if (isFirstPage()) tvList.clear()
+                        tvList.addAllNewBy(it) { tvShow -> tvShow.id }
                     }
                     listState =
                         if (canPaginate) {
@@ -102,6 +57,7 @@ class DiscoverMovieScreenModel(
                             ListState.PAGINATION_EXHAUST
                         }
                 } catch (httpExceptions: HttpExceptions) {
+                    Napier.e(throwable = httpExceptions) { LOG_HTTP_ERROR }
                     listState =
                         if (httpExceptions.isServerError()) {
                             ListState.NETWORK_ERROR
@@ -109,7 +65,7 @@ class DiscoverMovieScreenModel(
                             ListState.ERROR
                         }
                 } catch (e: IOException) {
-                    log { "IOException" }
+                    Napier.e(throwable = e) { LOG_NETWORK_ERROR }
                     listState = ListState.NETWORK_ERROR
                 } catch (e: ContentConvertException) {
                     log { "Malformed response: ${e.message}" }
@@ -139,7 +95,18 @@ class DiscoverMovieScreenModel(
     private fun isFirstPage() = page == 1
 
     override fun onCleared() {
+        page = 1
+        listState = ListState.IDLE
+        canPaginate = false
         viewModelScope.cancel()
         super.onCleared()
+    }
+
+    private companion object {
+        // Logged through Napier rather than printStackTrace(): Napier is silent until initLogging()
+        // installs a backend, and raw stdout stack traces from a finished coroutine break Gradle's
+        // Kotlin/Native test-output parser (failed the iOS CI job on PR #23).
+        const val LOG_HTTP_ERROR = "Http error loading list page"
+        const val LOG_NETWORK_ERROR = "Network error loading list page"
     }
 }

@@ -7,7 +7,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.PersonPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.FakePersonRepository
-import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.person.viewmodel.PersonListScreenModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -33,6 +33,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.SIXTH_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.TvShowsConstant.THIRD_INDEX
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
+import com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel.TvListScreenModel
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

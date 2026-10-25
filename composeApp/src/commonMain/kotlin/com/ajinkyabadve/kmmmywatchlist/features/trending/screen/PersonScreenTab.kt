@@ -14,8 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.ui.PillTabRow
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonFavoritesTab
-import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.PersonListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.category.personListScreenContent
+import com.ajinkyabadve.kmmmywatchlist.features.person.viewmodel.PersonListScreenModel
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.filter_popular

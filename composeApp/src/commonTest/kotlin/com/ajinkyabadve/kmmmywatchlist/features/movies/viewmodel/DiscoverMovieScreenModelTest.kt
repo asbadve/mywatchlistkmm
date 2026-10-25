@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category
+package com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie

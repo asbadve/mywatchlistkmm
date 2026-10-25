@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,16 +61,20 @@ import mywatchlist.composeapp.generated.resources.filter_in_theaters
 import mywatchlist.composeapp.generated.resources.filter_on_tv
 import mywatchlist.composeapp.generated.resources.filter_popular
 import mywatchlist.composeapp.generated.resources.filter_upcoming
+import mywatchlist.composeapp.generated.resources.hero_play_trailer
 import mywatchlist.composeapp.generated.resources.section_latest_trailers
+import mywatchlist.composeapp.generated.resources.trailer_open_details_action
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-// The Latest Trailers rail from the TMDB homepage: source filter chips plus wide video cards
-// that open the trailer on YouTube.
+// The Latest Trailers rail from the TMDB homepage: source filter chips plus wide video cards.
+// A card's backdrop plays the trailer on YouTube; its title opens the movie/TV detail screen.
 @Composable
 fun LatestTrailersSection(
     viewModel: TrendingScreenTabViewModel,
     modifier: Modifier = Modifier,
+    onMovieSelected: (Long) -> Unit = {},
+    onTvShowSelected: (Long) -> Unit = {},
 ) {
     val selectedSource by viewModel.selectedTrailerSource.collectAsState()
     val trailers by viewModel.trailerList.collectAsState()
@@ -137,7 +142,10 @@ fun LatestTrailersSection(
                 modifier = Modifier.padding(top = 12.dp),
             ) {
                 items(trailers, key = { it.video.id }) { trailer ->
-                    TrailerCard(trailer = trailer)
+                    TrailerCard(
+                        trailer = trailer,
+                        onTitleClick = { trailer.openDetails(onMovieSelected, onTvShowSelected) },
+                    )
                 }
                 // Cards stream in as each title's videos call returns (the view model fetches a few at
                 // a time), so placeholders hold the rail's shape instead of a spinner: a row of them
@@ -164,14 +172,20 @@ private fun TrailerSource.labelRes(): StringResource =
         TrailerSource.ON_TV -> Res.string.filter_on_tv
     }
 
+/** Routes a trailer card's title tap to the detail screen of the movie or TV show it belongs to. */
+internal fun Trailer.openDetails(
+    onMovieSelected: (Long) -> Unit,
+    onTvShowSelected: (Long) -> Unit,
+) = if (isMovie) onMovieSelected(mediaId) else onTvShowSelected(mediaId)
+
 @Composable
-private fun TrailerCard(trailer: Trailer) {
-    Column(
-        modifier =
-            Modifier
-                .width(LatestTrailersConstant.CARD_WIDTH)
-                .clickable { openUrl(trailer.video.youtubeUrl()) },
-    ) {
+private fun TrailerCard(
+    trailer: Trailer,
+    onTitleClick: () -> Unit,
+) {
+    val playLabel = stringResource(Res.string.hero_play_trailer)
+    val playTrailer = { openUrl(trailer.video.youtubeUrl()) }
+    Column(modifier = Modifier.width(LatestTrailersConstant.CARD_WIDTH)) {
         val density = LocalDensity.current.density
         val backdropUrl =
             ImageConfigResolver.resolve(
@@ -186,7 +200,8 @@ private fun TrailerCard(trailer: Trailer) {
                     .fillMaxWidth()
                     .aspectRatio(16 / 9f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClickLabel = playLabel, role = Role.Button, onClick = playTrailer),
         ) {
             backdropUrl?.let { url ->
                 Image(
@@ -212,7 +227,6 @@ private fun TrailerCard(trailer: Trailer) {
                 )
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = trailer.mediaTitle,
             fontWeight = FontWeight.SemiBold,
@@ -220,6 +234,15 @@ private fun TrailerCard(trailer: Trailer) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onBackground,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        onClickLabel = stringResource(Res.string.trailer_open_details_action),
+                        role = Role.Button,
+                        onClick = onTitleClick,
+                    ).padding(top = 6.dp)
+                    .testTag(LatestTrailersConstant.TITLE_TAG),
         )
         Text(
             text = trailer.video.name,
@@ -227,6 +250,7 @@ private fun TrailerCard(trailer: Trailer) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            modifier = Modifier.clickable(onClickLabel = playLabel, role = Role.Button, onClick = playTrailer),
         )
     }
 }
@@ -271,4 +295,5 @@ internal object LatestTrailersConstant {
     const val EMPTY_PLACEHOLDER_COUNT = 3
     const val TRAILING_PLACEHOLDER_COUNT = 1
     const val PLACEHOLDER_TAG = "trailer_placeholder"
+    const val TITLE_TAG = "trailer_title"
 }

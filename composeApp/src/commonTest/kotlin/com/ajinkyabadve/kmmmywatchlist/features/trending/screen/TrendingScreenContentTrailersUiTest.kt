@@ -6,10 +6,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.waitUntilExactlyOneExists
 import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
@@ -23,6 +28,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
@@ -125,6 +132,31 @@ class TrendingScreenContentTrailersUiTest {
 
             waitUntil { onAllNodesWithText(MOVIE_TITLE).fetchSemanticsNodes().isNotEmpty() }
             onAllNodesWithTag(LatestTrailersConstant.PLACEHOLDER_TAG).assertCountEquals(0)
+        }
+
+    @Test
+    fun testTappingATrailerTitle_opensTheMediaDetails() =
+        runComposeUiTest {
+            var selectedMovieId: Long? = null
+            var selectedTvId: Long? = null
+            setContent {
+                TrendingScreenContent(
+                    screenLoadingState = false,
+                    sections = emptyList(),
+                    onChipSelected = { _, _ -> },
+                    onMovieSelected = { selectedMovieId = it },
+                    onTvShowSelected = { selectedTvId = it },
+                    trailersViewModel = viewModelWithTrailer(),
+                    showTrailers = true,
+                )
+            }
+
+            // Only the title is tapped: the backdrop calls openUrl, which would open a real browser.
+            waitUntilExactlyOneExists(hasTestTag(LatestTrailersConstant.TITLE_TAG))
+            onNodeWithTag(LatestTrailersConstant.TITLE_TAG).assertTextEquals(MOVIE_TITLE).performClick()
+
+            assertEquals(MOVIE_ID, selectedMovieId)
+            assertNull(selectedTvId)
         }
 
     // Checks the newest card is on screen after a chip switch. It does NOT reproduce the rail drift

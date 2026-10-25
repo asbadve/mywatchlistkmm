@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.category
+package com.ajinkyabadve.kmmmywatchlist.features.tvshows.viewmodel
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverFilters
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.FakeDiscoverFilterRepository

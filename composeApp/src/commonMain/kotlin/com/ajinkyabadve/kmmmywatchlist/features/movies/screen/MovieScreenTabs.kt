@@ -36,10 +36,10 @@ import com.ajinkyabadve.kmmmywatchlist.core.ui.rememberCollapsibleBarState
 import com.ajinkyabadve.kmmmywatchlist.features.discover.screen.DiscoverFilterDialog
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.DiscoverConstant
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.DiscoverMovieScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.DiscoverMovieTab
-import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.MovieListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.category.screenContent
+import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.DiscoverMovieScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.movies.viewmodel.MovieListScreenModel
 import kotlinx.coroutines.launch
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.discover_filter_button_label

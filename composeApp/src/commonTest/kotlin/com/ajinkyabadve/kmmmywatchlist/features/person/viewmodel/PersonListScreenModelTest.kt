@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.person.screen.category
+package com.ajinkyabadve.kmmmywatchlist.features.person.viewmodel
 
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.ListState
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.Person
