@@ -1285,18 +1285,20 @@ don't test the packaged/minified app or OS features (camera permission, notifica
 
 ### Implementation Checklist
 - [x] **Step 1 - iOS simulator** (done 2026-10-20): all 767 `commonTest` tests pass with
-  `:composeApp:iosSimulatorArm64Test`; new `ios-tests` CI job on `macos-latest`. The first run
+  `:composeApp:iosSimulatorArm64Test`; new `ios-tests` CI job on `macos-latest` (PR-only into
+  `master`/`release/*` since 2026-10-25). The first run
   found tests reaching app-bundle-only APIs (abort the test binary) and JVM-only assumptions -
   fixed with seams: `LocalNotificationPermissionRequester`, a `Notifier` interface for the pollers,
   `MediaActionButtonsSection(scheduleNotificationJob)`, `PrivacyConsentGate(policyContent)`;
   plus `.toList()` on state-list assertions and an explicit `showReminderControls`. Rules added to
   the testing-conventions skill.
-- [ ] **Step 2 - Android emulator** - *locally done 2026-10-25, CI job still to add*: all 767
+- [ ] **Step 2 - Android emulator** - *done locally 2026-10-25, CI job awaiting its first run*: all 767
   `commonTest` tests run with `:composeApp:connectedDebugAndroidTest` (764 pass, 3 skipped on
   Android for a Compose framework bug - see `KNOWN_BUGS.md`). Needed: Espresso 3.7.0 (3.5.0 breaks
   on recent Android), no `Dispatchers.setMain` in UI tests (hung every ViewModel screen), and
   screen-size-independent tests. Found and fixed a real bug on the way: every list tab fetched
-  page 1 twice. Remaining: the emulator CI job. Original plan: add the device-test source set
+  page 1 twice. CI: `android-device-tests` job (API 35 emulator, Linux + KVM) runs only on pull
+  requests into `master` or `release/*` - added 2026-10-25, not yet run on GitHub. Original plan: add the device-test source set
   (`androidDeviceTest` / `testInstrumentationRunner`), make it depend on the shared UI tests, run
   `:composeApp:connectedAndroidTest` locally; add an emulator CI job
   (`reactivecircus/android-emulator-runner`). Coordinate with item 22 - the module split changes
