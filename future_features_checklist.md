@@ -1381,3 +1381,147 @@ endpoint, no DB schema change.
   default is on; screen model persists the change. Compose UI - settings switch renders and
   toggles; carousel does not advance when disabled.
 - [ ] Verify the usual Gradle tasks (desktopTest, compileKotlinDesktop, assembleDebug, ktlintCheck).
+
+---
+
+## 26. TV Targets: Android TV and Apple TV (tvOS) (researched 2026-10-28)
+**Goal**: Ship MyWatchList on the living-room screen - Android TV / Google TV and Apple TV - so
+users can browse what's trending, check their watchlist and see where a title streams from the
+sofa. A 10-foot UI is driven by a D-pad / Siri Remote **focus** model, not touch, so this is a new
+UI layer over the existing shared logic (repositories, ScreenModels, TMDB client, SQLDelight DB),
+not a port of the phone screens.
+
+The two halves are **very different in cost and risk**, so they are separate stages.
+
+### Research findings (2026-10-28)
+
+**Android TV - officially supported, low risk**
+- Jetpack **Compose for TV** is stable: `androidx.tv:tv-material` **1.1.0** (2026-05-06) and
+  `androidx.tv:tv-foundation` **1.0.0** ([release notes](https://developer.android.com/jetpack/androidx/releases/tv)).
+  It is the recommended toolkit; Leanback is the legacy View-based path - don't use it.
+- `tv-material` is **androidx-only**: no Compose Multiplatform artifact, so TV composables live in
+  `androidMain` (or a TV module), not `commonMain`.
+- The Android TV guide says mixing Compose Material with Compose Material from Compose for TV can
+  cause unexpected behavior ([guide](https://developer.android.com/training/tv/playback/compose)).
+  The TV screens need their own `tv-material` theme instead of reusing the phone `MaterialTheme`
+  composables wholesale. Note: the guide's Gradle snippet still shows 1.0.0; use the release page.
+- Can ship as the **same APK/AAB** as phone (one Play listing, TV form factor enabled in Play
+  Console) or as a separate TV module. Same-APK requirements (from the manifest as it is today):
+  - `<uses-feature android:name="android.software.leanback" android:required="false"/>` and
+    `<uses-feature android:name="android.hardware.touchscreen" android:required="false"/>`.
+  - A launcher entry with `android.intent.category.LEANBACK_LAUNCHER` and an `android:banner`
+    (320x180 dp).
+  - `android.hardware.camera` is already `required="false"` (QR scanner, item 15) - good, otherwise
+    Play would filter the app out of TV devices. The QR **scan** side must be hidden on TV; the
+    QR **show** side (item 15 stage 2) is actually a great TV feature (scan the TV from a phone).
+  - `POST_NOTIFICATIONS` / WorkManager pollers (item 3) work on TV but notification UX is
+    minimal on Google TV - decide whether the pollers even run there.
+  - Play's TV app quality guidelines review is mandatory before TV distribution.
+- Overlaps with [item 22](#22-move-comandroidapplication-out-of-the-kmp-module-queued-2026-10-17):
+  the new `:androidApp` module is the natural home for the TV launcher activity/banner. Do 22 first.
+
+**Apple TV (tvOS) - not officially supported by Compose Multiplatform, high risk**
+- Kotlin/Native itself supports `tvosArm64` + `tvosSimulatorArm64` (the `tvos` hierarchy shortcut
+  does **not** include `tvosSimulatorArm64` - add it explicitly).
+- **Compose Multiplatform has no official tvOS target.** Maven Central (checked 2026-10-28):
+  `org.jetbrains.compose.runtime:runtime-tvosarm64` exists (1.13.0-beta01), but
+  `org.jetbrains.compose.ui:ui-tvosarm64` is **404** - no UI layer. Official support is tracked
+  as JetBrains feature request **CMP-5686**; a community PR adding tvOS detection to the Compose
+  Gradle plugin ([#5512](https://github.com/JetBrains/compose-multiplatform/pull/5512), Jan 2026)
+  shows no sign of being merged.
+- **Community fork** [`sajidalidev/compose-multiplatform-core`](https://github.com/sajidalidev/compose-multiplatform-core)
+  (entry point `github.com/sajidalidev/compose-tvos`) publishes Compose UI, material3 and even
+  `androidx.tv` tv-material for tvOS as `dev.sajidali.*`: `ui-tvosarm64` **1.12.0**,
+  `material3-tvosarm64` **1.12.0-alpha03**. Needs Kotlin >= 2.3.20 (we're on 2.3.21). The README says
+  it's unofficial, with no support commitment and no release schedule. An open issue
+  ([#22](https://github.com/sajidalidev/compose-multiplatform-core/issues/22), 2026-09-21) reports
+  material3 / navigation dependency-resolution failures on tvOS. Write-ups:
+  [ProAndroidDev](https://proandroiddev.com/build-setup-targets-source-sets-and-buildsrc-for-tvos-in-a-compose-multiplatform-fork-4d9caafa30a8),
+  [daily.dev](https://daily.dev/posts/my-journey-making-compose-multiplatform-work-on-tvos-and-what-i-learned-9moontaqg).
+  Too risky to put a shipped app's whole UI on: it's one maintainer, it's a version behind upstream
+  (we're on CMP 1.11.1, the fork tracks 1.12), and it's unclear whether resources, navigation3,
+  adaptive and lifecycle are covered.
+- **Our dependencies on tvOS** (Maven Central `-tvosarm64` artifacts, 2026-10-28):
+
+  | Dependency | tvOS artifact | Note |
+  |---|---|---|
+  | kotlinx-coroutines | yes | |
+  | kotlinx-serialization-json | yes (1.12.0) | |
+  | kotlinx-datetime | yes | |
+  | SQLDelight native-driver | yes (2.4.1) | we're on 2.3.2 |
+  | multiplatform-settings | yes (1.3.0) | we're on 1.0.0 - bump needed |
+  | Koin core | yes (4.2.2) | we're on 3.4.3 - **major** bump (3 -> 4) needed |
+  | cryptography-kotlin | yes (0.6.0) | |
+  | Napier | yes | |
+  | Ktor client (darwin engine) | unverified (Maven Central rate-limited the check) | Ktor's docs list tvOS presets |
+  | Coil 3 | **no** (`coil-core-tvosarm64` 404) | image loading needs a replacement on tvOS |
+  | androidx paging-common | **no** (404) | the paged grids need a tvOS fallback |
+  | Compose UI / material3 / resources | **no** (upstream) | only via the fork |
+
+### Recommendation
+1. **Stage 1 - Android TV** (do first). Officially supported, reuses everything below the UI,
+   one Play listing. A small set of TV screens built with `tv-material`: Home (Trending /
+   Popular rows as `LazyRow`s of focusable cards), Detail (backdrop, overview, where-to-stream,
+   add to watchlist/favorites), Watchlist/Favorites, Search (on-screen keyboard / voice). Sign-in
+   via TMDB's web approval flow (already used) with the URL shown as a **QR code** for the phone
+   (QRose is already a dependency).
+2. **Stage 2 - Apple TV, native SwiftUI over a shared Kotlin framework** (recommended path).
+   Add `tvosArm64` + `tvosSimulatorArm64` to a *logic-only* shared framework (repositories,
+   TMDB client, DB, ScreenModel-like state holders exposed to Swift - SKIE or KMP-NativeCoroutines
+   for Flows) and write the tvOS UI in SwiftUI, which gets the tvOS focus engine, parallax posters
+   and top-shelf for free. This means splitting the shared code so the logic doesn't pull in
+   Compose/Coil/paging - a real refactor (overlaps with [item 24](#24-dedicated-uitests-module-planned-2026-10-20-after-items-22-and-23)'s
+   module split).
+3. **Alternative for stage 2 - Compose on tvOS via the fork** - only if CMP-5686 lands upstream,
+   or the fork shows months of steady releases matching our CMP version. Re-check before stage 2.
+
+### Implementation Checklist
+**Stage 1 - Android TV**
+- [ ] Do [item 22](#22-move-comandroidapplication-out-of-the-kmp-module-queued-2026-10-17) first
+  (`:androidApp` module).
+- [ ] Add `androidx.tv:tv-material` (1.1.0) / `tv-foundation` (1.0.0) to `libs.versions.toml`;
+  check neither API used is deprecated (code-conventions §12).
+- [ ] Manifest: leanback + touchscreen `uses-feature required="false"`, `LEANBACK_LAUNCHER`
+  activity entry, `android:banner` (320x180) + TV launcher icon.
+- [ ] Platform detection: `isTvPlatform()` (`UiModeManager.currentModeType ==
+  UI_MODE_TYPE_TELEVISION`) next to `isMobilePlatform()` in `PlatformUtil.kt`; hide the QR
+  **scanner** and other touch-only features on TV.
+- [ ] TV theme (`tv-material` `MaterialTheme` with the app's color tokens) - don't mix with the
+  phone's Material3 components on the same screen.
+- [ ] TV screens: Home rows, Detail, Watchlist/Favorites, Search, Account/sign-in (QR to the
+  approval URL). Reuse the existing ScreenModels unchanged.
+- [ ] Focus: initial focus on each screen, focus restoration on back, `Modifier.focusRestorer`
+  on rows; D-pad back exits detail.
+- [ ] Decide whether the notification pollers (item 3) and reminders (item 16) run on TV.
+- [ ] Tests: unit tests for any TV-specific state; Compose UI tests driving D-pad key events
+  (`performKeyInput`) for focus movement and click on cards (testing-conventions).
+- [ ] Android TV emulator profile in the `run-app` skill; Play Console TV form factor + TV
+  screenshots/banner in the `release-process` skill's listing section; pass Play's TV quality
+  review.
+
+**Stage 2 - Apple TV**
+- [ ] Re-check CMP-5686 / the fork's status and the Coil/paging/Ktor tvOS rows above.
+- [ ] Bump the dependencies that need it to their tvOS-capable versions (Koin 4, multiplatform-settings
+  1.3, SQLDelight 2.4) - each its own PR, tested on existing targets first.
+- [ ] Split a Compose-free shared module (logic only) that compiles for `tvosArm64` +
+  `tvosSimulatorArm64`; replace paging and Coil usages there with platform-neutral abstractions.
+- [ ] Expose Flows to Swift (SKIE or KMP-NativeCoroutines - pick after checking which supports
+  Kotlin 2.3.21).
+- [ ] `tvApp` Xcode target (SwiftUI): Home, Detail, Watchlist/Favorites, Search, sign-in via QR.
+- [ ] Top Shelf extension (trending / watchlist) - optional, later.
+- [ ] Tests: Kotlin unit tests run on `tvosSimulatorArm64Test`; XCUITest smoke flow for the
+  SwiftUI layer.
+
+### Deliberately out of scope
+- Video playback (trailers keep opening externally / YouTube app - same as on phone).
+- Web/JS on smart-TV browsers (Tizen, webOS).
+- Fire TV-specific work beyond what the Android TV build gives for free (Fire OS runs the same
+  APK if it doesn't rely on Google Play services).
+
+### Risks / open questions
+- Is a TV app worth it for a *tracking* app whose main actions are browse/add? The strongest TV
+  case is "what's on my watchlist that I can stream right now" plus deep links into the streaming
+  apps - check that TMDB's watch-provider links open the provider's TV app.
+- Typing on TV is painful: search should lean on voice input and the existing trending/discover rows.
+- The tvOS fork's maintenance is the single biggest unknown - don't commit to it without a
+  re-check.
