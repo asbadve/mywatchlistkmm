@@ -18,6 +18,9 @@ composeApp/build/*
 /.kotlin/
 /patch/*
 
+# Playwright MCP screenshots, page snapshots and console logs from web UI checks
+/.playwright-mcp/
+
 # Personal learning/reference notes - not part of the project source
 docs/
 /TASKS.md
