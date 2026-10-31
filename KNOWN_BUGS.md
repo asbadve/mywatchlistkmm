@@ -11,20 +11,6 @@ Each entry: what you see, where it is, what has been ruled out, and the next con
 
 ---
 
-## Android — Discover filter dropdowns open at the far left of the screen
-
-**Symptom.** In Movies/TV → Discover → Filters, tapping the Year or Sort by field opens its menu
-at the left edge of the screen, narrower than the field and outside the dialog. Seen 2026-10-17 on
-the Pixel 10 Pro Fold emulator during item 20's runtime checks; iOS and desktop place it correctly.
-Selecting still works.
-
-**Where.** `features/discover/screen/DiscoverFilterDialog.kt` puts a generic `DropdownMenu` inside
-`ExposedDropdownMenuBox`. Material's `ExposedDropdownMenu` (from the box's scope) is the component
-that anchors to the field and matches its width.
-
-**Next step.** Swap both `DropdownMenu`s for `ExposedDropdownMenu`, then re-check on Android in both
-orientations and both themes.
-
 ## Offline favorite/watchlist changes are never sent to TMDB
 
 **Symptom.** Favorite, unfavorite, watchlist or un-watchlist a title while offline: the icon keeps
@@ -70,17 +56,6 @@ tab, or a `Saver` for `TopLevelBackStack` used with `rememberSaveable`. Either w
 `@Serializable` first: `AppKey` and its subtypes are `NavKey`s but aren't annotated today. Load the
 `navigation-3` skill first. Verify with the same theme toggle with the Account dialog and a detail
 screen open, plus "Don't keep activities" for process death.
-
-## Lists ask TMDB for one page past the last (found 2026-10-25)
-**What you see:** nothing visible - one extra, empty request each time a list reaches its end.
-**Where:** `MovieListScreenModel`, `DiscoverMovieScreenModel`, `TvListScreenModel`,
-`DiscoverTvScreenModel`, `PersonListScreenModel` set `canPaginate = response.page <= response.totalPages`.
-On the last page `page == totalPages`, so it stays `true` and scrolling to the end requests
-`totalPages + 1`. `SearchScreenModel` already uses `<`.
-**Ruled out:** not the double page-1 fetch - that was a separate guard bug, fixed the same day
-(`isLoadInFlightOrExhausted()`). The UI tests work around this with `totalPages = 0` in their fakes.
-**Next step:** change `<=` to `<` in the five models, drop the `totalPages = 0` workaround from
-the tests, add a unit test that the last page doesn't paginate.
 
 ## Android tests — 4 region-picker UI tests are skipped (Compose test-framework race)
 **What you see:** on an Android device/emulator, 4 of the 5 `RegionPickerDialogUiTest` tests report

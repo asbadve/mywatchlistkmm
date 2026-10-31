@@ -43,6 +43,19 @@ class DiscoverTvScreenModelTest {
     ) = DiscoverTvScreenModel(fakeDiscoverRepository, fakeGenreRepository, discoverFilterRepository, restrictedModeRepository)
 
     @Test
+    fun testLastPageExhaustsPaginationWithoutRequestingAnotherPage() =
+        runTest(testDispatcher) {
+            fakeDiscoverRepository.discoverTvShowsResult =
+                Result.success(TvPageResult(page = 1, list = listOf(Tv(id = FIRST_ID)), totalResults = 1, totalPages = 1))
+            val viewModel = screenModel()
+
+            viewModel.loadTvShows()
+
+            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
+            assertEquals(listOf(1), fakeDiscoverRepository.discoverTvShowsCalls.map { it.first })
+        }
+
+    @Test
     fun testAPageRepeatingAShow_doesNotDuplicateIt() =
         runTest(testDispatcher) {
             fakeDiscoverRepository.discoverTvShowsResult =
@@ -85,7 +98,7 @@ class DiscoverTvScreenModelTest {
 
             val newFilters = DiscoverFilters(genreIds = setOf(16), year = 2015)
             fakeDiscoverRepository.discoverTvShowsResult =
-                Result.success(TvPageResult(page = 1, list = listOf(Tv(id = 2, title = "New")), totalResults = 1, totalPages = 0))
+                Result.success(TvPageResult(page = 1, list = listOf(Tv(id = 2, title = "New")), totalResults = 1, totalPages = 1))
             viewModel.applyFilters(newFilters)
 
             assertEquals(newFilters, viewModel.filters)

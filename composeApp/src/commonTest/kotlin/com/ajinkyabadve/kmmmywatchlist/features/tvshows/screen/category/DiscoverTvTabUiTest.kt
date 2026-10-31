@@ -22,7 +22,7 @@ class DiscoverTvTabUiTest {
             val discoverRepository = FakeDiscoverRepository()
             discoverRepository.discoverTvShowsResult =
                 Result.success(
-                    TvPageResult(page = 1, list = listOf(Tv(id = 1, title = "Fake Show")), totalResults = 1, totalPages = 0),
+                    TvPageResult(page = 1, list = listOf(Tv(id = 1, title = "Fake Show")), totalResults = 1, totalPages = 1),
                 )
             val tvModel =
                 DiscoverTvScreenModel(
@@ -51,7 +51,7 @@ class DiscoverTvTabUiTest {
                                 Tv(id = 2, title = "Upcoming Show", firstAirDate = "2099-01-01"),
                             ),
                         totalResults = 2,
-                        totalPages = 0,
+                        totalPages = 1,
                     ),
                 )
             val tvModel =

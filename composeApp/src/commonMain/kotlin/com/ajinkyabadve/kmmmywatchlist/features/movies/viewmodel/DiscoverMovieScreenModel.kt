@@ -90,7 +90,7 @@ class DiscoverMovieScreenModel(
                     val includeAdult = !restrictedModeRepository.isRestrictedModeEnabled()
                     val response = discoverRepository.getDiscoverMovies(page, filters, includeAdult)
                     response.list?.let {
-                        canPaginate = response.page <= response.totalPages
+                        canPaginate = response.page < response.totalPages
                         if (isFirstPage()) movieList.clear()
                         movieList.addAllNewBy(it) { movie -> movie.id }
                     }
