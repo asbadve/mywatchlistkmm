@@ -35,11 +35,6 @@ class TvShowScreenTabsUiTest {
         const val MANY_SHOWS_COUNT = 30
     }
 
-    // totalPages = 0 marks pagination as exhausted after the first load - otherwise the fake's
-    // page always reports back as 1, so `canPaginate = response.page <= response.totalPages`
-    // (TvListScreenModel.kt) stays true forever and, with only one item in a small grid,
-    // CommonTvShowListScreenContent's near-end-of-list pagination trigger keeps re-firing
-    // loadTvShows() in an unbounded loop.
     private fun fakeRepoWithShow(title: String) =
         FakeTvRepository().apply {
             getTvShowsResult =
@@ -48,7 +43,7 @@ class TvShowScreenTabsUiTest {
                         page = 1,
                         list = listOf(Tv(id = 1, title = title, originalTitle = title)),
                         totalResults = 1,
-                        totalPages = 0,
+                        totalPages = 1,
                     ),
                 )
         }
@@ -124,7 +119,7 @@ class TvShowScreenTabsUiTest {
                                 page = 1,
                                 list = titles.mapIndexed { index, title -> Tv(id = index, title = title, originalTitle = title) },
                                 totalResults = titles.size,
-                                totalPages = 0,
+                                totalPages = 1,
                             ),
                         )
                 }

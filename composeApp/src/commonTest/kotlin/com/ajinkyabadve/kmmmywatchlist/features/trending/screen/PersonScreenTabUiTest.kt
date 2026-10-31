@@ -17,11 +17,6 @@ class PersonScreenTabUiTest {
     @Test
     fun testPersonScreenTab_personClick_invokesOnPersonSelected() =
         runComposeUiTest {
-            // totalPages = 0 marks pagination as exhausted after the first load - otherwise the
-            // fake's page always reports back as 1, so `canPaginate = response.page <=
-            // (response.totalPages ?: 0)` (PersonListScreenModel.kt) stays true forever and, with
-            // only one item in a small grid, CommonPersonListScreenContent's near-end-of-list
-            // pagination trigger keeps re-firing loadPopularPeople() in an unbounded loop.
             val fakeRepository =
                 FakePersonRepository().apply {
                     getPopularPeopleResult =
@@ -30,7 +25,7 @@ class PersonScreenTabUiTest {
                                 page = 1,
                                 list = listOf(Person(id = 301, name = "Person A")),
                                 totalResults = 1,
-                                totalPages = 0,
+                                totalPages = 1,
                             ),
                         )
                 }

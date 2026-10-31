@@ -45,7 +45,7 @@ class MovieListScreenModel(
                 try {
                     val response = movieRepository.getMovies(page, movieFetchType)
                     response.list?.let {
-                        canPaginate = response.page <= response.totalPages
+                        canPaginate = response.page < response.totalPages
                         if (isFirstPage()) movieList.clear()
                         movieList.addAllNewBy(it) { movie -> movie.id }
                     }
