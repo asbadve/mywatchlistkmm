@@ -1,6 +1,7 @@
-package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
+package com.ajinkyabadve.kmmmywatchlist.features.trending.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.core.constant.FeatureFlags
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
@@ -8,6 +9,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.MovieRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.TrendingAutoScrollRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.TrendingAutoScrollRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.TIME_WINDOW_DAY
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.TIME_WINDOW_WEEK
 import com.ajinkyabadve.kmmmywatchlist.features.trending.TrendingConstant.trendingChipList
@@ -25,11 +28,11 @@ import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import io.github.aakira.napier.Napier
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -48,9 +51,8 @@ class TrendingScreenTabViewModel(
     // See [FeatureFlags.TRENDING_TRAILERS_ENABLED]. Off => skip the init fetch entirely.
     private val trailersEnabled: Boolean = FeatureFlags.TRENDING_TRAILERS_ENABLED,
     private val trailerCacheRepository: TrailerCacheRepository = TrailerCacheRepositoryImpl(),
+    private val trendingAutoScrollRepository: TrendingAutoScrollRepository = TrendingAutoScrollRepositoryImpl(),
 ) : ViewModel() {
-    private val viewModelScope = CoroutineScope(Dispatchers.Main)
-
     private val _isScreenLoading = MutableStateFlow(false)
     val isScreenLoading = _isScreenLoading
 
@@ -122,6 +124,8 @@ class TrendingScreenTabViewModel(
 
     private val _trailerError = MutableStateFlow<UiText?>(null)
     val trailerError = _trailerError
+
+    val isAutoScrollEnabled: StateFlow<Boolean> = trendingAutoScrollRepository.isTrendingAutoScrollEnabledFlow
 
     // In-memory layer over [trailerCacheRepository], so chip switches within a session never even
     // decode JSON again.

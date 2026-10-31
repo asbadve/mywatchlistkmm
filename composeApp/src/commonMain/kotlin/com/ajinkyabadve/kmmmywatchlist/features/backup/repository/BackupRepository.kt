@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.constant.NotificationSettingsConstant
 import com.ajinkyabadve.kmmmywatchlist.core.constant.RegionConstant
 import com.ajinkyabadve.kmmmywatchlist.core.constant.RestrictedModeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.constant.TrendingAutoScrollConstant
 import com.ajinkyabadve.kmmmywatchlist.createSettings
 import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupCollection
 import com.ajinkyabadve.kmmmywatchlist.features.backup.model.BackupEnvelope
@@ -29,6 +30,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.toMinut
 import com.ajinkyabadve.kmmmywatchlist.features.person.model.FavoritePersonRecord
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepository
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.TrendingAutoScrollRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.TrendingAutoScrollRepositoryImpl
 import com.russhwolf.settings.Settings
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
@@ -97,6 +100,7 @@ class BackupRepositoryImpl(
     private val favoriteCollectionRepository: FavoriteCollectionRepository = FavoriteCollectionRepositoryImpl(),
     private val releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
     private val settings: Settings = createSettings(),
+    private val trendingAutoScrollRepository: TrendingAutoScrollRepository = TrendingAutoScrollRepositoryImpl(settings),
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : BackupRepository {
     @OptIn(ExperimentalSerializationApi::class)
@@ -185,6 +189,7 @@ class BackupRepositoryImpl(
             selectedRegion = stringIfSet(RegionConstant.KEY_SELECTED_REGION),
             fallbackRegion = stringIfSet(RegionConstant.KEY_FALLBACK_REGION),
             restrictedMode = booleanIfSet(RestrictedModeConstant.KEY_RESTRICTED_MODE_ENABLED),
+            trendingAutoScroll = booleanIfSet(TrendingAutoScrollConstant.KEY_TRENDING_AUTO_SCROLL_ENABLED),
             episodeNotifications = booleanIfSet(NotificationSettingsConstant.KEY_EPISODE_NOTIFICATIONS_ENABLED),
             episodeAlertPromptSeen = booleanIfSet(NotificationSettingsConstant.KEY_EPISODE_ALERT_OPT_IN_PROMPT_SEEN),
             discoverMovieFilters = filtersIfSet(DiscoverFilterConstant.KEY_MOVIE_FILTERS),
@@ -203,6 +208,10 @@ class BackupRepositoryImpl(
         }
         backup.restrictedMode?.let {
             settings.putBoolean(RestrictedModeConstant.KEY_RESTRICTED_MODE_ENABLED, it)
+            applied++
+        }
+        backup.trendingAutoScroll?.let {
+            trendingAutoScrollRepository.setTrendingAutoScrollEnabled(it)
             applied++
         }
         backup.episodeNotifications?.let {
@@ -270,6 +279,7 @@ private fun BackupEnvelope.summary(): BackupSummary {
             settings.selectedRegion,
             settings.fallbackRegion,
             settings.restrictedMode,
+            settings.trendingAutoScroll,
             settings.episodeNotifications,
             settings.episodeAlertPromptSeen,
             settings.discoverMovieFilters,

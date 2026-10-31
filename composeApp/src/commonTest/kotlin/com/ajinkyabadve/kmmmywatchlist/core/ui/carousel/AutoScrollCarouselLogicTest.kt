@@ -14,6 +14,7 @@ class AutoScrollCarouselLogicTest {
                 reduceMotionEnabled = false,
                 screenReaderActive = false,
                 lifecycleState = Lifecycle.State.RESUMED,
+                autoScrollEnabled = true,
             ),
         )
     }
@@ -26,6 +27,7 @@ class AutoScrollCarouselLogicTest {
                 reduceMotionEnabled = false,
                 screenReaderActive = false,
                 lifecycleState = Lifecycle.State.RESUMED,
+                autoScrollEnabled = true,
             ),
         )
     }
@@ -38,6 +40,7 @@ class AutoScrollCarouselLogicTest {
                 reduceMotionEnabled = true,
                 screenReaderActive = false,
                 lifecycleState = Lifecycle.State.RESUMED,
+                autoScrollEnabled = true,
             ),
         )
     }
@@ -50,6 +53,7 @@ class AutoScrollCarouselLogicTest {
                 reduceMotionEnabled = false,
                 screenReaderActive = true,
                 lifecycleState = Lifecycle.State.RESUMED,
+                autoScrollEnabled = true,
             ),
         )
     }
@@ -62,6 +66,20 @@ class AutoScrollCarouselLogicTest {
                 reduceMotionEnabled = false,
                 screenReaderActive = false,
                 lifecycleState = Lifecycle.State.CREATED,
+                autoScrollEnabled = true,
+            ),
+        )
+    }
+
+    @Test
+    fun testIsAutoScrollAllowed_falseWhenAutoScrollDisabledBySetting() {
+        assertFalse(
+            isAutoScrollAllowed(
+                itemCount = MULTIPLE_ITEMS,
+                reduceMotionEnabled = false,
+                screenReaderActive = false,
+                lifecycleState = Lifecycle.State.RESUMED,
+                autoScrollEnabled = false,
             ),
         )
     }

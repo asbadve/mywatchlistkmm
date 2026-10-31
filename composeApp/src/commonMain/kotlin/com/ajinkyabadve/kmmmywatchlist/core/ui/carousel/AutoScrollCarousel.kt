@@ -19,8 +19,8 @@ internal object AutoScrollCarouselConstant {
 
 /**
  * True while the carousel is allowed to auto-advance: more than one item to cycle through, the
- * OS's reduce-motion preference is off, no screen reader is active, and the app is at least
- * started (foregrounded). Extracted from [AutoScrollCarouselEffect] so this gating decision is
+ * user's autoscroll setting is on, the OS's reduce-motion preference is off, no screen reader is
+ * active, and the app is at least started (foregrounded). Extracted from [AutoScrollCarouselEffect] so this gating decision is
  * unit-testable without a Compose test harness.
  */
 internal fun isAutoScrollAllowed(
@@ -28,8 +28,10 @@ internal fun isAutoScrollAllowed(
     reduceMotionEnabled: Boolean,
     screenReaderActive: Boolean,
     lifecycleState: Lifecycle.State,
+    autoScrollEnabled: Boolean,
 ): Boolean =
     itemCount > 1 &&
+        autoScrollEnabled &&
         !reduceMotionEnabled &&
         !screenReaderActive &&
         lifecycleState.isAtLeast(Lifecycle.State.STARTED)
@@ -52,6 +54,7 @@ internal fun isAutoScrollAllowed(
 internal fun AutoScrollCarouselEffect(
     state: CarouselState,
     itemCount: Int,
+    autoScrollEnabled: Boolean,
 ) {
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val autoScrollAllowed =
@@ -60,6 +63,7 @@ internal fun AutoScrollCarouselEffect(
             reduceMotionEnabled = isReducedMotionEnabled(),
             screenReaderActive = isScreenReaderActive(),
             lifecycleState = lifecycleState,
+            autoScrollEnabled = autoScrollEnabled,
         )
 
     LaunchedEffect(state, itemCount, autoScrollAllowed) {

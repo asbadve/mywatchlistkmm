@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.core.format.toRegionFlagEmoji
 import com.ajinkyabadve.kmmmywatchlist.design.settings.SettingsRow
 import com.ajinkyabadve.kmmmywatchlist.design.settings.SettingsSwitchRow
+import com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel.AccountScreenModel
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.auth_logout
 import mywatchlist.composeapp.generated.resources.debug_clear_reminders_description
@@ -43,13 +44,15 @@ import mywatchlist.composeapp.generated.resources.settings_reminder_time_descrip
 import mywatchlist.composeapp.generated.resources.settings_reminder_time_label
 import mywatchlist.composeapp.generated.resources.settings_restricted_mode_description
 import mywatchlist.composeapp.generated.resources.settings_restricted_mode_label
+import mywatchlist.composeapp.generated.resources.settings_trending_auto_scroll_description
+import mywatchlist.composeapp.generated.resources.settings_trending_auto_scroll_label
 import mywatchlist.composeapp.generated.resources.tmdb_attribution_notice
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * The account screen's settings rows, top to bottom: region, fallback region, restricted mode,
- * episode notifications, release reminders + reminder time, backup, the debug rows, log out,
- * privacy policy and the TMDB attribution notice.
+ * trending autoscroll, episode notifications, release reminders + reminder time, backup, the debug
+ * rows, log out, privacy policy and the TMDB attribution notice.
  *
  * Presentational only (code-conventions §8): plain values in, one callback per row out. What a
  * click does - including asking for the notification permission - is [AccountScreenModel]'s call.
@@ -62,6 +65,7 @@ internal fun SettingsList(
     onRegionClicked: () -> Unit,
     onFallbackRegionClicked: () -> Unit,
     onRestrictedModeChanged: (Boolean) -> Unit,
+    onTrendingAutoScrollChanged: (Boolean) -> Unit,
     onEpisodeNotificationsChanged: (Boolean) -> Unit,
     onReleaseRemindersChanged: (Boolean) -> Unit,
     onReminderTimeClicked: () -> Unit,
@@ -88,6 +92,12 @@ internal fun SettingsList(
             description = stringResource(Res.string.settings_restricted_mode_description),
             checked = uiState.restrictedModeEnabled,
             onCheckedChange = onRestrictedModeChanged,
+        )
+        SettingsSwitchRow(
+            label = stringResource(Res.string.settings_trending_auto_scroll_label),
+            description = stringResource(Res.string.settings_trending_auto_scroll_description),
+            checked = uiState.trendingAutoScrollEnabled,
+            onCheckedChange = onTrendingAutoScrollChanged,
         )
         SettingsSwitchRow(
             label = stringResource(Res.string.settings_episode_notifications_title),

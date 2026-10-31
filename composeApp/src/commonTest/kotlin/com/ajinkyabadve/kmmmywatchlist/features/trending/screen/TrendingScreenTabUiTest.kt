@@ -8,6 +8,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.trending.viewmodel.TrendingScreenTabViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.Test
 

@@ -10,7 +10,11 @@ actual fun isMobilePlatform(): Boolean = false
 
 actual fun is24HourClock(): Boolean = false
 
-actual fun createSettings(): com.russhwolf.settings.Settings = StorageSettings(localStorage)
+private val defaultSettings: com.russhwolf.settings.Settings by lazy {
+    StorageSettings(localStorage)
+}
+
+actual fun createSettings(): com.russhwolf.settings.Settings = defaultSettings
 
 // This project has no separate web release/CDN pipeline yet - every JS build today is a dev build.
 actual fun isDebugBuild(): Boolean = true

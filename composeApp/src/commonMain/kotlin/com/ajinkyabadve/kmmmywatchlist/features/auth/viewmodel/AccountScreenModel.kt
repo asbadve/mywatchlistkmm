@@ -1,8 +1,13 @@
-package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
+package com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.ajinkyabadve.kmmmywatchlist.core.formatClockTime
 import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationPermissionRequester
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountDialog
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountScreen
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountUiState
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.SettingsRowVisibility
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationDebugActions
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationDebugActionsImpl
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
@@ -16,6 +21,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionReposi
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RegionRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.RestrictedModeRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.TrendingAutoScrollRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.TrendingAutoScrollRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.is24HourClock
 import com.ajinkyabadve.kmmmywatchlist.isDebugBuild
 import com.ajinkyabadve.kmmmywatchlist.isMobilePlatform
@@ -58,6 +65,7 @@ import org.jetbrains.compose.resources.getString
 class AccountScreenModel(
     private val regionRepository: RegionRepository = RegionRepositoryImpl(),
     private val restrictedModeRepository: RestrictedModeRepository = RestrictedModeRepositoryImpl(),
+    private val trendingAutoScrollRepository: TrendingAutoScrollRepository = TrendingAutoScrollRepositoryImpl(),
     private val notificationSettingsRepository: NotificationSettingsRepository = NotificationSettingsRepositoryImpl(),
     releaseReminderRepository: ReleaseReminderRepository = ReleaseReminderRepositoryImpl(),
     private val releaseReminderCoordinator: ReleaseReminderCoordinator = ReleaseReminderCoordinator(releaseReminderRepository),
@@ -121,6 +129,11 @@ class AccountScreenModel(
         _uiState.update { it.copy(restrictedModeEnabled = enabled) }
     }
 
+    fun onTrendingAutoScrollChanged(enabled: Boolean) {
+        trendingAutoScrollRepository.setTrendingAutoScrollEnabled(enabled)
+        _uiState.update { it.copy(trendingAutoScrollEnabled = enabled) }
+    }
+
     /** Turning on asks [permissionRequester] first and stays off if permission is denied. */
     fun onEpisodeNotificationsChanged(
         enabled: Boolean,
@@ -163,6 +176,7 @@ class AccountScreenModel(
                 regionCode = restored.regionCode,
                 fallbackRegionCode = restored.fallbackRegionCode,
                 restrictedModeEnabled = restored.restrictedModeEnabled,
+                trendingAutoScrollEnabled = restored.trendingAutoScrollEnabled,
                 episodeNotificationsEnabled = restored.episodeNotificationsEnabled,
             )
         }
@@ -251,6 +265,7 @@ class AccountScreenModel(
             regionCode = regionRepository.getSelectedRegion(),
             fallbackRegionCode = regionRepository.getFallbackRegion(),
             restrictedModeEnabled = restrictedModeRepository.isRestrictedModeEnabled(),
+            trendingAutoScrollEnabled = trendingAutoScrollRepository.isTrendingAutoScrollEnabled(),
             episodeNotificationsEnabled = notificationSettingsRepository.isEpisodeNotificationsEnabled(),
             visibility = visibility,
             is24Hour = is24Hour,

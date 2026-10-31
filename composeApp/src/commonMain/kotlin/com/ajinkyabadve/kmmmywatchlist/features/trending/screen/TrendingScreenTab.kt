@@ -42,10 +42,10 @@ import com.ajinkyabadve.kmmmywatchlist.core.constant.FeatureFlags
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.ui.carousel.AutoScrollCarouselEffect
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
-import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.mediaMovieRow
 import com.ajinkyabadve.kmmmywatchlist.features.person.screen.mediaPersonRow
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrendingSectionState
+import com.ajinkyabadve.kmmmywatchlist.features.trending.viewmodel.TrendingScreenTabViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.mediaTvShowRow
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -78,6 +78,7 @@ fun TrendingScreenTab(
     val peopleChipList by viewModel.trendPeopleChipList.collectAsState()
     val peopleChipSelected by viewModel.selectedPeopleChipIndex.collectAsState()
     val peopleTrendError by viewModel.peopleTrendError.collectAsState()
+    val autoScrollEnabled by viewModel.isAutoScrollEnabled.collectAsState()
 
     val sections =
         listOf(
@@ -90,6 +91,7 @@ fun TrendingScreenTab(
                 isLoading = movieTrendLoadingState,
                 mediaList = movieTrendResult,
                 errorMessage = movieTrendError,
+                autoScrollEnabled = autoScrollEnabled,
             ),
             TrendingSectionState(
                 title = "Trending Tv show",
@@ -100,6 +102,7 @@ fun TrendingScreenTab(
                 isLoading = tvTrendLoadingState,
                 mediaList = tvTrendResult,
                 errorMessage = tvTrendError,
+                autoScrollEnabled = autoScrollEnabled,
             ),
             TrendingSectionState(
                 title = "Trending People",
@@ -110,6 +113,7 @@ fun TrendingScreenTab(
                 isLoading = peopleTrendLoadingState,
                 mediaList = peopleTrendResult,
                 errorMessage = peopleTrendError,
+                autoScrollEnabled = autoScrollEnabled,
             ),
         )
 
@@ -207,7 +211,12 @@ private fun TrendingSection(
             },
         )
     } else if (section.mediaList.isNotEmpty()) {
-        TrendingMediaCarousel(section.mediaList, section.mediaType, onMovieSelected, onTvShowSelected, onPersonSelected)
+        TrendingMediaCarousel(
+            section = section,
+            onMovieSelected = onMovieSelected,
+            onTvShowSelected = onTvShowSelected,
+            onPersonSelected = onPersonSelected,
+        )
     }
 }
 
@@ -244,14 +253,19 @@ private fun MediaChips(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TrendingMediaCarousel(
-    mediaTrendResult: List<Movie>,
-    mediaType: String,
+    section: TrendingSectionState,
     onMovieSelected: (Long) -> Unit,
     onTvShowSelected: (Long) -> Unit,
     onPersonSelected: (Long) -> Unit,
 ) {
+    val mediaTrendResult = section.mediaList
+    val mediaType = section.mediaType
     val state = rememberCarouselState { mediaTrendResult.count() }
-    AutoScrollCarouselEffect(state = state, itemCount = mediaTrendResult.count())
+    AutoScrollCarouselEffect(
+        state = state,
+        itemCount = mediaTrendResult.count(),
+        autoScrollEnabled = section.autoScrollEnabled,
+    )
     HorizontalMultiBrowseCarousel(
         state = state,
         modifier = Modifier.fillMaxWidth(),

@@ -13,10 +13,12 @@ actual fun isMobilePlatform(): Boolean = true
 
 actual fun is24HourClock(): Boolean = DateFormat.is24HourFormat(AndroidApp.instance)
 
-actual fun createSettings(): com.russhwolf.settings.Settings {
+private val defaultSettings: com.russhwolf.settings.Settings by lazy {
     val sharedPrefs = AndroidApp.instance.getSharedPreferences("watchlist_settings", Context.MODE_PRIVATE)
-    return SharedPreferencesSettings(sharedPrefs)
+    SharedPreferencesSettings(sharedPrefs)
 }
+
+actual fun createSettings(): com.russhwolf.settings.Settings = defaultSettings
 
 // Same manifest-driven check AndroidApp.onCreate() already gates initLogging() with, rather than
 // a second mechanism (e.g. AGP's own BuildConfig.DEBUG) to keep in sync.
