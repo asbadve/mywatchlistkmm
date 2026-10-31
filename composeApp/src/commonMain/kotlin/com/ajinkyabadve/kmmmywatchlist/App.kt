@@ -117,6 +117,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.navigation.isDetailKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.rememberTopLevelBackStack
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
 import io.github.aakira.napier.Napier
@@ -174,7 +175,7 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
 
 @Composable
 fun MainAppScreen(windowSize: WindowSize) {
-    val topLevelBackStack = remember { TopLevelBackStack(TrendingKey) }
+    val topLevelBackStack = rememberTopLevelBackStack(TrendingKey)
     val currentKey = topLevelBackStack.backStack.lastOrNull()
 
     // Fires once per genuinely new tap (see PendingNotificationTarget's kdoc for why it's a
