@@ -1,8 +1,19 @@
 # MyWatchList - Compose Multiplatform (Android / iOS / desktop / js)
 
 ## Start of every dev session
-If `IMMEDIATE_DEFECTS.md` has any entries, tell the user and offer to fix them before starting
-other work. Delete an entry once its fix lands.
+1. If `IMMEDIATE_DEFECTS.md` has any entries, tell the user and offer to fix them before starting
+   other work. Delete an entry (here or in `KNOWN_BUGS.md`) only once its fix is verified - by an
+   automated test that covers the symptom, or a manual/Maestro check on the affected platform.
+2. Summarise the open entries in `KNOWN_BUGS.md` (one line each, with rough size and anything
+   blocked) and recommend what to pick up first.
+3. Check for Android skill updates. Installed skills live in `~/.claude/skills/` (adaptive,
+   android-cli, edge-to-edge, navigation-3, r8-analyzer), plus a project copy of android-cli in
+   `.agents/skills/`. Compare the local catalogue's date (`~/.android/cli/skills/version`, file
+   mtime) against https://github.com/android/skills/releases and list which installed skills
+   changed, plus any new skills relevant to this app. Only report this - apply updates
+   (`android update`, then `android skills update --all`) after the user says so. Note:
+   `android skills list/update` hangs in Android Studio's shell tool; if it times out, read the
+   files directly or ask the user to run it in a terminal.
 
 ## Mandatory conventions
 Before writing or modifying Kotlin code, follow `.claude/skills/code-conventions/SKILL.md`:

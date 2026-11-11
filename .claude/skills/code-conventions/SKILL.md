@@ -423,7 +423,7 @@ import kotlin.time.Clock
 val now = Clock.System.now()
 ```
 
-The existing offenders were cleared 2026-10-17 (`future_features_checklist.md` item 20) - the build
+The existing offenders were cleared 2026-10-17 (`shipped_features.md` item 17, formerly open-list item 20) - the build
 prints no deprecation warnings. One deliberate exception: `rememberTransformableState` in
 `FullscreenMediaGallery.kt` is `@Suppress("DEPRECATION")`ed because its replacement doesn't exist yet
 in the foundation versions Android (1.10.0) and web (1.9.1) resolve. In shared code, check a

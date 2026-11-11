@@ -45,7 +45,7 @@ class TvListScreenModel(
                 try {
                     val response = tvRepository.getTvShows(page, tvFetchType)
                     response.list?.let {
-                        canPaginate = response.page <= (response.totalPages ?: 0)
+                        canPaginate = response.page < (response.totalPages ?: 0)
                         if (isFirstPage()) tvList.clear()
                         tvList.addAllNewBy(it) { tvShow -> tvShow.id }
                     }

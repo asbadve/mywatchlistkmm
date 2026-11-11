@@ -6,7 +6,7 @@ This document contains a checklist of high-priority features that can be impleme
 
 ## Already shipped
 
-Items 2-13 shipped and moved to [`shipped_features.md`](shipped_features.md) - kept in full, because the *why*
+The items below shipped and moved to [`shipped_features.md`](shipped_features.md) - kept in full, because the *why*
 behind them (poller design, region resolution, the splash-icon and scroll-jank dead ends) is
 what stops the same ground being re-covered. This file holds only what is still open.
 
@@ -26,6 +26,8 @@ what stops the same ground being re-covered. This file holds only what is still 
 | [13. Small Increments (Quick Wins)](shipped_features.md#13-small-increments-quick-wins) | DONE |
 | [14. Autoscroll the Trending Media Carousels](shipped_features.md#14-autoscroll-the-trending-media-carousels--done-2026-09-27) | DONE |
 | [15. Upcoming Releases List for Favorites & Watchlist](shipped_features.md#15-upcoming-releases-list-for-favorites--watchlist-movies--episodes-date-sorted--done-2026-09-28) | DONE |
+| [16. Release-Date Reminders for Unreleased Titles](shipped_features.md#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts--done-2026-10-04) | DONE |
+| [17. Remove Existing Deprecated API Usages](shipped_features.md#17-remove-existing-deprecated-api-usages--done-2026-10-17) | DONE |
 
 **Still open inside those shipped items** - the only unchecked boxes left in the archive, listed
 here so they are not lost behind the "DONE" markers above:
@@ -516,14 +518,14 @@ Decided by "would this come back on its own after a reinstall?" - if yes, it sta
 | Restricted mode | `restricted_mode_enabled` (`RestrictedModeConstant`) | No | ✅ |
 | Episode-notification opt-in | `episode_notifications_enabled`, `episode_alert_opt_in_prompt_seen` (`NotificationSettingsConstant`) | No | ✅ |
 | Saved Discover filters | `discover_movie_filters_json` / `discover_tv_filters_json` (`DiscoverFilterRepository`) | No | ✅ |
-| Release reminders + reminder time | `releaseReminder` and `reminderPreference` tables (`ReleaseReminderRepository`) - item 16 | No - local-only, nothing on TMDB to sync to | ✅ - after restoring, call `ReleaseReminderCoordinator.rescheduleAll()` so the OS-scheduled notifications come back too |
+| Release reminders + reminder time | `releaseReminder` and `reminderPreference` tables (`ReleaseReminderRepository`) - shipped item 16 | No - local-only, nothing on TMDB to sync to | ✅ - after restoring, call `ReleaseReminderCoordinator.rescheduleAll()` so the OS-scheduled notifications come back too |
 | Favorites / watchlist / custom lists | `trackedMedia`, `customList`, `customListItem` | **Yes** - re-synced from TMDB on sign-in | ❌ |
 | Detail caches, `remoteKeys` | `movieDetailCache` / `tvDetailCache` / `tvSeasonDetailCache` / `personDetailCache` / `remoteKeys` | Yes - pure read-through caches | ❌ |
 | Poll state + notification ledger | `trackedMedia.lastKnown*`, `favoritePerson.lastKnownCreditIds`, `favoriteCollection.lastKnownPartIds`, `notificationLedger` | n/a - see below | ❌ (deliberate) |
 | TMDB session | `auth_session_id`, `auth_account_id`, `auth_username`, `auth_name`, `auth_avatar_url` (`AuthRepository`) | Yes - the user signs in again | ❌ **never** |
 | Privacy-policy acceptance | `privacy_policy_accepted_v1` (`PrivacyConsentRepository`) | n/a - re-shown per install | ❌ (deliberate) |
 
-[Item 16](#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts)'s
+[Shipped item 16](shipped_features.md#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts--done-2026-10-04)'s
 reminder rows carry no poll cursor of their own (the poller just re-resolves `releaseDate` and
 `lastCheckedAt` is informational), so the whole row is backed up as-is.
 
@@ -760,238 +762,6 @@ its own; the first is the natural next step.
 
 ---
 
-## 16. Release-Date Reminders for Unreleased Titles ("Remind me" CTA + day-before / release-day alerts)
-**Goal**: Let the user tap **"Remind me"** on a movie or show that hasn't come out yet, and get two
-local notifications **at a time of day they choose** (default **9:00 AM** local): one the day before
-it releases, one on release day. The app already *tells* the user a title is unreleased -
-`UpcomingBadge` renders wherever `isUpcoming(today)` is true (`SearchResultItem`/`Movie`/`Tv`, shown
-on the Discover tabs, search results and the favorites/watchlist grid), and the Upcoming tab now
-shows non-functional 🔔 placeholders on Android/iOS (gated by `isMobilePlatform()`) - but nothing
-actually reminds anyone, so remembering to come back is entirely the user's problem.
-
-Nothing in [item 3](shipped_features.md#3-local-notifications-returning-series-favorite-actors-favorite-collections)
-covers this. `TvEpisodeNotificationPoller` keys off `next_episode_to_air`, which an unpremiered
-show doesn't have; `PersonCreditNotificationPoller`/`CollectionNotificationPoller` fire on *new*
-credits/parts appearing, not on a known date arriving. And movies are polled by nothing at all -
-`selectTrackedTvForPolling` is `WHERE mediaType = 'tv'`. An upcoming title falls through every
-existing poller.
-
-### Delivery decision (researched 2026-10-03): OS-scheduled local notifications, not poll-time posts
-Item 3's pollers post a notification *while the poll runs*. That is fine for episode alerts (a
-missed poll gets another chance tomorrow) but wrong for a **once-ever, time-of-day** reminder:
-- **iOS** `BGTaskScheduler` is opportunistic - for a rarely-opened app it can go days without
-  running, so a release-day alert may simply never fire.
-- **Android**'s periodic WorkManager job can run at 3 AM, posting "out today" in the middle of the
-  night, and a user-chosen time of day can't be honoured at all by a 6-hour poll.
-
-So the poller's job changes from *posting* to *keeping dates fresh and (re)scheduling*; the OS
-delivers the notification at the chosen time, with the app closed:
-
-| | iOS | Android |
-|---|---|---|
-| API | `UNCalendarNotificationTrigger(dateMatching:, repeats: false)` via `UNUserNotificationCenter` | `AlarmManager.setWindow()` (or `setAndAllowWhileIdle()`) firing a `BroadcastReceiver` that posts through the existing `LocalNotifier` |
-| Fires with app killed | yes - delivered by the OS | yes |
-| Extra permission | none beyond notification authorization | none - inexact alarms need no permission |
-| Timing | on time | within the window (min 10 min on Android 12+); use a ~30-min window starting at the chosen time |
-| Catch | **64 pending requests per app** - the OS keeps the soonest 64 and silently drops the rest | alarms are **wiped on reboot and force-stop** - needs a `BOOT_COMPLETED` receiver (+ `RECEIVE_BOOT_COMPLETED`) and a reschedule-all on app start |
-
-- [ ] **No exact alarms.** `USE_EXACT_ALARM` is a Play-restricted permission limited to alarm/timer
-  and calendar apps (reviewed, declaration required) - a media tracker doesn't qualify.
-  `SCHEDULE_EXACT_ALARM` is **denied by default for new installs on Android 14+**, needs a trip to
-  system settings, and Google's own guidance is to degrade to inexact. A TMDB release has no time
-  of day anyway; "9:00 vs 9:20" isn't worth either cost.
-- [ ] **Not a WorkManager `OneTimeWorkRequest`.** It survives reboot on its own, but Doze can defer
-  it by hours - the same lateness problem as the poll, just one-shot.
-- [ ] **Not a third-party library.** [Alarmee](https://github.com/Tweener/alarmee) wraps exactly
-  these two APIs for KMP, but this app already owns content, poster loading, permission and
-  tap-to-open in `LocalNotifier`/`NotificationPermissionRequester`/`PendingNotificationTarget`;
-  a library would duplicate that layer. Per CLAUDE.md, the custom scheduler's KDoc must say so.
-- [ ] **Stay inside iOS's 64 cap**: only schedule reminders whose fire date is within the next
-  ~30 days (2 per title ≈ 32 titles of headroom, leaving room for item 3's immediate posts); the
-  poller tops up later ones as they come into range. Never `removeAllPendingNotificationRequests` -
-  cancel by identifier only, so item 3's pending deliveries are untouched.
-- [ ] **Stable identifiers** - `release:<mediaType>:<id>:<reason>` - so a slipped date or a changed
-  reminder time is a cancel-and-replace of the same two requests, never a duplicate.
-- [ ] Desktop/JS: no reminder delivery at all (their schedulers only run while the app/tab is open);
-  the CTA stays hidden there via `isMobilePlatform()`, as the Upcoming tab already does.
-
-### User-chosen reminder time (default 9:00 AM)
-- [ ] One **global** time of day for all release reminders (both the day-before and release-day
-  alert), stored in `NotificationSettingsRepository` next to the episode-notification flags:
-  `getReleaseReminderTime(): LocalTime` / `setReleaseReminderTime(LocalTime)`, persisted as
-  minutes-since-midnight under a new `NotificationSettingsConstant` key.
-- [ ] **Default 09:00 local.** Most people are awake and past their morning routine, it's early
-  enough that a release-day alert still leaves the whole day/evening to plan a watch, and it's
-  within the common daytime window where notifications are acted on rather than swiped away. A
-  named constant (`DEFAULT_RELEASE_REMINDER_TIME`), not a literal.
-- [ ] **Picker**: Material3's `TimePickerDialog` + `TimePicker` (dial) / `TimeInput` (keyboard) with
-  `rememberTimePickerState(is24Hour = ...)` - present in this project's Material3 1.9, so no custom
-  picker. A "Reminder time" row on `AccountScreen` under the release-reminders toggle, showing the
-  current time (formatted 12/24h per the system setting) and opening the dialog on tap.
-- [ ] **Changing the time reschedules every pending reminder** immediately (same cancel-and-replace
-  by identifier), not at the next poll.
-- [ ] Per-title times stay out of scope (see below) - one global time is the whole preference.
-
-### What this reuses (most of it is already built)
-- **Notification content + tap-to-open**: `LocalNotifier` (poster via `NotificationImageFetcher`,
-  `deepLink`), `NotificationPermissionRequester`, `PendingNotificationTarget`. The new
-  `ReminderScheduler` hands the *same* title/body/poster/deep-link to the OS for later delivery
-  instead of posting now.
-- **The existing periodic job** (`NotificationScheduler` → `EpisodeNotificationWorker` /
-  `BGTaskScheduler`) runs the new poller - **one periodic job, not a fourth**, matching
-  `PersonCreditNotificationPoller`'s kdoc reasoning. Its unreliable timing no longer matters: it
-  only refreshes dates and re-schedules; it never delivers.
-- **The dedup ledger** keeps its role: `notificationLedger` keyed `(id, mediaType, reason,
-  cursorValue)` with the *resolved release date* in `cursorValue`, written when a reminder is
-  **scheduled**, so an identical re-poll doesn't reschedule and a slipped date does.
-- **`release_dates` is already on the wire and already modeled.** `MovieRepositoryImpl`'s
-  `append_to_response` includes `release_dates`, and `ReleaseDatesResponse` / `ReleaseDatesResult` /
-  `ReleaseDateItem` all exist in `MovieDetail.kt` - including `type: Int`, which **nothing currently
-  reads**. So for movies no new endpoint, append value or model field.
-- **Region resolution** from [item 11](shipped_features.md#11-region-selector-driving-ott-availability--done-2026-08-17):
-  `RegionRepository` plus `resolveRegion()`/`resolveRegionCode()`'s selected → fallback → any
-  priority.
-
-### Relevant OAS endpoints
-- `GET /3/movie/{movie_id}?append_to_response=release_dates` - **already called exactly like this.**
-  `release_date` (the primary date) plus the per-country `release_dates.results[]` buckets.
-- `GET /3/tv/{series_id}` - `first_air_date` and `status` (`"Planned"` / `"In Production"` /
-  `"Returning Series"`), already fetched by `TvRepositoryImpl`.
-
-### Decide first: *which* release date the reminder fires on
-This is the one genuine design question, and getting it wrong makes the feature actively annoying.
-- `movie.release_date` is TMDB's **primary** release date, which is frequently a festival premiere
-  or a US theatrical date - not the date the title becomes available to this user.
-- The `release_dates` buckets carry a `type`, documented by TMDB as: **1** Premiere, **2**
-  Theatrical (limited), **3** Theatrical, **4** Digital, **5** Physical, **6** TV.
-- [ ] **Ground-truth this against the live API before building**, per
-  `.claude/skills/tmdb-api/SKILL.md` - the type numbering above comes from TMDB's Movie Bible page,
-  not from a live response.
-- **Recommendation**: resolve in the user's region first (item 11's selected → fallback → any
-  priority), preferring type **3 Theatrical**, then **4 Digital**, then falling back to
-  `release_date`. **Type 1 Premiere must never be the reminder date.**
-- [ ] Put the resolved source in the notification body ("In theatres in IN on Friday"), so a date
-  the user disagrees with is at least explicable. A "remind me for digital releases only"
-  preference is a good *second* pass, not first-cut scope.
-- TV is simple: `first_air_date`, which has no per-region equivalent.
-
-### The CTA: where the button goes, and where it can't
-- [ ] **It cannot live in `MediaActionButtonsSection`** - that composable returns early when signed
-  out. A release reminder needs **no TMDB account**: it is purely local, like followed people and
-  collections.
-- [ ] Add `ReleaseReminderButton` (`core/ui/hero/`), rendered in the movie/TV hero only when
-  `isUpcoming(today)` and `isMobilePlatform()` are true. Model it on **`FollowCollectionButton`** -
-  a local-only, signed-out-capable follow toggle backed by a local table.
-- [ ] First tap calls `rememberNotificationPermissionRequester().request()`, then schedules - the
-  same permission path `EpisodeAlertOptInDialog` and `AccountScreen`'s toggle already use. Do not
-  invent a third opt-in path. The first tap may also show a one-line "We'll remind you at 9:00 AM -
-  change in Settings" snackbar so the time preference is discoverable.
-- [ ] **Wire up the existing Upcoming-tab bells** (`UpcomingReleasesTab`'s row bell, the Next-up
-  card's bell / "Remind me" button) to the same toggle - they are placeholders for exactly this.
-- [ ] Optional: the same toggle next to `UpcomingBadge` in `AccountMediaGridContent`.
-
-### Data model
-- [ ] New **local-only** `releaseReminder` table in `MyDatabase.sq`, alongside `favoritePerson` /
-  `favoriteCollection`. Columns: `id`, `mediaType`, `title`, `posterPath`, `addedAt`,
-  `lastKnownReleaseDate TEXT` (NULL = never polled), `PRIMARY KEY (id, mediaType)`.
-- [ ] **Not** a column on `trackedMedia`: a reminder must work for a title that is neither favorited
-  nor watchlisted, and while signed out.
-- [ ] **Bump `LocalSchemaVersion.CURRENT` and ship a numbered `N.sqm` migration** - the **first real
-  `.sqm` since the v1.0.0 reset**, so also turn on `verifyMigrations.set(true)` in
-  `composeApp/build.gradle.kts`'s `sqldelight` block.
-- [ ] **Add `releaseReminder` (and the reminder-time setting) to [item 15](#15-backup--restore-for-device-only-data-the-data-tmdb-does-not-hold)'s
-  backup scope.** `lastKnownReleaseDate` stays out; on restore, reschedule from the restored rows.
-
-### The poller (date refresh + scheduling, never delivery)
-- [ ] `ReleaseReminderPoller` (`features/notifications/`), called from
-  `EpisodeNotificationWorker.doWork()` / the iOS BG task next to the three existing pollers. Per
-  row: re-fetch detail, resolve the date, and if it changed (or was never scheduled) cancel and
-  re-schedule both reminders via `ReminderScheduler`, then update `lastKnownReleaseDate`.
-- [ ] Two new `NotificationReason` entries with explicit `storageValue`s: `RELEASE_TOMORROW
-  ("release_tomorrow")` and `RELEASE_TODAY("release_today")`.
-- [ ] **Never schedule a reminder in the past.** If "day before at the chosen time" has already
-  passed (reminder added late, or the date slipped earlier), schedule only `RELEASE_TODAY`; if
-  that has passed too, schedule nothing. Pure function, unit-tested.
-- [ ] **Age the row out** once the release date is ~7 days past (not immediately - a date that
-  slips backwards shouldn't lose the row).
-- [ ] Per-item `try`/`catch` isolation around each detail call - `HttpExceptions`, `IOException`,
-  `ContentConvertException`, `SerializationException`, copying `TvEpisodeNotificationPoller.pollOne`.
-  No bare `Exception`.
-- [ ] Tap opens the movie/TV detail screen: a new `NotificationTarget` variant alongside
-  `EpisodeNotificationTarget` in `core/notification/NotificationDeepLink.kt`, plus the
-  `MovieDetailKey`/`TvDetailKey` push in `App.kt`'s `MainAppScreen`.
-
-### Implementation Checklist
-- [ ] **Schema**: `releaseReminder` table + queries (`selectAllReleaseReminders`,
-  `selectReleaseReminderById`, `insertReleaseReminder`, `deleteReleaseReminder`,
-  `updateLastKnownReleaseDate`, `selectReleaseRemindersForPolling`), the `.sqm` migration, the
-  `LocalSchemaVersion.CURRENT` bump, `verifyMigrations`.
-- [ ] **Scheduler** (`core/notification/ReminderScheduler.kt`, expect/actual):
-  `schedule(id: String, at: LocalDateTime, content: ReminderContent)` / `cancel(id: String)` /
-  `cancelAll(prefix)`.
-  - androidMain: `AlarmManager.setWindow` + `ReleaseReminderReceiver` (posts via `LocalNotifier`),
-    `BootCompletedReceiver` + `RECEIVE_BOOT_COMPLETED` that reschedules from the table; also
-    reschedule-all on app start.
-  - iosMain: `UNNotificationRequest` with `UNCalendarNotificationTrigger(repeats = false)`,
-    identifier = the stable id; poster attached via `UNNotificationAttachment` as `LocalNotifier`
-    already does; 30-day horizon.
-  - desktopMain/jsMain: no-op (CTA hidden there).
-- [ ] **Data Layer**: `ReleaseReminderRepository` / `Impl` (`features/notifications/repository/`),
-  mirroring `FavoriteCollectionRepository` - `observeHasReminder(id, mediaType): Flow<Boolean>`,
-  `setReminder(...)`, `remindersForPolling()`. Toggling off cancels both scheduled requests.
-- [ ] **Settings**: `getReleaseReminderTime()`/`setReleaseReminderTime()` on
-  `NotificationSettingsRepository` (default 09:00); a release-reminders toggle row and a "Reminder
-  time" row (Material3 `TimePickerDialog`) on `AccountScreen`; changing the time reschedules all.
-  Debug row "Fire a release reminder in 1 minute" next to the existing debug poll rows.
-- [ ] **Date resolution**: `MovieDetail.resolveReleaseDate(regionCode): ResolvedRelease?` in
-  `MovieHeroFacts.kt`, returning date **and** winning `ReleaseType` (an **enum** with the TMDB int
-  as its stored value).
-- [ ] **Fire-time math** (pure, common): `reminderFireTimes(releaseDate, reminderTime, now):
-  List<Pair<NotificationReason, LocalDateTime>>` - drops past entries, applies the 30-day horizon.
-- [ ] **UI**: `ReleaseReminderButton` in the movie and TV heroes; Upcoming-tab bells wired to it;
-  all copy via `Res.string.*` (`action_remind_me`, `action_reminder_set`,
-  `settings_release_reminders`, `settings_reminder_time`, `reminder_time_set_snackbar`,
-  `notification_release_tomorrow_title/_body`, `notification_release_today_title/_body`).
-- [ ] **Tests** (both tiers, per `.claude/skills/testing-conventions/SKILL.md`):
-  - Unit: `reminderFireTimes` - both reminders at the chosen time; day-before dropped once past;
-    both dropped once release time past; 30-day horizon; a changed reminder time moves both.
-    `ReleaseReminderPollerTest` - slipped date reschedules, identical re-poll doesn't, rows age
-    out, one HTTP failure doesn't abort the rest (with a fake `ReminderScheduler` recording calls).
-    Date resolution - region theatrical beats digital beats primary; **type 1 never chosen**.
-    Settings - default is 09:00, round-trips a set value.
-  - Compose UI: `ReleaseReminderButtonUiTest` (renders only for an upcoming title, renders signed
-    out, tap toggles); reminder-time row shows the stored time and opens the picker.
-- [ ] **Verify**: `./gradlew :composeApp:desktopTest`, `:composeApp:compileKotlinDesktop`,
-  `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`, then on a real Android device (reboot
-  survives) and iOS simulator (app killed, notification still arrives at the chosen time).
-
-### Deliberately out of scope
-- **Exact-time alarms** (`SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`) - see the delivery decision.
-- **Per-title custom times or lead times** ("remind me a week before"). One global time-of-day
-  preference, two fixed reminders.
-- **Season-premiere reminders for shows already airing** - [item 3a](shipped_features.md#3a-returning-series---newupcoming-episode--done-2026-08-26)
-  covers those via `next_episode_to_air`.
-- **Calendar export** (`.ics` / system calendar write) - different permission model.
-- **Desktop/JS delivery** - no OS scheduler that fires with the app closed.
-
-### Risks / open questions
-- **Release dates are the most volatile field TMDB has for unreleased titles.** The reschedule-on-
-  change design absorbs slips, but the poller only notices on its unreliable cadence - a date
-  pulled *earlier* by less than a poll interval can be missed. Accept for the first cut.
-- **No `RELEASE_DATE_CHANGED` notification** in the first cut - three notifications per title is
-  how a useful feature becomes one people turn off.
-- **iOS 64-request cap** is shared with item 3's posts and is silent when exceeded - the 30-day
-  horizon is the guard; worth a debug log when the pending count nears the cap.
-- **Android OEM battery killers** (some vendors clear alarms aggressively beyond stock Android) can
-  still drop a reminder; reschedule-on-app-start limits the damage. Not solvable without exact alarms.
-- **Timezones.** A TMDB release date is a plain `LocalDate`; the fire time is that date at the
-  user's chosen local time in `TimeZone.currentSystemDefault()`. If the device timezone changes,
-  reschedule on the next app start / poll.
-- **A reminder for a never-dated title.** `isUpcoming()` reads empty or year-only dates as *not*
-  upcoming, so the CTA won't appear for the most-anticipated undated titles.
-
----
-
 ## 16. Colorblind-Friendly Theme
 **Goal**: A third selectable color scheme, alongside the existing Light/Dark (`theme/Theme.kt`'s
 `LightColorScheme`/`DarkColorScheme`, both `md_theme_*` constants in `theme/Color.kt`), for
@@ -1181,36 +951,6 @@ from a user observation; small.
 
 ---
 
-## 20. Remove Existing Deprecated API Usages (done 2026-10-17)
-**Goal**: Clear the deprecation warnings the build already prints, now that
-`.claude/skills/code-conventions/SKILL.md` §12 forbids new ones. Pure cleanup, no behaviour change.
-
-161 warnings across all five targets before; **0** after (`compileKotlinDesktop`,
-`compileTestKotlinDesktop`, `compileDebugKotlinAndroid`, `compileKotlinJs`,
-`compileKotlinIosSimulatorArm64`).
-
-- [x] `kotlinx.datetime.Clock` / `Instant` -> `kotlin.time.Clock` / `Instant` (35 files, ~130 warnings).
-- [x] `LocalDate.dayOfMonth` / `monthNumber` -> `day` / `month.number` (`MonthCalendar.kt`, iOS `ReminderScheduler`).
-- [x] `Icons.Filled.List`, `KeyboardArrowRight` -> `Icons.AutoMirrored.Filled.*`.
-- [x] `LocalClipboardManager` -> `LocalClipboard` + new `expect fun plainTextClipEntry` (Compose has no
-  common plain-text `ClipEntry` factory); clipboard UI test moved to `desktopTest`.
-- [x] compose-ui `LocalLifecycleOwner` -> lifecycle-runtime-compose's, and the hand-written observer
-  in `AutoScrollCarousel` replaced by `currentStateAsState()`; artifact now declared in `commonMain`.
-- [x] `currentWindowAdaptiveInfo()` -> `currentWindowAdaptiveInfoV2()` (`App.kt` only reads the posture).
-- [x] Also: `menuAnchor()` -> `menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)`; desktop
-  `@Preview` -> `androidx.compose.ui.tooling.preview.Preview`; `runComposeUiTest` -> the `v2` one;
-  `ACTION_MEDIA_SCANNER_SCAN_FILE` -> `MediaScannerConnection.scanFile`; removed a no-op clear of the
-  deprecated `FLAG_TRANSLUCENT_*` window flags; removed the deprecated `kotlin.js.compiler=ir` property.
-- **Blocked, suppressed on purpose:** `rememberTransformableState` (`FullscreenMediaGallery.kt`). The
-  replacement overload (with the pinch centroid) exists in foundation 1.11, but Android resolves
-  androidx foundation 1.10.0 and web 1.9.1, so common code can't switch. Revisit when every target
-  resolves 1.11+ - drop the `@Suppress("DEPRECATION")` there.
-- Per code-conventions §13-14, every touched file was also brought in line: 12 more data classes into
-  their own files (models into `features/<feature>/model/`), `BackupScreenModel` and
-  `FavoriteCollectionsScreenModel` into `viewmodel/`.
-
----
-
 ## 21. Native Debug Symbols for Play (next release, queued 2026-10-05)
 **Goal**: Clear Play Console's v1.2.0 warning *"This App Bundle contains native code, and you've not
 uploaded debug symbols"*, so native crashes and ANRs in Play Vitals have readable stack traces.
@@ -1243,7 +983,7 @@ uploaded debug symbols"*, so native crashes and ANRs in Play Vitals have readabl
 ## 22. Move `com.android.application` Out of the KMP Module (queued 2026-10-17)
 **Goal**: Clear the Gradle warning "The 'org.jetbrains.kotlin.multiplatform' plugin is not compatible
 with 'com.android.application' starting with Android Gradle Plugin 9.0.0". Not a code deprecation -
-a build-structure migration, which is why item 20 didn't do it.
+a build-structure migration, which is why item 20 (deprecated APIs, now shipped item 17) didn't do it.
 
 - [ ] New `:androidApp` module applying `com.android.application`, depending on `:composeApp`; move
   `AndroidManifest.xml`, the Activity/Application classes, resources the app needs, signing and
@@ -1292,13 +1032,15 @@ don't test the packaged/minified app or OS features (camera permission, notifica
   `MediaActionButtonsSection(scheduleNotificationJob)`, `PrivacyConsentGate(policyContent)`;
   plus `.toList()` on state-list assertions and an explicit `showReminderControls`. Rules added to
   the testing-conventions skill.
-- [ ] **Step 2 - Android emulator** - *done locally 2026-10-25; first CI run failed 2 tests (animations-off CI setting, dialog race), fixed*: all 767
+- [x] **Step 2 - Android emulator** (done 2026-10-25, CI green on PR #23): all 767
   `commonTest` tests run with `:composeApp:connectedDebugAndroidTest` (763 pass, 4 skipped on
   Android for a Compose framework bug - see `KNOWN_BUGS.md`). Needed: Espresso 3.7.0 (3.5.0 breaks
   on recent Android), no `Dispatchers.setMain` in UI tests (hung every ViewModel screen), and
   screen-size-independent tests. Found and fixed a real bug on the way: every list tab fetched
   page 1 twice. CI: `android-device-tests` job (API 35 emulator, Linux + KVM) runs only on pull
-  requests into `master` or `release/*` - added 2026-10-25, not yet run on GitHub. Original plan: add the device-test source set
+  requests into `master` or `release/*`. Its first three CI runs found failures the local foldable
+  emulator didn't (animations-off setting, a dialog race, phone screen size, timing); the lessons are
+  in the testing-conventions skill. Original plan: add the device-test source set
   (`androidDeviceTest` / `testInstrumentationRunner`), make it depend on the shared UI tests, run
   `:composeApp:connectedAndroidTest` locally; add an emulator CI job
   (`reactivecircus/android-emulator-runner`). Coordinate with item 22 - the module split changes
@@ -1359,6 +1101,8 @@ module straightforward) and item 23 (tests already run on every platform before 
 ---
 
 ## 25. Settings Toggle to Turn Off Trending Carousel Autoscroll (queued 2026-10-17)
+**Status (2026-10-25):** not started. PR #21 only added this plan; no code exists yet.
+
 **Goal**: Let users switch off the Trending tab's carousel autoscroll
 ([shipped item 14](shipped_features.md#14-autoscroll-the-trending-media-carousels--done-2026-09-27))
 from the account screen's settings list. Today it can only be stopped indirectly (reduce motion /

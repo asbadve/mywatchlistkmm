@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -236,7 +235,10 @@ fun DiscoverFilterDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearMenuExpanded) },
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                     )
-                    DropdownMenu(expanded = yearMenuExpanded, onDismissRequest = { yearMenuExpanded = false }) {
+                    // ExposedDropdownMenu, not a plain DropdownMenu: only the box-scoped menu anchors
+                    // to the field and matches its width - a plain one opened at the screen's left
+                    // edge on Android, outside the dialog.
+                    ExposedDropdownMenu(expanded = yearMenuExpanded, onDismissRequest = { yearMenuExpanded = false }) {
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.discover_filter_year_any)) },
                             onClick = {
@@ -270,7 +272,7 @@ fun DiscoverFilterDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sortMenuExpanded) },
                         modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                     )
-                    DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                    ExposedDropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
                         sortOptions.forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(sortByLabelResource(option)?.let { stringResource(it) } ?: option) },

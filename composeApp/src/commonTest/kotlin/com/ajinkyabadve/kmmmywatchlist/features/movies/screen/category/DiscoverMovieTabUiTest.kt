@@ -22,7 +22,7 @@ class DiscoverMovieTabUiTest {
             val discoverRepository = FakeDiscoverRepository()
             discoverRepository.discoverMoviesResult =
                 Result.success(
-                    MoviePageResult(page = 1, list = listOf(Movie(id = 1, title = "Fake Movie")), totalResults = 1, totalPages = 0),
+                    MoviePageResult(page = 1, list = listOf(Movie(id = 1, title = "Fake Movie")), totalResults = 1, totalPages = 1),
                 )
             val movieModel =
                 DiscoverMovieScreenModel(
@@ -51,7 +51,7 @@ class DiscoverMovieTabUiTest {
                                 Movie(id = 2, title = "Upcoming Movie", releaseDate = "2099-01-01"),
                             ),
                         totalResults = 2,
-                        totalPages = 0,
+                        totalPages = 1,
                     ),
                 )
             val movieModel =

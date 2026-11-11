@@ -35,16 +35,11 @@ class MovieScreenTabsUiTest {
         const val MANY_MOVIES_COUNT = 30
     }
 
-    // totalPages = 0 marks pagination as exhausted after the first load - otherwise the fake's
-    // page always reports back as 1, so `canPaginate = response.page <= response.totalPages`
-    // (MovieListScreenModel.kt) stays true forever and, with only one item in a small grid,
-    // CommonMovieListScreenContent's near-end-of-list pagination trigger keeps re-firing
-    // loadMovies() in an unbounded loop.
     private fun fakeRepoWithMovie(title: String) =
         FakeMovieRepository().apply {
             getMoviesResult =
                 Result.success(
-                    MoviePageResult(page = 1, list = listOf(Movie(id = 1, title = title)), totalResults = 1, totalPages = 0),
+                    MoviePageResult(page = 1, list = listOf(Movie(id = 1, title = title)), totalResults = 1, totalPages = 1),
                 )
         }
 
@@ -119,7 +114,7 @@ class MovieScreenTabsUiTest {
                                 page = 1,
                                 list = titles.mapIndexed { index, title -> Movie(id = index, title = title) },
                                 totalResults = titles.size,
-                                totalPages = 0,
+                                totalPages = 1,
                             ),
                         )
                 }
