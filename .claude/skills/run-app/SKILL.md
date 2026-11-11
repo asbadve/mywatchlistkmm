@@ -1,6 +1,6 @@
 ---
 name: run-app
-description: Run and visually verify the MyWatchList Compose Multiplatform app on desktop (JVM), iOS Simulator, and Android. Includes how to screenshot each platform, and how to drive the UI - Maestro (tapOn/assertVisible by text) on Android/iOS, Appium + Mac2Driver on desktop (with mandatory teardown), adb/cliclick coordinates where neither reaches (raw scroll gestures, web/JS) - without user interaction.
+description: Run and visually verify the MyWatchList Compose Multiplatform app on desktop (JVM), iOS Simulator, and Android. Includes how to screenshot each platform, and how to drive the UI - Maestro (tapOn/assertVisible by text) on Android/iOS, Appium + Mac2Driver on desktop (with mandatory teardown), Playwright by accessible name on web/JS, adb/cliclick coordinates where none of those reach (raw scroll gestures) - without user interaction.
 ---
 
 # Run & visually verify MyWatchList
@@ -15,6 +15,7 @@ Compile check: `./gradlew :composeApp:compileKotlinDesktop`. Tests: `./gradlew :
 | A static screen, fastest | Desktop |
 | Anything triggered by **scrolling, tapping, navigation, or insets** | **Android or iOS, driven with Maestro** (see below) |
 | Same, but on **desktop** specifically | **Appium + Mac2Driver** (see below) |
+| Same, but on **web** specifically | **Playwright** by accessible name (see "JS (browser)") |
 | Expanded/split layouts | iOS Simulator (iPad) or desktop, resized |
 
 System-bar / edge-to-edge behaviour is only real on Android - desktop has no insets.
@@ -58,10 +59,9 @@ appId: com.ajinkyabadve.kmmmywatchlist.androidApp   # iOS: com.ajinkyabadve.kmmm
   it" - only take an actual screenshot when you need to see something Maestro can't assert on
   (layout, colors, image content).
 - **Coverage gap: Maestro cannot drive this app's desktop (JVM/Swing window) or web/JS targets at
-  all** - confirmed by testing both. Desktop's gap is closed by Appium + Mac2Driver instead (next
-  section) - web's isn't: Compose renders it to one canvas with no DOM/accessibility tree for
-  *any* automation tool to query, Maestro or otherwise. Fall back to `cliclick`/coordinate taps
-  for web only.
+  all** - confirmed by testing both. Desktop's gap is closed by Appium + Mac2Driver (next
+  section), web's by Playwright against the hidden semantics DOM Compose web builds (see
+  "JS (browser)" - an earlier note here claiming web had no accessibility tree was wrong).
 
 ## Driving the UI: Appium + Mac2Driver (desktop)
 
@@ -301,5 +301,49 @@ dedup ledger (`notificationLedger` table) doing its job, not a fluke of only fir
 
 ## JS (browser)
 
-- `./gradlew :composeApp:jsBrowserDevelopmentRun` exists but is slow; not part of the normal
-  verification loop.
+```bash
+./gradlew :composeApp:jsBrowserDevelopmentRun   # background; serves http://localhost:8080 after
+                                                # "webpack ... compiled successfully" (~1-5 min)
+```
+
+Not part of the normal verification loop; use it when a change needs checking on web. The only
+expected console error is a `favicon.ico` 404. Kill the Gradle process when done.
+
+### Driving it: Playwright (`playwright@claude-plugins-official`, `mcp__plugin_playwright_*`)
+
+Compose web draws to one `<canvas>`, **but also mirrors the semantics tree into a hidden DOM**
+(`position: fixed` divs with real on-screen bounds; `contentDescription`/text become the accessible
+name; a `testTag` becomes the element `id`). `browser_snapshot` shows it. Confirmed 2026-10-31 on
+Compose Multiplatform 1.11.1 - the whole autoscroll-setting flow ran without one coordinate:
+
+```js
+// inside browser_run_code_unsafe: async (page) => { ... }
+await page.getByRole('button', { name: 'Accept & Continue' }).click({ force: true });
+await page.getByRole('button', { name: 'Account', exact: true }).click({ force: true });
+await page.getByRole('button', { name: /Autoscroll trending carousels/ }).click({ force: true });
+const stored = await page.evaluate(() => localStorage.getItem('trending_auto_scroll_enabled'));
+```
+
+- **`force: true` is required.** The canvas sits on top and "intercepts pointer events", so
+  Playwright's actionability check fails; forced, the click lands on the canvas at the node's
+  centre, which is what Compose handles.
+- **Every clickable is `role=button`** - `Role.Switch`/checkboxes included - and there is no
+  `aria-checked`. Match on name, and read state from `localStorage` (multiplatform-settings keys,
+  e.g. `privacy_policy_accepted_v1`, `trending_auto_scroll_enabled`) or from what's on screen.
+- **Off-screen nodes are 0x0 at (0,0)** (below a scroll fold, inside a dialog's hidden part).
+  Scroll first with `page.mouse.wheel` aimed at a *visible* node's `boundingBox()`, and wait with
+  `waitFor({ state: 'attached' })` - `visible` never resolves for them.
+- **After a dialog closes, the tree goes stale until a reload.** Closing the Account dialog (a
+  Navigation 3 `DialogSceneStrategy` entry) leaves the dialog's nodes in the DOM and drops the
+  whole home screen; mouse/wheel/keyboard input doesn't recover it. A semantics check made after
+  a dialog close silently reads the stale tree - use a pixel check there, or reload first.
+- **Lazy rows expose only on-screen items.** To prove a carousel moved, compare the ordered item
+  names over time (`getByRole('list').nth(i).getByRole('button')`) - bounding boxes stay put while
+  the names change. Trending lists in order: 0 trailers, 1/3/5 Today-Week chips, 2 movies, 4 TV,
+  6 people. Lists are index-based, so re-check the order if the screen changes.
+- **Pixel check** (when semantics can't be trusted): compare `page.screenshot({ clip })` buffers
+  taken a few seconds apart with `a.equals(b)`.
+- Fresh Playwright profile = fresh `localStorage`: the privacy-consent screen comes first.
+  `localStorage.clear()` + reload resets every setting to its default.
+- Screenshot/file paths must be inside the repo (`.playwright-mcp/`, gitignored) - `/tmp` is denied.
+- Flag emoji render as empty boxes on web (Region rows) - not caused by the test setup.
