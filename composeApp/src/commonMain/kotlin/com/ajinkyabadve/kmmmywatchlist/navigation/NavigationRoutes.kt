@@ -1,10 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.navigation
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.baseline_favorite_24
 import mywatchlist.composeapp.generated.resources.baseline_movie_24
@@ -13,53 +10,75 @@ import mywatchlist.composeapp.generated.resources.baseline_tv_24
 import mywatchlist.composeapp.generated.resources.trending_up_24
 import org.jetbrains.compose.resources.DrawableResource
 
+/**
+ * Every destination in the app. `@Serializable` - and sealed, so the compiler generates the
+ * polymorphic serializer without reflection or a `SerializersModule` - because the back stack is
+ * saved across Activity recreation and process death (see [rememberTopLevelBackStack]). A new key
+ * must be `@Serializable` too, or saving the back stack fails at runtime.
+ */
+@Serializable
 sealed interface AppKey : NavKey
 
+@Serializable
 data object TrendingKey : AppKey
 
+@Serializable
 data object MoviesKey : AppKey
 
+@Serializable
 data object TvShowsKey : AppKey
 
+@Serializable
 data object PersonKey : AppKey
 
+@Serializable
 data object MyFavKey : AppKey
 
+@Serializable
 data object SearchKey : AppKey
 
+@Serializable
 data object AccountKey : AppKey
 
+@Serializable
 data class MovieDetailKey(
     val movieId: Long,
 ) : AppKey
 
+@Serializable
 data class CollectionDetailKey(
     val collectionId: Long,
 ) : AppKey
 
+@Serializable
 data class TvDetailKey(
     val tvShowId: Long,
 ) : AppKey
 
+@Serializable
 data class PersonDetailKey(
     val personId: Long,
 ) : AppKey
 
+@Serializable
 data class AllSeasonsKey(
     val tvShowId: Long,
 ) : AppKey
 
+@Serializable
 data class EpisodeListKey(
     val tvShowId: Long,
     val seasonNumber: Int,
 ) : AppKey
 
+@Serializable
 data class EpisodeDetailKey(
     val tvShowId: Long,
     val seasonNumber: Int,
     val episodeNumber: Int,
 ) : AppKey
 
+@Serializable
 data class ListDetailKey(
     val listId: Long,
 ) : AppKey
@@ -83,12 +102,6 @@ fun AppKey?.isDetailKey(): Boolean =
 
         else -> false
     }
-
-data class BottomNavItem(
-    val key: AppKey,
-    val label: String,
-    val icon: DrawableResource,
-)
 
 val bottomNavItems =
     listOf(
@@ -120,79 +133,3 @@ val movieScreenTab =
         MovieScreenTab.Popular,
         MovieScreenTab.TopRated,
     )
-
-/**
- * Owns one child back stack per bottom-nav tab (so switching tabs preserves each tab's own
- * navigation depth, matching the old Navigation 2 popUpTo/saveState/restoreState behavior) and
- * flattens them into the single list [NavDisplay] needs. Modeled on Android's own Navigation 3
- * "top level back stack" recipe for bottom navigation.
- */
-class TopLevelBackStack(
-    startKey: AppKey,
-) {
-    private val topLevelStack = ArrayDeque<AppKey>().apply { addLast(startKey) }
-    private val topLevelChildStacks = mutableMapOf<AppKey, NavBackStack<AppKey>>(startKey to NavBackStack(startKey))
-
-    var topLevelKey by mutableStateOf(startKey)
-        private set
-
-    val backStack = NavBackStack<AppKey>(startKey)
-
-    private fun updateBackStack() {
-        backStack.clear()
-        backStack.addAll(topLevelStack.flatMap { topLevelChildStacks.getValue(it) })
-    }
-
-    fun switchTopLevel(key: AppKey) {
-        dismissTransientTop()
-        if (topLevelChildStacks[key] == null) {
-            topLevelChildStacks[key] = NavBackStack(key)
-        } else {
-            topLevelStack.remove(key)
-        }
-        topLevelStack.addLast(key)
-        topLevelKey = key
-        updateBackStack()
-    }
-
-    /**
-     * Drops [SearchKey] or [AccountKey] off the tab being left, when it's what the user is
-     * currently looking at.
-     *
-     * Every other pushed screen belongs to the tab it was opened from - a trending movie's detail
-     * really is somewhere inside Trending, so restoring it when the user backs out of another tab
-     * is right. Search and Account aren't: both are launched from the top bar that every tab
-     * shares, so nesting either under whichever tab happened to be showing is an implementation
-     * detail. Leaving it in the stack meant `Search -> Movies tab -> back` surfaced Search again,
-     * which reads as a glitch.
-     *
-     * Only the *top* of the stack is dropped. If the user drilled from search into a result
-     * (Search -> MovieDetail), the search entry stays put so that backing out of that detail still
-     * returns to the results the user came from.
-     */
-    private fun dismissTransientTop() {
-        val childStack = topLevelChildStacks[topLevelKey] ?: return
-        val top = childStack.lastOrNull()
-        if (childStack.size > 1 && (top == SearchKey || top == AccountKey)) {
-            childStack.removeAt(childStack.lastIndex)
-        }
-    }
-
-    fun add(key: AppKey) {
-        topLevelChildStacks.getValue(topLevelKey).add(key)
-        updateBackStack()
-    }
-
-    fun removeLast() {
-        if (backStack.size <= 1) return
-        val childStack = topLevelChildStacks.getValue(topLevelKey)
-        if (childStack.size > 1) {
-            childStack.removeAt(childStack.lastIndex)
-        } else {
-            topLevelStack.removeLast()
-            topLevelChildStacks.remove(topLevelKey)
-            topLevelKey = topLevelStack.last()
-        }
-        updateBackStack()
-    }
-}

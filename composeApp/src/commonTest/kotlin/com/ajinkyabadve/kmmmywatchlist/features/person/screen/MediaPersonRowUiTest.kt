@@ -24,7 +24,7 @@ class MediaPersonRowUiTest {
                 )
             }
 
-            onNodeWithContentDescription("Bryan Cranston, double tap to activate").assertExists()
+            onNodeWithContentDescription("Bryan Cranston").assertExists()
             onNodeWithText("Bryan Cranston").assertDoesNotExist()
         }
 

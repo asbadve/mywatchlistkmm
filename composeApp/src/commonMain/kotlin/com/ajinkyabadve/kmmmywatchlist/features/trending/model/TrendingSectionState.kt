@@ -13,5 +13,6 @@ data class TrendingSectionState
         val isScreenLoading: Boolean,
         val isLoading: Boolean,
         val mediaList: List<Movie>,
+        val autoScrollEnabled: Boolean,
         val errorMessage: String? = null,
     )

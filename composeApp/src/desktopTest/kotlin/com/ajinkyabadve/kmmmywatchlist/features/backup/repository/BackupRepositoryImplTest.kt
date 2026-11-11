@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.backup.repository
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
 import com.ajinkyabadve.kmmmywatchlist.core.constant.RegionConstant
 import com.ajinkyabadve.kmmmywatchlist.core.constant.RestrictedModeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.constant.TrendingAutoScrollConstant
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.createTestDatabase
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthConstant
@@ -14,6 +15,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderKey
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.model.ReminderPreference
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.ReleaseReminderRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.person.repository.FavoritePersonRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.TrendingAutoScrollRepositoryImpl
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -57,6 +59,7 @@ class BackupRepositoryImplTest {
         reminders.setPreference(ReminderPreference(enabled = true, time = REMINDER_TIME))
         settings.putString(RegionConstant.KEY_SELECTED_REGION, REGION)
         settings.putBoolean(RestrictedModeConstant.KEY_RESTRICTED_MODE_ENABLED, false)
+        settings.putBoolean(TrendingAutoScrollConstant.KEY_TRENDING_AUTO_SCROLL_ENABLED, false)
     }
 
     private fun movieReminder() =
@@ -80,7 +83,7 @@ class BackupRepositoryImplTest {
             val decoded = newPhone.backup.decodeValid(oldPhone.backup.exportToJson())
             val outcome = newPhone.backup.restore(decoded.envelope)
 
-            assertEquals(RestoreOutcome(peopleAdded = 2, collectionsAdded = 1, remindersAdded = 1, settingsApplied = 3), outcome)
+            assertEquals(RestoreOutcome(peopleAdded = 2, collectionsAdded = 1, remindersAdded = 1, settingsApplied = 4), outcome)
             assertEquals(
                 listOf(NEWER_PERSON_NAME, OLDER_PERSON_NAME),
                 newPhone.people
@@ -99,6 +102,7 @@ class BackupRepositoryImplTest {
             assertEquals(REMINDER_TIME, newPhone.reminders.preference().time)
             assertEquals(REGION, newPhone.settings.getStringOrNull(RegionConstant.KEY_SELECTED_REGION))
             assertEquals(false, newPhone.settings.getBooleanOrNull(RestrictedModeConstant.KEY_RESTRICTED_MODE_ENABLED))
+            assertEquals(false, newPhone.settings.getBooleanOrNull(TrendingAutoScrollConstant.KEY_TRENDING_AUTO_SCROLL_ENABLED))
         }
 
     @Test
@@ -160,6 +164,23 @@ class BackupRepositoryImplTest {
 
             assertEquals(true, newPhone.settings.getBooleanOrNull(RestrictedModeConstant.KEY_RESTRICTED_MODE_ENABLED))
             assertNull(newPhone.settings.getStringOrNull(RegionConstant.KEY_SELECTED_REGION))
+            assertNull(newPhone.settings.getBooleanOrNull(TrendingAutoScrollConstant.KEY_TRENDING_AUTO_SCROLL_ENABLED))
+        }
+
+    @Test
+    fun testRestore_updatesTrendingAutoScrollRepositoryFlow() =
+        runTest {
+            val oldPhone = device()
+            oldPhone.settings.putBoolean(TrendingAutoScrollConstant.KEY_TRENDING_AUTO_SCROLL_ENABLED, false)
+
+            val newPhone = device()
+            val autoScrollRepo = TrendingAutoScrollRepositoryImpl(newPhone.settings)
+            assertTrue(autoScrollRepo.isTrendingAutoScrollEnabledFlow.value)
+
+            val decoded = newPhone.backup.decodeValid(oldPhone.backup.exportToJson())
+            newPhone.backup.restore(decoded.envelope)
+
+            assertFalse(autoScrollRepo.isTrendingAutoScrollEnabledFlow.value)
         }
 
     @Test

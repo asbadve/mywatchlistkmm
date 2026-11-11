@@ -1,6 +1,9 @@
-package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
+package com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel
 
 import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeNotificationPermissionRequester
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountDialog
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountTestConstant
+import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AccountTestFixture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -32,13 +35,19 @@ class AccountScreenModelTest {
     @Test
     fun testInitialStateIsReadFromTheRepositories() =
         runTest {
-            val fixture = AccountTestFixture(restrictedModeEnabled = true, episodeNotificationsEnabled = true)
+            val fixture =
+                AccountTestFixture(
+                    restrictedModeEnabled = true,
+                    trendingAutoScrollEnabled = false,
+                    episodeNotificationsEnabled = true,
+                )
 
             val state = fixture.screenModel.uiState.value
 
             assertEquals(AccountTestConstant.INITIAL_REGION, state.regionCode)
             assertEquals(AccountTestConstant.INITIAL_FALLBACK_REGION, state.fallbackRegionCode)
             assertTrue(state.restrictedModeEnabled)
+            assertFalse(state.trendingAutoScrollEnabled)
             assertTrue(state.episodeNotificationsEnabled)
         }
 
@@ -85,6 +94,17 @@ class AccountScreenModelTest {
 
             assertEquals(listOf(true), fixture.restrictedMode.setRestrictedModeCalls)
             assertTrue(fixture.screenModel.uiState.value.restrictedModeEnabled)
+        }
+
+    @Test
+    fun testTrendingAutoScrollChangeIsPersisted() =
+        runTest {
+            val fixture = AccountTestFixture()
+
+            fixture.screenModel.onTrendingAutoScrollChanged(false)
+
+            assertEquals(listOf(false), fixture.trendingAutoScroll.setEnabledCalls)
+            assertFalse(fixture.screenModel.uiState.value.trendingAutoScrollEnabled)
         }
 
     @Test

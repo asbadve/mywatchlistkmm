@@ -26,6 +26,12 @@ import androidx.compose.ui.unit.dp
 import com.ajinkyabadve.kmmmywatchlist.design.util.addShimmerLoadingAnimation
 import com.ajinkyabadve.kmmmywatchlist.theme.md_theme_dark_onSurface
 
+/**
+ * A poster card with the title overlaid. Screen readers announce it as [accessibilityContentDescription],
+ * or just [movieTitle] by default - never with a "double tap to activate" suffix: TalkBack, VoiceOver
+ * and the web a11y tree already announce the click action from the card's `onClick`, so baking the
+ * hint into the label made it read twice (and it was an untranslatable hardcoded string).
+ */
 @Composable
 fun MediaCard(
     modifier: Modifier = Modifier,
@@ -43,8 +49,7 @@ fun MediaCard(
                     .aspectRatio(2 / 3f)
                     .fillMaxWidth()
                     .semantics(mergeDescendants = true, properties = {
-                        contentDescription =
-                            accessibilityContentDescription ?: "$movieTitle, double tap to activate"
+                        contentDescription = accessibilityContentDescription ?: movieTitle
                     })
                     .addShimmerLoadingAnimation(),
         )
@@ -78,8 +83,7 @@ private fun InternalMediaCard(
                 .aspectRatio(2 / 3f)
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true, properties = {
-                    contentDescription =
-                        accessibilityContentDescription ?: "$movieTitle, double tap to activate"
+                    contentDescription = accessibilityContentDescription ?: movieTitle
                 }),
         border = BorderStroke(1.0.dp, "#44483E".toColor()), //
         shape = RoundedCornerShape(8.dp),

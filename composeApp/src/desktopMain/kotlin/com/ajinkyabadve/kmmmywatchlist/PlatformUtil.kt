@@ -9,10 +9,12 @@ actual fun isMobilePlatform(): Boolean = false
 
 actual fun is24HourClock(): Boolean = false
 
-actual fun createSettings(): com.russhwolf.settings.Settings {
+private val defaultSettings: com.russhwolf.settings.Settings by lazy {
     val delegate = Preferences.userRoot().node("com.ajinkyabadve.kmmmywatchlist")
-    return PreferencesSettings(delegate)
+    PreferencesSettings(delegate)
 }
+
+actual fun createSettings(): com.russhwolf.settings.Settings = defaultSettings
 
 // Desktop has no separate release distribution today (see the project's "Release build is
 // benchmarking-only" guidance) - every desktop build is effectively a dev build.

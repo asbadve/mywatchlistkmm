@@ -32,31 +32,6 @@ flush it before `refreshAll` prunes (and from the background job), and only then
 TMDB. Don't overload `pendingSync` for additions - today it means "removal pending", so a flush
 written against it would send an offline addition as a delete.
 
-## Android — open screens are lost when the Activity is recreated (e.g. theme change)
-
-**Symptom.** With the Account dialog open, switching the device between light and dark theme
-closes it: the app comes back on Trending. Found 2026-10-17 by the Android CLI journey run on the
-Pixel 10 Pro Fold emulator (`adb shell cmd uimode night yes|no`); still closed 10 s later, so it's
-not a redraw in progress. Any open detail screen is very likely lost the same way.
-
-**Where.** `App.kt` builds the navigation state with a plain
-`remember { TopLevelBackStack(TrendingKey) }` (`App.kt:177`). `remember` doesn't survive Activity
-recreation, and `TopLevelBackStack` (`navigation/NavigationRoutes.kt`) holds its stacks in an
-`ArrayDeque`/`mutableMapOf` that nothing saves, so a recreated Activity starts again from
-`TrendingKey`. Scroll state inside the destination *is* restored (`rememberScrollState` is
-saveable), which is why the reopened dialog came back already scrolled.
-
-**Ruled out / scope.** Rotation and fold/unfold are probably fine: `AndroidManifest.xml` declares
-`configChanges="orientation|screenSize|screenLayout|keyboardHidden"`, so those don't recreate the
-Activity. What does: `uiMode` (theme), locale, font scale/density, and process death after the app
-was in the background.
-
-**Next step.** Make the back stack saveable - Navigation 3's `rememberNavBackStack` per top-level
-tab, or a `Saver` for `TopLevelBackStack` used with `rememberSaveable`. Either way the keys need
-`@Serializable` first: `AppKey` and its subtypes are `NavKey`s but aren't annotated today. Load the
-`navigation-3` skill first. Verify with the same theme toggle with the Account dialog and a detail
-screen open, plus "Don't keep activities" for process death.
-
 ## Android tests — 4 region-picker UI tests are skipped (Compose test-framework race)
 **What you see:** on an Android device/emulator, 4 of the 5 `RegionPickerDialogUiTest` tests report
 "skipped": the three that type into the dialog, plus the tap-a-region test, which hit the same race

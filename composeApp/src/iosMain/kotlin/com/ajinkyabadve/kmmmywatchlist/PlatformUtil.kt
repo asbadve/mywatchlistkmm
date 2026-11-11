@@ -19,7 +19,11 @@ actual fun is24HourClock(): Boolean =
         .dateFormatFromTemplate("j", 0u, NSLocale.currentLocale)
         ?.contains("a") == false
 
-actual fun createSettings(): com.russhwolf.settings.Settings = NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults)
+private val defaultSettings: com.russhwolf.settings.Settings by lazy {
+    NSUserDefaultsSettings(NSUserDefaults.standardUserDefaults)
+}
+
+actual fun createSettings(): com.russhwolf.settings.Settings = defaultSettings
 
 // This project has no TestFlight/App Store release pipeline yet - every iOS build today is a dev
 // build, so unlike Android there's no debuggable-flag equivalent worth wiring up.

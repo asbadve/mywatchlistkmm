@@ -24,7 +24,7 @@ class MediaTvShowRowUiTest {
                 )
             }
 
-            onNodeWithContentDescription("Breaking Bad, double tap to activate").assertExists()
+            onNodeWithContentDescription("Breaking Bad").assertExists()
             onNodeWithText("Breaking Bad").assertDoesNotExist()
         }
 

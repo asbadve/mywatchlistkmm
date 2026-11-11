@@ -321,6 +321,10 @@
     <string name="settings_restricted_mode_label">Restricted Mode</string>
     <string name="settings_restricted_mode_description">Hide adult content from search results</string>
 
+    <!-- Trending autoscroll -->
+    <string name="settings_trending_auto_scroll_label">Autoscroll trending carousels</string>
+    <string name="settings_trending_auto_scroll_description">Automatically advance trending movies, TV shows, and people</string>
+
     <!-- Privacy consent -->
     <string name="tmdb_attribution_notice">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="privacy_consent_title">Privacy Policy</string>

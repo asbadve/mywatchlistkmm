@@ -7,6 +7,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.trending.viewmodel.TrendingScreenTabViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
