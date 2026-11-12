@@ -73,6 +73,21 @@ class TvListScreenModelTest {
         }
 
     @Test
+    fun testLastPageExhaustsPaginationWithoutRequestingAnotherPage() =
+        runTest(testDispatcher) {
+            fakeRepository.getTvShowsResult =
+                Result.success(
+                    TvPageResult(page = 1, list = listOf(Tv(id = 1, title = ONLY_TITLE)), totalResults = 1, totalPages = 1),
+                )
+            val viewModel = TvListScreenModel(FETCH_TYPE, fakeRepository)
+
+            viewModel.loadTvShows()
+
+            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
+            assertEquals(listOf(1 to FETCH_TYPE), fakeRepository.getTvShowsCalls)
+        }
+
+    @Test
     fun testNullTotalPagesIsTreatedAsPaginationExhaust() =
         runTest(testDispatcher) {
             fakeRepository.getTvShowsResult =
@@ -148,5 +163,6 @@ class TvListScreenModelTest {
 
     private companion object {
         const val FETCH_TYPE = "popular"
+        const val ONLY_TITLE = "Only Show"
     }
 }

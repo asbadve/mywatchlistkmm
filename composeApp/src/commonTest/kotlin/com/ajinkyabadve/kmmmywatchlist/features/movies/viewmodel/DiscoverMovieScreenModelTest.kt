@@ -66,7 +66,7 @@ class DiscoverMovieScreenModelTest {
 
             val newFilters = DiscoverFilters(genreIds = setOf(35), year = 2018)
             fakeDiscoverRepository.discoverMoviesResult =
-                Result.success(MoviePageResult(page = 1, list = listOf(Movie(id = 2, title = "New")), totalResults = 1, totalPages = 0))
+                Result.success(MoviePageResult(page = 1, list = listOf(Movie(id = 2, title = "New")), totalResults = 1, totalPages = 1))
             viewModel.applyFilters(newFilters)
 
             assertEquals(newFilters, viewModel.filters)
@@ -84,6 +84,19 @@ class DiscoverMovieScreenModelTest {
             screenModel(restrictedModeRepository = FakeRestrictedModeRepository(restrictedModeEnabled = false))
 
             assertEquals(true, fakeDiscoverRepository.discoverMoviesCalls.first().third)
+        }
+
+    @Test
+    fun testLastPageExhaustsPaginationWithoutRequestingAnotherPage() =
+        runTest(testDispatcher) {
+            fakeDiscoverRepository.discoverMoviesResult =
+                Result.success(MoviePageResult(page = 1, list = listOf(Movie(id = FIRST_ID)), totalResults = 1, totalPages = 1))
+            val viewModel = screenModel()
+
+            viewModel.loadMovies()
+
+            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
+            assertEquals(listOf(1), fakeDiscoverRepository.discoverMoviesCalls.map { it.first })
         }
 
     @Test

@@ -77,6 +77,21 @@ class MovieListScreenModelTest {
         }
 
     @Test
+    fun testLastPageExhaustsPaginationWithoutRequestingAnotherPage() =
+        runTest(testDispatcher) {
+            fakeRepository.getMoviesResult =
+                Result.success(
+                    MoviePageResult(page = 1, list = listOf(Movie(id = 1, title = ONLY_TITLE)), totalResults = 1, totalPages = 1),
+                )
+            val viewModel = MovieListScreenModel(FETCH_TYPE, fakeRepository)
+
+            viewModel.loadMovies()
+
+            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
+            assertEquals(listOf(1 to FETCH_TYPE), fakeRepository.getMoviesCalls)
+        }
+
+    @Test
     fun testLoadMoviesAppendsNextPageWithoutClearingPreviousResults() =
         runTest(testDispatcher) {
             fakeRepository.getMoviesResult =
@@ -142,5 +157,6 @@ class MovieListScreenModelTest {
 
     private companion object {
         const val FETCH_TYPE = "now_playing"
+        const val ONLY_TITLE = "Only Movie"
     }
 }

@@ -41,6 +41,50 @@ CREATE TABLE trackedMedia (
 
 CREATE INDEX trackedMedia_category ON trackedMedia(category);
 
+-- Offline favorite/watchlist toggles still waiting to reach TMDB (KNOWN_BUGS "Offline favorite/
+-- watchlist changes are never sent to TMDB", fixed 2026-11-11). MediaActionsState queues one when
+-- setFavorite/setWatchlist fails with no connectivity; TrackedMediaOutboxFlusher sends them before
+-- refreshAll prunes anything (the grid's RemoteMediator refresh keeps them instead of sending).
+-- One row per title, list and account - a later toggle replaces an earlier one, so off-on-off
+-- offline sends a single "remove".
+-- accountId is part of the key because signing out keeps local data: without it, one account's
+-- queue would be sent to whichever account signs in next. accountId 0 marks rows 2.sqm converted
+-- from pre-outbox pendingSync rows, whose account was never stored (TMDB account ids are positive);
+-- the first signed-in account to flush claims them.
+CREATE TABLE trackedMediaOutbox (
+    id INTEGER NOT NULL,
+    mediaType TEXT NOT NULL,
+    category TEXT NOT NULL,         -- same values as trackedMedia.category
+    accountId INTEGER NOT NULL,
+    desiredState INTEGER NOT NULL,  -- 1 = add to the list on TMDB, 0 = remove from it
+    queuedAt INTEGER NOT NULL,
+    PRIMARY KEY (id, mediaType, category, accountId)
+);
+
+upsertOutboxEntry:
+INSERT INTO trackedMediaOutbox(id, mediaType, category, accountId, desiredState, queuedAt)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(id, mediaType, category, accountId) DO UPDATE SET
+    desiredState = excluded.desiredState,
+    queuedAt = excluded.queuedAt;
+
+-- This account's entries plus unclaimed (accountId 0) ones, oldest first.
+selectOutboxEntriesForAccount:
+SELECT * FROM trackedMediaOutbox WHERE accountId = :accountId OR accountId = 0 ORDER BY queuedAt ASC;
+
+-- One list's queued toggles for the Favorites/Watchlist grid's "not synced" markers and waiting
+-- count. Observed as a Flow, so the markers clear on their own once a send deletes the rows.
+selectOutboxEntriesForCategory:
+SELECT * FROM trackedMediaOutbox
+WHERE category = :category AND (accountId = :accountId OR accountId = 0)
+ORDER BY queuedAt ASC;
+
+-- Also clears an unclaimed (accountId 0) entry for the same title: whatever just reached TMDB for
+-- this account supersedes it.
+deleteOutboxEntry:
+DELETE FROM trackedMediaOutbox
+WHERE id = :id AND mediaType = :mediaType AND category = :category AND (accountId = :accountId OR accountId = 0);
+
 -- Poll-state and offline-delete-queue columns are deliberately absent from both the column list
 -- and the conflict clause, so a RemoteMediator refresh (which knows nothing about poll state or a
 -- locally-queued removal) never clobbers what item 3's poller or markTrackedMediaPendingDelete
@@ -122,6 +166,11 @@ UPDATE trackedMedia SET isDeleted = 0, pendingSync = 0 WHERE id = ? AND mediaTyp
 deleteTrackedMediaRow:
 DELETE FROM trackedMedia WHERE id = ? AND mediaType = ? AND category = ?;
 
+-- Which lists a title is in locally (rows not hidden by a pending removal) - the detail screen's
+-- favorite/watchlist icons show this first, before (or, offline, instead of) TMDB's account_states.
+selectTrackedCategories:
+SELECT category FROM trackedMedia WHERE id = ? AND mediaType = ? AND isDeleted = 0;
+
 -- One row regardless of isDeleted/pendingSync - selectByCategoryPaged below excludes isDeleted
 -- rows, so this is what TrackedMediaRemoteMediatorTest uses to confirm a row queued for an
 -- offline delete (isDeleted = 1) is still there, not gone.
@@ -141,9 +190,18 @@ SELECT COUNT(*) FROM trackedMedia WHERE category = ? AND mediaType = ? AND isDel
 -- numeric id (TMDB numbers them in separate spaces), so filtering on category alone would let a
 -- stale movie row survive because a still-current TV show happens to have the same id.
 -- pendingSync = 0 excludes rows still queued for an offline delete - deleteTrackedMediaRow (via a
--- successful flush) is what actually removes those, not a refresh.
+-- successful flush) is what actually removes those, not a refresh. Rows with a queued outbox entry
+-- (an offline addition TMDB hasn't received yet) are kept too, so a refresh that succeeds while
+-- the flush is still failing can't drop them.
 deleteTrackedMediaPagedRefresh:
-DELETE FROM trackedMedia WHERE category = ? AND mediaType = ? AND pendingSync = 0;
+DELETE FROM trackedMedia
+WHERE category = ? AND mediaType = ? AND pendingSync = 0
+AND NOT EXISTS (
+    SELECT 1 FROM trackedMediaOutbox
+    WHERE trackedMediaOutbox.id = trackedMedia.id
+    AND trackedMediaOutbox.mediaType = trackedMedia.mediaType
+    AND trackedMediaOutbox.category = trackedMedia.category
+);
 
 CREATE TABLE customList (
     id INTEGER NOT NULL PRIMARY KEY,

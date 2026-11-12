@@ -73,6 +73,21 @@ class PersonListScreenModelTest {
         }
 
     @Test
+    fun testLastPageExhaustsPaginationWithoutRequestingAnotherPage() =
+        runTest(testDispatcher) {
+            fakeRepository.getPopularPeopleResult =
+                Result.success(
+                    PersonPageResult(page = 1, list = listOf(Person(id = 1, name = ONLY_NAME)), totalResults = 1, totalPages = 1),
+                )
+            val viewModel = PersonListScreenModel(fakeRepository)
+
+            viewModel.loadPopularPeople()
+
+            assertEquals(ListState.PAGINATION_EXHAUST, viewModel.listState)
+            assertEquals(listOf(1), fakeRepository.getPopularPeopleCalls)
+        }
+
+    @Test
     fun testLoadPopularPeopleAppendsNextPageWithoutClearingPreviousResults() =
         runTest(testDispatcher) {
             fakeRepository.getPopularPeopleResult =
@@ -135,4 +150,8 @@ class PersonListScreenModelTest {
 
             assertEquals(ListState.ERROR, viewModel.listState)
         }
+
+    private companion object {
+        const val ONLY_NAME = "Only Person"
+    }
 }

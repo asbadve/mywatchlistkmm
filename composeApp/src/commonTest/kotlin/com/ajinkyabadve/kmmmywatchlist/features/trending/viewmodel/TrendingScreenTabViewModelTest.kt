@@ -1,4 +1,4 @@
-package com.ajinkyabadve.kmmmywatchlist.features.trending.screen
+package com.ajinkyabadve.kmmmywatchlist.features.trending.viewmodel
 
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Movie
@@ -6,9 +6,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MoviePageResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResponse
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.VideoResult
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeTrendingAutoScrollRepository
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.Trailer
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.trending.screen.FakeTrendingRepository
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.Tv
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvPageResult
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
@@ -89,6 +91,27 @@ class TrendingScreenTabViewModelTest {
     fun tearDown() {
         Dispatchers.resetMain()
     }
+
+    @Test
+    fun testAutoScrollEnabled_reflectsRepositoryAndUpdatesWhenRepositoryEmits() =
+        runTest(testDispatcher) {
+            val fakeAutoScrollRepository = FakeTrendingAutoScrollRepository(initialEnabled = true)
+            val viewModel =
+                TrendingScreenTabViewModel(
+                    fakeRepository,
+                    fakeMovieRepository,
+                    fakeTvRepository,
+                    trailersEnabled = false,
+                    trailerCacheRepository = fakeTrailerCacheRepository,
+                    trendingAutoScrollRepository = fakeAutoScrollRepository,
+                )
+
+            assertTrue(viewModel.isAutoScrollEnabled.value)
+
+            fakeAutoScrollRepository.setTrendingAutoScrollEnabled(false)
+
+            assertFalse(viewModel.isAutoScrollEnabled.value)
+        }
 
     @Test
     fun testInitializationLoadsAllMediaTypes() =

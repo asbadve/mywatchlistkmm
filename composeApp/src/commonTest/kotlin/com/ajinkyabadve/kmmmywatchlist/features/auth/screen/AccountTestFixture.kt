@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
 
 import com.ajinkyabadve.kmmmywatchlist.core.notification.FakeReminderScheduler
+import com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel.AccountScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.FakeNotificationDebugActions
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.NotificationJobSync
 import com.ajinkyabadve.kmmmywatchlist.features.notifications.ReleaseReminderCoordinator
@@ -8,6 +9,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.notifications.repository.FakeRel
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRegionRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeRestrictedModeRepository
+import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeTrendingAutoScrollRepository
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 
@@ -18,6 +20,7 @@ import kotlinx.datetime.TimeZone
  */
 class AccountTestFixture(
     restrictedModeEnabled: Boolean = false,
+    trendingAutoScrollEnabled: Boolean = true,
     episodeNotificationsEnabled: Boolean = false,
     releaseRemindersSupported: Boolean = true,
     backupSupported: Boolean = true,
@@ -29,6 +32,7 @@ class AccountTestFixture(
             fallbackRegion = AccountTestConstant.INITIAL_FALLBACK_REGION,
         )
     val restrictedMode = FakeRestrictedModeRepository(restrictedModeEnabled = restrictedModeEnabled)
+    val trendingAutoScroll = FakeTrendingAutoScrollRepository(initialEnabled = trendingAutoScrollEnabled)
     val notificationSettings = FakeNotificationSettingsRepository(episodeNotificationsEnabled = episodeNotificationsEnabled)
     val reminders = FakeReleaseReminderRepository()
     val scheduler = FakeReminderScheduler()
@@ -44,6 +48,7 @@ class AccountTestFixture(
         AccountScreenModel(
             regionRepository = regions,
             restrictedModeRepository = restrictedMode,
+            trendingAutoScrollRepository = trendingAutoScroll,
             notificationSettingsRepository = notificationSettings,
             releaseReminderRepository = reminders,
             releaseReminderCoordinator =

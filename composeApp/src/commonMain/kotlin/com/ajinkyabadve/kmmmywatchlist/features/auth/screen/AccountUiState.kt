@@ -17,6 +17,7 @@ data class AccountUiState(
     val regionCode: String,
     val fallbackRegionCode: String,
     val restrictedModeEnabled: Boolean,
+    val trendingAutoScrollEnabled: Boolean,
     val episodeNotificationsEnabled: Boolean,
     val visibility: SettingsRowVisibility,
     val is24Hour: Boolean,

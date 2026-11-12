@@ -5,16 +5,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -46,7 +47,7 @@ fun SearchBox(
     shape: Shape = RoundedCornerShape(50),
     hint: String? = "hint text",
     leftImageVector: ImageVector? = Icons.Filled.Search,
-    leftIconContentDescription: String? = "Localized description",
+    leftIconContentDescription: String? = null,
     leftIconTint: Color = LocalContentColor.current,
     onClick: () -> Unit,
 ) {
@@ -54,7 +55,7 @@ fun SearchBox(
         shape = shape,
         hint = hint ?: "",
         leftIconPainter = rememberVectorPainter(leftImageVector ?: Icons.Filled.Search),
-        contentDescription = leftIconContentDescription ?: "",
+        contentDescription = leftIconContentDescription,
         modifier = modifier,
         leftIconTint = leftIconTint,
         onClick = onClick,
@@ -121,11 +122,14 @@ private fun InternalSearchBox(
                             ),
                     ),
             )
-            // Search icon — pinned to start, vertically centered
+            // Search icon — pinned to start, vertically centered. Decorative: the whole pill is the
+            // button (named by the hint), so this is a plain 48dp slot - the IconButton it replaced
+            // had a no-op onClick that swallowed taps on the icon and showed up as a stray, unnamed
+            // extra button to screen readers.
             if (leftIconPainter != null) {
-                IconButton(
-                    modifier = Modifier.align(Alignment.CenterStart),
-                    onClick = { /*TODO*/ },
+                Box(
+                    modifier = Modifier.align(Alignment.CenterStart).size(48.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = leftIconPainter,

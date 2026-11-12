@@ -10,9 +10,12 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Genre
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.Keyword
 import com.ajinkyabadve.kmmmywatchlist.features.movies.repository.KeywordRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class DiscoverFilterDialogUiTest {
@@ -120,4 +123,40 @@ class DiscoverFilterDialogUiTest {
 
             assertTrue(appliedFilters?.keywords.isNullOrEmpty())
         }
+
+    @Test
+    fun testPickingYearAndSortFromTheirMenusAppliesBoth() =
+        runComposeUiTest {
+            val currentYear = Clock.System.todayIn(TimeZone.currentSystemDefault()).year
+            var appliedFilters: DiscoverFilters? = null
+
+            setContent {
+                DiscoverFilterDialog(
+                    initialFilters = DiscoverFilters(sortBy = POPULARITY_DESC),
+                    genres = genres,
+                    sortOptions = listOf(POPULARITY_DESC, VOTE_AVERAGE_DESC),
+                    onDismiss = {},
+                    onApply = { appliedFilters = it },
+                    keywordRepository = noopKeywordRepository,
+                )
+            }
+
+            onNodeWithText(YEAR_LABEL).performClick()
+            onNodeWithText(currentYear.toString()).performClick()
+            onNodeWithText(SORT_BY_LABEL).performClick()
+            onNodeWithText(VOTE_AVERAGE_DESC_LABEL).performClick()
+            onNodeWithText(APPLY_LABEL).performClick()
+
+            assertEquals(currentYear, appliedFilters?.year)
+            assertEquals(VOTE_AVERAGE_DESC, appliedFilters?.sortBy)
+        }
+
+    private companion object {
+        const val POPULARITY_DESC = "popularity.desc"
+        const val VOTE_AVERAGE_DESC = "vote_average.desc"
+        const val VOTE_AVERAGE_DESC_LABEL = "Rating Descending"
+        const val YEAR_LABEL = "Year"
+        const val SORT_BY_LABEL = "Sort by"
+        const val APPLY_LABEL = "Apply"
+    }
 }

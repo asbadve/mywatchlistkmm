@@ -24,6 +24,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.FakeMovieRepositor
 import com.ajinkyabadve.kmmmywatchlist.features.movies.screen.MoviesConstant
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
 import com.ajinkyabadve.kmmmywatchlist.features.trending.repository.FakeTrailerCacheRepository
+import com.ajinkyabadve.kmmmywatchlist.features.trending.viewmodel.TrendingScreenTabViewModel
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.screen.FakeTvRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi

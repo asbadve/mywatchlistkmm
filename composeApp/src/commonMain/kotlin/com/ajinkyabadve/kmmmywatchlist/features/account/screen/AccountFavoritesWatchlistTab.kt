@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,6 +22,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.ajinkyabadve.kmmmywatchlist.design.movie.scrollableChips
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.TrackedMediaRepositoryImpl
+import com.ajinkyabadve.kmmmywatchlist.features.account.viewmodel.AccountMediaListScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import mywatchlist.composeapp.generated.resources.Res
@@ -79,6 +81,7 @@ fun AccountFavoritesWatchlistTab(
             )
         }
     val lazyPagingItems = screenModel.pagedItems.collectAsLazyPagingItems()
+    val pendingSync by screenModel.pendingSync.collectAsState()
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -86,6 +89,12 @@ fun AccountFavoritesWatchlistTab(
                 selectedChip = selectedChip,
                 chipItemList = chipLabels,
                 onClick = { selectedChip = it },
+            )
+        }
+        if (pendingSync.waitingCount > 0) {
+            PendingSyncLine(
+                waitingCount = pendingSync.waitingCount,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
         PullToRefreshBox(
@@ -101,6 +110,7 @@ fun AccountFavoritesWatchlistTab(
                     if (selectedMediaType == SearchMediaType.MOVIE) onMovieSelected(id) else onTvSelected(id)
                 },
                 lazyGridState = lazyGridState,
+                notSyncedIds = pendingSync.notSyncedIds,
             )
         }
     }

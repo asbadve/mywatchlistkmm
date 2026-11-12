@@ -43,7 +43,7 @@ class PersonListScreenModel(
                 try {
                     val response = personRepository.getPopularPeople(page)
                     response.list?.let {
-                        canPaginate = response.page <= (response.totalPages ?: 0)
+                        canPaginate = response.page < (response.totalPages ?: 0)
                         if (isFirstPage()) {
                             personList.clear()
                             personList.addAll(it)

@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.repository
 
 import androidx.paging.PagingData
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.QueuedToggle
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
@@ -127,12 +128,89 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
         trackLocallyCalls.add(snapshot to category)
     }
 
+    private val trackedCategoriesById = mutableMapOf<Pair<Int, String>, Set<AccountMediaCategory>>()
+
+    /** Seeds what [trackedCategories] returns for a title - the local favorite/watchlist state. */
+    fun seedTrackedCategories(
+        id: Int,
+        mediaType: String,
+        categories: Set<AccountMediaCategory>,
+    ) {
+        trackedCategoriesById[id to mediaType] = categories
+    }
+
+    override suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory> = trackedCategoriesById[id to mediaType].orEmpty()
+
     override suspend fun confirmDelete(
         id: Int,
         mediaType: String,
         category: AccountMediaCategory,
     ) {
         confirmDeleteCalls.add(Triple(id, mediaType, category))
+    }
+
+    val queueOfflineToggleCalls = mutableListOf<QueuedToggleCall>()
+    val clearQueuedToggleCalls = mutableListOf<QueuedToggleCall>()
+
+    /** One [queueOfflineToggle]/[clearQueuedToggle] call; [isOn] is null for a clear. */
+    data class QueuedToggleCall(
+        val id: Int,
+        val mediaType: String,
+        val category: AccountMediaCategory,
+        val accountId: Long,
+        val isOn: Boolean? = null,
+    )
+
+    override suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    ) {
+        queueOfflineToggleCalls.add(QueuedToggleCall(id, mediaType, category, accountId, isOn))
+    }
+
+    override suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+    ) {
+        clearQueuedToggleCalls.add(QueuedToggleCall(id, mediaType, category, accountId))
+    }
+
+    private val queuedToggles = mutableMapOf<AccountMediaCategory, MutableStateFlow<List<QueuedToggle>>>()
+
+    /** Seeds what [observeQueuedToggles] emits for [category] - dumb, no outbox simulation. */
+    fun seedQueuedToggles(
+        category: AccountMediaCategory,
+        toggles: List<QueuedToggle>,
+    ) {
+        queuedTogglesFor(category).value = toggles
+    }
+
+    private fun queuedTogglesFor(category: AccountMediaCategory) = queuedToggles.getOrPut(category) { MutableStateFlow(emptyList()) }
+
+    override fun observeQueuedToggles(
+        accountId: Long,
+        category: AccountMediaCategory,
+    ): Flow<List<QueuedToggle>> = queuedTogglesFor(category)
+
+    val sendQueuedTogglesCalls = mutableListOf<Pair<Long, String>>()
+
+    /** What [sendQueuedToggles] reports - true means nothing left queued. */
+    var sendQueuedTogglesResult = true
+
+    override suspend fun sendQueuedToggles(
+        accountId: Long,
+        sessionId: String,
+    ): Boolean {
+        sendQueuedTogglesCalls.add(accountId to sessionId)
+        return sendQueuedTogglesResult
     }
 
     private val upcomingFlow = MutableStateFlow<List<UpcomingMediaItem>>(emptyList())

@@ -25,7 +25,7 @@ class MediaMovieRowUiTest {
             }
 
             // Verify that in loading state, the shimmer box is displayed with appropriate semantics
-            onNodeWithContentDescription("Inception, double tap to activate").assertExists()
+            onNodeWithContentDescription("Inception").assertExists()
             // Verify that the title text is not directly visible on the card
             onNodeWithText("Inception").assertDoesNotExist()
         }
@@ -44,6 +44,8 @@ class MediaMovieRowUiTest {
                 )
             }
 
+            // The card is announced by its title alone - screen readers add the click hint themselves.
+            onNodeWithContentDescription("Inception").assertExists()
             onNodeWithText("Inception").assertExists()
             onNodeWithText("Inception").performClick()
             assertTrue(clicked)

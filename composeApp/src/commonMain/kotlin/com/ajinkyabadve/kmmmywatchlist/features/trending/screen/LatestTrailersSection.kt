@@ -55,6 +55,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.Trailer
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.TrailerSource
 import com.ajinkyabadve.kmmmywatchlist.features.trending.model.youtubeUrl
+import com.ajinkyabadve.kmmmywatchlist.features.trending.viewmodel.TrendingScreenTabViewModel
 import com.ajinkyabadve.kmmmywatchlist.openUrl
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.filter_in_theaters

@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.auth.screen
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -153,6 +154,29 @@ class AccountScreenUiTest {
         }
 
     @Test
+    fun testTogglingTrendingAutoScrollPersists() =
+        runComposeUiTest {
+            val session =
+                UserSession(sessionId = "session_999", accountId = 99L, username = "jane_doe", name = "Jane Doe")
+            fakeAuthRepository.saveSession(session)
+            val screenModel = AuthScreenModel(authRepository = fakeAuthRepository)
+
+            setContent {
+                AccountScreen(
+                    isDialogPresentation = false,
+                    onBackClicked = {},
+                    webAuthLauncher = fakeWebAuthLauncher,
+                    accountScreenModel = fixture.screenModel,
+                    screenModel = screenModel,
+                )
+            }
+
+            onNode(isToggleable() and hasText("Autoscroll trending carousels")).performScrollTo().performClick()
+
+            assertEquals(listOf(false), fixture.trendingAutoScroll.setEnabledCalls)
+        }
+
+    @Test
     fun testTogglingEpisodeNotificationsOnRequestsPermissionAndPersists() =
         runComposeUiTest {
             val session =
@@ -172,7 +196,7 @@ class AccountScreenUiTest {
                 }
             }
 
-            onAllNodes(isToggleable())[1].performClick()
+            onAllNodes(isToggleable())[2].performClick()
             waitForIdle()
 
             assertTrue(fixture.notificationSettings.setEpisodeNotificationsEnabledCalls.contains(true))
@@ -198,7 +222,7 @@ class AccountScreenUiTest {
                 )
             }
 
-            onNodeWithText("Poll episode notifications now").assertIsDisplayed()
+            onNodeWithText(DEBUG_POLL_EPISODES).performScrollTo().assertIsDisplayed()
         }
 
     @Test

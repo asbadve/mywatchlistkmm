@@ -15,6 +15,7 @@ import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabaseQueries
 import com.ajinkyabadve.kmmmywatchlist.db.SelectUpcomingTrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMedia
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.QueuedToggle
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
@@ -63,7 +64,8 @@ private object TrackedMediaConstant {
  * `docs/local-storage-plan.html` and `shipped_features.md` item 2) - a read-cache for
  * instant local paint plus a home for shipped_features.md item 3's per-item poll state,
  * not a source of truth. [pagedFlow]/[TrackedMediaRemoteMediator] are what keep it in sync with
- * TMDB; nothing here ever writes to TMDB itself.
+ * TMDB. The only writes to TMDB from here are the offline toggles [queueOfflineToggle] queued, sent
+ * by [TrackedMediaOutboxFlusher] before a refresh.
  */
 interface TrackedMediaRepository {
     /**
@@ -140,14 +142,24 @@ interface TrackedMediaRepository {
      * instead of after the next [refreshAll]. Also revives a row [markPendingDelete] had queued,
      * for a toggle-back-on before that removal reached TMDB.
      *
-     * The row is written as already-synced (no pending flag): if the toggle never reached TMDB
-     * (offline), the next complete [refreshAll] drops it again rather than showing a title TMDB
-     * doesn't have.
+     * The row is written as already-synced (no pending flag). An offline toggle is also queued
+     * with [queueOfflineToggle], which keeps the row through a refresh until it reaches TMDB;
+     * without a queued toggle, the next complete [refreshAll] drops a row TMDB doesn't have.
      */
     suspend fun trackLocally(
         snapshot: TrackedMediaSnapshot,
         category: AccountMediaCategory,
     )
+
+    /**
+     * The lists [id]/[mediaType] is in on this device - rows hidden by a pending removal excluded,
+     * offline additions included. The detail screen's favorite/watchlist icons show this before
+     * TMDB's `account_states` answers, and instead of it when offline.
+     */
+    suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory>
 
     /** Hard-deletes a row [markPendingDelete] queued, once its removal is confirmed with TMDB. */
     suspend fun confirmDelete(
@@ -155,6 +167,48 @@ interface TrackedMediaRepository {
         mediaType: String,
         category: AccountMediaCategory,
     )
+
+    /**
+     * Queues a favorite/watchlist toggle that failed for lack of connectivity, so it is sent to
+     * TMDB before the next [refreshAll] instead of being undone by it, and kept through any
+     * paged-grid refresh until then - see [TrackedMediaOutboxFlusher]. Replaces any toggle already
+     * queued for the same title and list.
+     */
+    suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    )
+
+    /** Drops a toggle [queueOfflineToggle] queued - for a later toggle that reached TMDB directly. */
+    suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+    )
+
+    /**
+     * The toggles still queued for [category] - drives the Favorites/Watchlist grid's "not synced"
+     * markers and waiting count. Emits again whenever the queue changes, so a marker clears on its
+     * own once [sendQueuedToggles] gets the change to TMDB.
+     */
+    fun observeQueuedToggles(
+        accountId: Long,
+        category: AccountMediaCategory,
+    ): Flow<List<QueuedToggle>>
+
+    /**
+     * Sends every queued toggle to TMDB now - see [TrackedMediaOutboxFlusher]. Returns true when
+     * nothing is left queued for this account (all sent, or dropped as rejected), false when some
+     * are still waiting (offline, or the session was rejected), so a background job knows to retry.
+     */
+    suspend fun sendQueuedToggles(
+        accountId: Long,
+        sessionId: String,
+    ): Boolean
 
     /**
      * future_features_checklist.md item 18: every tracked movie whose TMDB primary release date is
@@ -181,6 +235,7 @@ interface TrackedMediaRepository {
      * Re-syncs every favorites/watchlist slice from TMDB into the local table, so screens that only
      * read the table (the "Upcoming" tab) see changes without the user first opening the paged
      * Favorites/Watchlist grids. Writes exactly what the grids' `TrackedMediaRemoteMediator` writes.
+     * Sends the toggles [queueOfflineToggle] queued first, so the refresh sees them on TMDB.
      * A slice is only pruned of removed titles when all its pages were fetched; on any network
      * failure the slice keeps whatever it already had.
      */
@@ -346,6 +401,19 @@ internal class SqliteTrackedMediaRepositoryImpl(
         }
     }
 
+    override suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory> {
+        val stored =
+            databaseProvider()
+                .myDatabaseQueries
+                .selectTrackedCategories(id.toLong(), mediaType)
+                .awaitAsList()
+                .toSet()
+        return AccountMediaCategory.entries.filter { it.storageValue in stored }.toSet()
+    }
+
     override suspend fun confirmDelete(
         id: Int,
         mediaType: String,
@@ -353,6 +421,60 @@ internal class SqliteTrackedMediaRepositoryImpl(
     ) {
         databaseProvider().myDatabaseQueries.deleteTrackedMediaRow(id.toLong(), mediaType, category.storageValue)
     }
+
+    override suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    ) {
+        databaseProvider().myDatabaseQueries.upsertOutboxEntry(
+            id = id.toLong(),
+            mediaType = mediaType,
+            category = category.storageValue,
+            accountId = accountId,
+            desiredState = TrackedMediaOutboxConstant.desiredStateOf(isOn),
+            queuedAt = Clock.System.now().toEpochMilliseconds(),
+        )
+    }
+
+    override suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+    ) {
+        databaseProvider().myDatabaseQueries.deleteOutboxEntry(id.toLong(), mediaType, category.storageValue, accountId)
+    }
+
+    override fun observeQueuedToggles(
+        accountId: Long,
+        category: AccountMediaCategory,
+    ): Flow<List<QueuedToggle>> =
+        flow {
+            emitAll(
+                databaseProvider()
+                    .myDatabaseQueries
+                    .selectOutboxEntriesForCategory(category.storageValue, accountId)
+                    .asFlow()
+                    .mapToList(Dispatchers.Default)
+                    .map { rows ->
+                        rows.map { row ->
+                            QueuedToggle(
+                                id = row.id.toInt(),
+                                mediaType = row.mediaType,
+                                isOn = row.desiredState == TrackedMediaOutboxConstant.DESIRED_ADD,
+                            )
+                        }
+                    },
+            )
+        }
+
+    override suspend fun sendQueuedToggles(
+        accountId: Long,
+        sessionId: String,
+    ): Boolean = TrackedMediaOutboxFlusher(accountMediaRepository, databaseProvider().myDatabaseQueries).flush(accountId, sessionId)
 
     override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> =
         flow {
@@ -393,6 +515,7 @@ internal class SqliteTrackedMediaRepositoryImpl(
         accountId: Long,
         sessionId: String,
     ) {
+        sendQueuedToggles(accountId, sessionId)
         val queries = databaseProvider().myDatabaseQueries
         AccountMediaCategory.entries.forEach { category ->
             listOf(SearchMediaType.MOVIE, SearchMediaType.TV).forEach { mediaType ->

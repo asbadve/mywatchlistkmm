@@ -67,7 +67,7 @@ class AutoScrollCarouselEffectUiTest {
             setContent {
                 CompositionLocalProvider(LocalLifecycleOwner provides resumedLifecycleOwner()) {
                     state = rememberCarouselState { ITEM_COUNT }
-                    AutoScrollCarouselEffect(state = state, itemCount = ITEM_COUNT)
+                    AutoScrollCarouselEffect(state = state, itemCount = ITEM_COUNT, autoScrollEnabled = true)
                     TestCarousel(state = state)
                 }
             }
@@ -92,7 +92,7 @@ class AutoScrollCarouselEffectUiTest {
             setContent {
                 CompositionLocalProvider(LocalLifecycleOwner provides resumedLifecycleOwner()) {
                     state = rememberCarouselState { ITEM_COUNT }
-                    AutoScrollCarouselEffect(state = state, itemCount = ITEM_COUNT)
+                    AutoScrollCarouselEffect(state = state, itemCount = ITEM_COUNT, autoScrollEnabled = true)
                     TestCarousel(state = state)
                 }
             }
@@ -118,6 +118,28 @@ class AutoScrollCarouselEffectUiTest {
             assertEquals(startingItem, state.currentItem)
 
             dragJob.cancel()
+        }
+
+    @Test
+    fun testAutoScrollCarouselEffect_doesNotAdvanceWhenAutoScrollDisabled() =
+        runComposeUiTest {
+            lateinit var state: CarouselState
+            setContent {
+                CompositionLocalProvider(LocalLifecycleOwner provides resumedLifecycleOwner()) {
+                    state = rememberCarouselState { ITEM_COUNT }
+                    AutoScrollCarouselEffect(state = state, itemCount = ITEM_COUNT, autoScrollEnabled = false)
+                    TestCarousel(state = state)
+                }
+            }
+
+            mainClock.autoAdvance = false
+            waitForIdle()
+            val startingItem = state.currentItem
+
+            mainClock.advanceTimeBy(ADVANCE_PAST_INTERVAL_MS)
+            waitForIdle()
+
+            assertEquals(startingItem, state.currentItem)
         }
 
     private companion object {
