@@ -4,6 +4,7 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
+import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMedia
@@ -33,6 +34,25 @@ class TrackedMediaRemoteMediator(
     private val accountMediaRepository: AccountMediaRepository,
     private val database: MyDatabase,
 ) : RemoteMediator<Int, TrackedMedia>() {
+    /**
+     * Shows the saved slice first, offline-first: with saved rows, the grid paints them at once and
+     * skips the automatic network REFRESH on open. With the default (LAUNCH_INITIAL_REFRESH) the
+     * grid waited on that refresh, which offline only fails after the HTTP client's retries -
+     * about 90s of an empty grid over a full local table (seen 2026-11-12 on the emulator).
+     * Freshness comes from `TrackedMediaRepository.refreshAll` (My Fav open, app start/foreground),
+     * which writes the same table this grid reads, plus pull-to-refresh. An empty slice (first
+     * sign-in) still launches the refresh, since there's nothing to show without it.
+     * This is Paging's own documented hook for exactly this choice, not a custom mechanism.
+     */
+    override suspend fun initialize(): InitializeAction =
+        withContext(Dispatchers.Default) {
+            val savedRows =
+                database.myDatabaseQueries
+                    .countByCategory(category.storageValue, mediaType.apiValue)
+                    .awaitAsOne()
+            if (savedRows > 0) InitializeAction.SKIP_INITIAL_REFRESH else InitializeAction.LAUNCH_INITIAL_REFRESH
+        }
+
     override suspend fun load(
         loadType: LoadType,
         state: PagingState<Int, TrackedMedia>,

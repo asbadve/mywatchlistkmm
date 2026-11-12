@@ -58,6 +58,7 @@ fun accountMediaGridContent(
     emptyMessage: String,
     onItemSelected: (id: Long) -> Unit,
     lazyGridState: LazyGridState = rememberLazyGridState(),
+    notSyncedIds: Set<Int> = emptySet(),
 ) {
     val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
 
@@ -104,6 +105,15 @@ fun accountMediaGridContent(
                         modifier =
                             Modifier
                                 .align(Alignment.TopEnd)
+                                .padding(AccountMediaGridConstant.BADGE_OFFSET),
+                    )
+                }
+                // Top-start, so it never collides with the Upcoming badge in the other corner.
+                if (item.id in notSyncedIds) {
+                    NotSyncedBadge(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
                                 .padding(AccountMediaGridConstant.BADGE_OFFSET),
                     )
                 }

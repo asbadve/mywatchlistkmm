@@ -72,6 +72,13 @@ ON CONFLICT(id, mediaType, category, accountId) DO UPDATE SET
 selectOutboxEntriesForAccount:
 SELECT * FROM trackedMediaOutbox WHERE accountId = :accountId OR accountId = 0 ORDER BY queuedAt ASC;
 
+-- One list's queued toggles for the Favorites/Watchlist grid's "not synced" markers and waiting
+-- count. Observed as a Flow, so the markers clear on their own once a send deletes the rows.
+selectOutboxEntriesForCategory:
+SELECT * FROM trackedMediaOutbox
+WHERE category = :category AND (accountId = :accountId OR accountId = 0)
+ORDER BY queuedAt ASC;
+
 -- Also clears an unclaimed (accountId 0) entry for the same title: whatever just reached TMDB for
 -- this account supersedes it.
 deleteOutboxEntry:

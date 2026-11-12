@@ -15,6 +15,7 @@ import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.MyDatabaseQueries
 import com.ajinkyabadve.kmmmywatchlist.db.SelectUpcomingTrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMedia
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.QueuedToggle
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
@@ -178,6 +179,26 @@ interface TrackedMediaRepository {
         category: AccountMediaCategory,
         accountId: Long,
     )
+
+    /**
+     * The toggles still queued for [category] - drives the Favorites/Watchlist grid's "not synced"
+     * markers and waiting count. Emits again whenever the queue changes, so a marker clears on its
+     * own once [sendQueuedToggles] gets the change to TMDB.
+     */
+    fun observeQueuedToggles(
+        accountId: Long,
+        category: AccountMediaCategory,
+    ): Flow<List<QueuedToggle>>
+
+    /**
+     * Sends every queued toggle to TMDB now - see [TrackedMediaOutboxFlusher]. Returns true when
+     * nothing is left queued for this account (all sent, or dropped as rejected), false when some
+     * are still waiting (offline, or the session was rejected), so a background job knows to retry.
+     */
+    suspend fun sendQueuedToggles(
+        accountId: Long,
+        sessionId: String,
+    ): Boolean
 
     /**
      * future_features_checklist.md item 18: every tracked movie whose TMDB primary release date is
@@ -404,6 +425,34 @@ internal class SqliteTrackedMediaRepositoryImpl(
         databaseProvider().myDatabaseQueries.deleteOutboxEntry(id.toLong(), mediaType, category.storageValue, accountId)
     }
 
+    override fun observeQueuedToggles(
+        accountId: Long,
+        category: AccountMediaCategory,
+    ): Flow<List<QueuedToggle>> =
+        flow {
+            emitAll(
+                databaseProvider()
+                    .myDatabaseQueries
+                    .selectOutboxEntriesForCategory(category.storageValue, accountId)
+                    .asFlow()
+                    .mapToList(Dispatchers.Default)
+                    .map { rows ->
+                        rows.map { row ->
+                            QueuedToggle(
+                                id = row.id.toInt(),
+                                mediaType = row.mediaType,
+                                isOn = row.desiredState == TrackedMediaOutboxConstant.DESIRED_ADD,
+                            )
+                        }
+                    },
+            )
+        }
+
+    override suspend fun sendQueuedToggles(
+        accountId: Long,
+        sessionId: String,
+    ): Boolean = TrackedMediaOutboxFlusher(accountMediaRepository, databaseProvider().myDatabaseQueries).flush(accountId, sessionId)
+
     override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> =
         flow {
             val since =
@@ -443,8 +492,8 @@ internal class SqliteTrackedMediaRepositoryImpl(
         accountId: Long,
         sessionId: String,
     ) {
+        sendQueuedToggles(accountId, sessionId)
         val queries = databaseProvider().myDatabaseQueries
-        TrackedMediaOutboxFlusher(accountMediaRepository, queries).flush(accountId, sessionId)
         AccountMediaCategory.entries.forEach { category ->
             listOf(SearchMediaType.MOVIE, SearchMediaType.TV).forEach { mediaType ->
                 refreshSlice(queries, category, mediaType, accountId, sessionId)

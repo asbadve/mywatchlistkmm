@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.sync.QueuedToggleSyncScheduler
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
@@ -59,6 +60,9 @@ class MediaActionsState(
     // this state holder never hits the real database.
     private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
     private val trackedMediaSnapshot: () -> TrackedMediaSnapshot? = { null },
+    // Test seam, same shape as MediaActionButtons' scheduleNotificationJob: the real scheduler
+    // starts a WorkManager job / background send, which a unit test must never reach.
+    private val scheduleQueuedToggleSync: () -> Unit = { QueuedToggleSyncScheduler.schedule() },
 ) {
     private val _uiState = MutableStateFlow(MediaActionsUiState())
     val uiState: StateFlow<MediaActionsUiState> = _uiState.asStateFlow()
@@ -137,8 +141,8 @@ class MediaActionsState(
      * - Sent: confirm a removal, or write an addition locally; drop any toggle still queued for
      *   this title, since this one supersedes it.
      * - Offline: the icon keeps its new state. A removal stays hidden locally, an addition is
-     *   written locally, and the toggle is queued so the next refresh sends it to TMDB first
-     *   (see [TrackedMediaRepository.queueOfflineToggle]).
+     *   written locally, and the toggle is queued (see [TrackedMediaRepository.queueOfflineToggle])
+     *   and a send scheduled for when the network is back (`QueuedToggleSyncScheduler`).
      * - Failed: TMDB rejected it - the icon and any local hide roll back.
      */
     private suspend fun settleToggle(
@@ -157,6 +161,7 @@ class MediaActionsState(
             ToggleOutcome.OFFLINE -> {
                 if (newValue) trackLocally(category)
                 trackedMediaRepository.queueOfflineToggle(id, mediaType, category, accountId, newValue)
+                scheduleQueuedToggleSync()
             }
             ToggleOutcome.FAILED -> {
                 rollBackIcon()

@@ -46,6 +46,7 @@ class MediaActionsStateTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private val fakeAccountMediaRepository = FakeAccountMediaRepository()
     private val fakeTrackedMediaRepository = FakeTrackedMediaRepository()
+    private var scheduledSyncs = 0
 
     // Built in a standalone runTest{}, isolated from each test's own runTest(testDispatcher){} -
     // see MovieListScreenModelTest's identical setup for why resolving this inline inside a test
@@ -85,6 +86,7 @@ class MediaActionsStateTest {
             fakeAccountMediaRepository,
             fakeTrackedMediaRepository,
             trackedMediaSnapshot = { snapshot },
+            scheduleQueuedToggleSync = { scheduledSyncs++ },
         )
 
     private fun tvState() =
@@ -94,6 +96,7 @@ class MediaActionsStateTest {
             CoroutineScope(testDispatcher),
             fakeAccountMediaRepository,
             fakeTrackedMediaRepository,
+            scheduleQueuedToggleSync = { scheduledSyncs++ },
         )
 
     /** Before `load()` is ever called, the icons must show a ghost/shimmer, not a guessed state. */
@@ -154,6 +157,8 @@ class MediaActionsStateTest {
             )
             assertTrue(fakeTrackedMediaRepository.confirmDeleteCalls.isEmpty())
             assertEquals(listOf(queued(AccountMediaCategory.FAVORITES, isOn = false)), fakeTrackedMediaRepository.queueOfflineToggleCalls)
+            // A send is scheduled for when the network is back.
+            assertEquals(1, scheduledSyncs)
         }
 
     /** A real server-side rejection (not offline) rolls both the icon and the local queue back. */
@@ -174,6 +179,7 @@ class MediaActionsStateTest {
             )
             assertTrue(fakeTrackedMediaRepository.queueOfflineToggleCalls.isEmpty())
             assertTrue(fakeTrackedMediaRepository.clearQueuedToggleCalls.isEmpty())
+            assertEquals(0, scheduledSyncs)
         }
 
     /** A successful removal hard-deletes the queued row rather than leaving it marked pending. */
@@ -193,6 +199,7 @@ class MediaActionsStateTest {
             // Supersedes anything still queued for this title from an earlier offline toggle.
             assertEquals(listOf(queued(AccountMediaCategory.FAVORITES)), fakeTrackedMediaRepository.clearQueuedToggleCalls)
             assertTrue(fakeTrackedMediaRepository.queueOfflineToggleCalls.isEmpty())
+            assertEquals(0, scheduledSyncs)
         }
 
     /** Favoriting a TV show ON is exactly the moment the episode-alerts opt-in prompt should fire. */

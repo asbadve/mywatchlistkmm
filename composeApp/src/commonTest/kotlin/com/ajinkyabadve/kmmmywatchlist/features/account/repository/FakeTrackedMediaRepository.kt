@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.features.account.repository
 
 import androidx.paging.PagingData
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.QueuedToggle
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
@@ -164,6 +165,36 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
         accountId: Long,
     ) {
         clearQueuedToggleCalls.add(QueuedToggleCall(id, mediaType, category, accountId))
+    }
+
+    private val queuedToggles = mutableMapOf<AccountMediaCategory, MutableStateFlow<List<QueuedToggle>>>()
+
+    /** Seeds what [observeQueuedToggles] emits for [category] - dumb, no outbox simulation. */
+    fun seedQueuedToggles(
+        category: AccountMediaCategory,
+        toggles: List<QueuedToggle>,
+    ) {
+        queuedTogglesFor(category).value = toggles
+    }
+
+    private fun queuedTogglesFor(category: AccountMediaCategory) = queuedToggles.getOrPut(category) { MutableStateFlow(emptyList()) }
+
+    override fun observeQueuedToggles(
+        accountId: Long,
+        category: AccountMediaCategory,
+    ): Flow<List<QueuedToggle>> = queuedTogglesFor(category)
+
+    val sendQueuedTogglesCalls = mutableListOf<Pair<Long, String>>()
+
+    /** What [sendQueuedToggles] reports - true means nothing left queued. */
+    var sendQueuedTogglesResult = true
+
+    override suspend fun sendQueuedToggles(
+        accountId: Long,
+        sessionId: String,
+    ): Boolean {
+        sendQueuedTogglesCalls.add(accountId to sessionId)
+        return sendQueuedTogglesResult
     }
 
     private val upcomingFlow = MutableStateFlow<List<UpcomingMediaItem>>(emptyList())

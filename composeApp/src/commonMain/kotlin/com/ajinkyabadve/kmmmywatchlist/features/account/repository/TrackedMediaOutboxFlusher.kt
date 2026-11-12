@@ -9,6 +9,8 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.ContentConvertException
 import io.ktor.utils.io.errors.IOException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerializationException
 
 /**
@@ -33,14 +35,21 @@ internal class TrackedMediaOutboxFlusher(
     private val accountMediaRepository: AccountMediaRepository,
     private val queries: MyDatabaseQueries,
 ) {
+    /**
+     * Returns true when nothing is left queued for [accountId], false when entries are still
+     * waiting. One send at a time app-wide ([SEND_LOCK]): the app-start send and a refresh can
+     * overlap, and two concurrent sends would read the same rows and send each twice.
+     */
     suspend fun flush(
         accountId: Long,
         sessionId: String,
-    ) {
-        for (entry in queries.selectOutboxEntriesForAccount(accountId).awaitAsList()) {
-            if (send(entry, accountId, sessionId) == SendResult.STOP) return
+    ): Boolean =
+        SEND_LOCK.withLock {
+            for (entry in queries.selectOutboxEntriesForAccount(accountId).awaitAsList()) {
+                if (send(entry, accountId, sessionId) == SendResult.STOP) return@withLock false
+            }
+            true
         }
-    }
 
     private suspend fun send(
         entry: TrackedMediaOutbox,
@@ -110,6 +119,7 @@ internal class TrackedMediaOutboxFlusher(
     private enum class SendResult { CONTINUE, STOP }
 
     private companion object {
+        val SEND_LOCK = Mutex()
         const val TAG = "TrackedMediaOutbox"
         const val STILL_OFFLINE_MESSAGE = "Still offline - keeping the queued toggles"
         const val SESSION_REJECTED_MESSAGE = "Session rejected - keeping the queued toggles until the next sign-in"

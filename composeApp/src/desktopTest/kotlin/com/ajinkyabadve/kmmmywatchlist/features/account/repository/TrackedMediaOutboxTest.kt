@@ -11,6 +11,7 @@ import com.ajinkyabadve.kmmmywatchlist.db.MyDatabase
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMedia
 import com.ajinkyabadve.kmmmywatchlist.db.TrackedMediaOutbox
 import com.ajinkyabadve.kmmmywatchlist.db.createTestDatabase
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.QueuedToggle
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
@@ -19,9 +20,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
 import com.ajinkyabadve.kmmmywatchlist.network.HttpExceptionsTestFactory
 import io.ktor.http.HttpStatusCode
 import io.ktor.utils.io.errors.IOException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -265,6 +268,39 @@ class TrackedMediaOutboxTest {
             assertTrue(fake.setFavoriteCalls.isEmpty())
             assertEquals(1L, row(database)?.isDeleted)
             assertEquals(1, outbox(database).size)
+        }
+
+    @Test
+    fun testObserveQueuedToggles_emitsThisListsEntriesAndEmptiesOnceSent() =
+        runTest {
+            val database = createTestDatabase()
+            val repository = repository(database)
+            addOffline(repository)
+            repository.queueOfflineToggle(OTHER_TRACKED_ID, MediaTypeConstant.TV, AccountMediaCategory.WATCHLIST, ACCOUNT_ID, isOn = true)
+
+            assertEquals(
+                listOf(QueuedToggle(TRACKED_ID, MediaTypeConstant.MOVIE, isOn = true)),
+                repository.observeQueuedToggles(ACCOUNT_ID, AccountMediaCategory.FAVORITES).first(),
+            )
+
+            repository.sendQueuedToggles(ACCOUNT_ID, SESSION_ID)
+
+            assertTrue(repository.observeQueuedToggles(ACCOUNT_ID, AccountMediaCategory.FAVORITES).first().isEmpty())
+        }
+
+    /** What the Android background job reads: false = still waiting (retry), true = all sent. */
+    @Test
+    fun testSendQueuedToggles_reportsWhetherAnythingIsLeft() =
+        runTest {
+            val database = createTestDatabase()
+            val fake = FakeAccountMediaRepository().apply { setFavoriteResult = Result.failure(IOException(OFFLINE)) }
+            val repository = repository(database, fake)
+            addOffline(repository)
+
+            assertFalse(repository.sendQueuedToggles(ACCOUNT_ID, SESSION_ID))
+
+            fake.setFavoriteResult = null
+            assertTrue(repository.sendQueuedToggles(ACCOUNT_ID, SESSION_ID))
         }
 
     private fun repository(

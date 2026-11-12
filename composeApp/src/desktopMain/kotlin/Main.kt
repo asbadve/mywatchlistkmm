@@ -6,6 +6,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.ajinkyabadve.kmmmywatchlist.App
 import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
+import com.ajinkyabadve.kmmmywatchlist.core.sync.QueuedToggleSyncScheduler
 import mywatchlist.composeapp.generated.resources.Res
 import mywatchlist.composeapp.generated.resources.app_icon
 import mywatchlist.composeapp.generated.resources.app_name
@@ -14,7 +15,10 @@ import org.jetbrains.compose.resources.stringResource
 import java.awt.Dimension
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
-fun main() =
+fun main() {
+    // Offline favorite/watchlist changes from an earlier session - see QueuedToggleSyncScheduler.
+    // Before application {}, so it runs once per launch and never from composition.
+    QueuedToggleSyncScheduler.schedule()
     application {
         initLogging()
         val windowState = rememberWindowState(width = 800.dp, height = 600.dp)
@@ -31,3 +35,4 @@ fun main() =
             App(calculateWindowSizeClass())
         }
     }
+}
