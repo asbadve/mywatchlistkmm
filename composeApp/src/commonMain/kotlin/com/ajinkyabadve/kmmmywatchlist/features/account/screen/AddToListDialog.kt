@@ -58,8 +58,9 @@ private object AddToListDialogConstant {
  * state (this dialog does not know which lists already contain the movie, so a row always starts
  * as "Add" even if it's already a member; tapping it again is harmless - TMDB's add_item is
  * idempotent), plus an inline "new list" row so a list can be created and populated in one step.
- * Reuses [ListsScreenModel] for list creation (the same instance `ListsTab` uses, so a list created
- * here shows up there too), but reads the list index straight from [CustomListRepository.observeLists]
+ * Reuses [ListsScreenModel] for list creation - a list created here shows up in `ListsTab` because
+ * it is written to the local table that tab's grid reads (each screen has its own ScreenModel
+ * instance since ScreenModels became per back-stack entry), and reads the list index straight from [CustomListRepository.observeLists]
  * rather than [ListsScreenModel]'s Paging3-backed grid - this picker wants the user's full list of
  * lists at once, not the grid's scroll-windowed subset.
  */

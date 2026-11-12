@@ -104,6 +104,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.CollectionDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.EpisodeListKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.ListDetailKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.LocalAppViewModelStoreOwner
 import com.ajinkyabadve.kmmmywatchlist.navigation.MovieDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MoviesKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.MyFavKey
@@ -117,6 +118,7 @@ import com.ajinkyabadve.kmmmywatchlist.navigation.TvDetailKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.TvShowsKey
 import com.ajinkyabadve.kmmmywatchlist.navigation.bottomNavItems
 import com.ajinkyabadve.kmmmywatchlist.navigation.isDetailKey
+import com.ajinkyabadve.kmmmywatchlist.navigation.rememberAppEntryDecorators
 import com.ajinkyabadve.kmmmywatchlist.navigation.rememberTopLevelBackStack
 import com.ajinkyabadve.kmmmywatchlist.network.exception.HttpExceptions
 import com.ajinkyabadve.kmmmywatchlist.theme.AppTheme
@@ -140,18 +142,21 @@ internal fun App(calculateWindowSizeClass: WindowSizeClass) {
     LaunchedEffect(Unit) {
         ImageConfigResolver.refreshConfig()
     }
-    // NavDisplay disposes an entry's composition once it's no longer the top of the backstack
-    // (e.g. TvDetail -> AllSeasons), so viewModel() calls inside it rely entirely on the ambient
-    // ViewModelStoreOwner to keep their ViewModel alive across that disposal. Provide one stable
-    // owner for the whole app session here instead of relying on per-platform defaults, so
-    // navigating away and back doesn't recreate ViewModels and refetch already-loaded data.
+    // One stable owner for the whole app session, instead of relying on per-platform defaults.
+    // Screens inside NavDisplay get their own per-entry store from rememberAppEntryDecorators
+    // (kept while the entry is on the back stack, cleared when it is popped); this one serves
+    // composables outside NavDisplay and the ScreenModels deliberately shared across screens,
+    // which reach it through LocalAppViewModelStoreOwner (see sharedAuthScreenModel).
     val appViewModelStoreOwner =
         remember {
             object : ViewModelStoreOwner {
                 override val viewModelStore: ViewModelStore = ViewModelStore()
             }
         }
-    CompositionLocalProvider(LocalViewModelStoreOwner provides appViewModelStoreOwner) {
+    CompositionLocalProvider(
+        LocalViewModelStoreOwner provides appViewModelStoreOwner,
+        LocalAppViewModelStoreOwner provides appViewModelStoreOwner,
+    ) {
         AppTheme {
             // Shown once per process launch, ahead of everything else - see SplashScreen's kdoc for
             // the animation this reproduces. Skipped on Android: usesNativeAnimatedSplash() is only
@@ -441,6 +446,8 @@ private fun MainAppScaffoldContent(
         NavDisplay(
             backStack = topLevelBackStack.backStack,
             onBack = { topLevelBackStack.removeLast() },
+            // A ScreenModel per back-stack entry, cleared on pop - see rememberAppEntryDecorators.
+            entryDecorators = rememberAppEntryDecorators(),
             sceneStrategies = listOf(dialogStrategy, listDetailStrategy),
             // Both bars shrink their reported height as they collapse, so innerPadding already
             // tracks them and the content grows into the space instead of leaving a dead strip.
