@@ -51,6 +51,9 @@ class TrackedMediaRemoteMediator(
                             keys?.nextPage?.toInt() ?: return@withContext MediatorResult.Success(endOfPaginationReached = true)
                         }
                     }
+                // Deliberately does not send queued offline toggles first (refreshAll does): offline,
+                // that send's retries would hold the grid's REFRESH - and its blank first paint - for
+                // as long again as fetchPage's own. The prune below keeps queued rows either way.
                 val response = fetchPage(page)
                 val queries = database.myDatabaseQueries
                 val now = Clock.System.now().toEpochMilliseconds()

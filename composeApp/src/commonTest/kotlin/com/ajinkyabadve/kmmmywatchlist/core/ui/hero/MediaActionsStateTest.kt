@@ -65,6 +65,18 @@ class MediaActionsStateTest {
         Dispatchers.resetMain()
     }
 
+    /** The [FakeTrackedMediaRepository.QueuedToggleCall] this state holder records; [isOn] null = a clear. */
+    private fun queued(
+        category: AccountMediaCategory,
+        isOn: Boolean? = null,
+    ) = FakeTrackedMediaRepository.QueuedToggleCall(
+        MediaActionsStateTestConstant.MOVIE_ID.toInt(),
+        MediaTypeConstant.MOVIE,
+        category,
+        MediaActionsStateTestConstant.ACCOUNT_ID,
+        isOn,
+    )
+
     private fun state(snapshot: TrackedMediaSnapshot? = MediaActionsStateTestConstant.SNAPSHOT) =
         MediaActionsState(
             MediaTypeConstant.MOVIE,
@@ -141,6 +153,7 @@ class MediaActionsStateTest {
                 fakeTrackedMediaRepository.markPendingDeleteCalls,
             )
             assertTrue(fakeTrackedMediaRepository.confirmDeleteCalls.isEmpty())
+            assertEquals(listOf(queued(AccountMediaCategory.FAVORITES, isOn = false)), fakeTrackedMediaRepository.queueOfflineToggleCalls)
         }
 
     /** A real server-side rejection (not offline) rolls both the icon and the local queue back. */
@@ -159,6 +172,8 @@ class MediaActionsStateTest {
                 listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
                 fakeTrackedMediaRepository.clearPendingDeleteCalls,
             )
+            assertTrue(fakeTrackedMediaRepository.queueOfflineToggleCalls.isEmpty())
+            assertTrue(fakeTrackedMediaRepository.clearQueuedToggleCalls.isEmpty())
         }
 
     /** A successful removal hard-deletes the queued row rather than leaving it marked pending. */
@@ -175,6 +190,9 @@ class MediaActionsStateTest {
                 listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
                 fakeTrackedMediaRepository.confirmDeleteCalls,
             )
+            // Supersedes anything still queued for this title from an earlier offline toggle.
+            assertEquals(listOf(queued(AccountMediaCategory.FAVORITES)), fakeTrackedMediaRepository.clearQueuedToggleCalls)
+            assertTrue(fakeTrackedMediaRepository.queueOfflineToggleCalls.isEmpty())
         }
 
     /** Favoriting a TV show ON is exactly the moment the episode-alerts opt-in prompt should fire. */
@@ -270,6 +288,20 @@ class MediaActionsStateTest {
                 listOf(MediaActionsStateTestConstant.SNAPSHOT to AccountMediaCategory.FAVORITES),
                 fakeTrackedMediaRepository.trackLocallyCalls,
             )
+            assertEquals(listOf(queued(AccountMediaCategory.FAVORITES, isOn = true)), fakeTrackedMediaRepository.queueOfflineToggleCalls)
+        }
+
+    /** The watchlist toggle queues under its own list, not favorites. */
+    @Test
+    fun testTurningWatchlistOnWhileOfflineQueuesItUnderWatchlist() =
+        runTest(testDispatcher) {
+            fakeAccountMediaRepository.setWatchlistResult = Result.failure(IOException("Mock network failure"))
+            val mediaActionsState = state()
+
+            mediaActionsState.toggleWatchlist(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertTrue(mediaActionsState.uiState.value.isInWatchlist)
+            assertEquals(listOf(queued(AccountMediaCategory.WATCHLIST, isOn = true)), fakeTrackedMediaRepository.queueOfflineToggleCalls)
         }
 
     /** A real rejection rolls the heart back, so nothing may be written. */

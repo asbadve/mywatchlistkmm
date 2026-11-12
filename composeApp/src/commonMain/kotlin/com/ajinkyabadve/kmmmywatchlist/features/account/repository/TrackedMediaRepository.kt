@@ -63,7 +63,8 @@ private object TrackedMediaConstant {
  * `docs/local-storage-plan.html` and `shipped_features.md` item 2) - a read-cache for
  * instant local paint plus a home for shipped_features.md item 3's per-item poll state,
  * not a source of truth. [pagedFlow]/[TrackedMediaRemoteMediator] are what keep it in sync with
- * TMDB; nothing here ever writes to TMDB itself.
+ * TMDB. The only writes to TMDB from here are the offline toggles [queueOfflineToggle] queued, sent
+ * by [TrackedMediaOutboxFlusher] before a refresh.
  */
 interface TrackedMediaRepository {
     /**
@@ -140,9 +141,9 @@ interface TrackedMediaRepository {
      * instead of after the next [refreshAll]. Also revives a row [markPendingDelete] had queued,
      * for a toggle-back-on before that removal reached TMDB.
      *
-     * The row is written as already-synced (no pending flag): if the toggle never reached TMDB
-     * (offline), the next complete [refreshAll] drops it again rather than showing a title TMDB
-     * doesn't have.
+     * The row is written as already-synced (no pending flag). An offline toggle is also queued
+     * with [queueOfflineToggle], which keeps the row through a refresh until it reaches TMDB;
+     * without a queued toggle, the next complete [refreshAll] drops a row TMDB doesn't have.
      */
     suspend fun trackLocally(
         snapshot: TrackedMediaSnapshot,
@@ -154,6 +155,28 @@ interface TrackedMediaRepository {
         id: Int,
         mediaType: String,
         category: AccountMediaCategory,
+    )
+
+    /**
+     * Queues a favorite/watchlist toggle that failed for lack of connectivity, so it is sent to
+     * TMDB before the next [refreshAll] instead of being undone by it, and kept through any
+     * paged-grid refresh until then - see [TrackedMediaOutboxFlusher]. Replaces any toggle already
+     * queued for the same title and list.
+     */
+    suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    )
+
+    /** Drops a toggle [queueOfflineToggle] queued - for a later toggle that reached TMDB directly. */
+    suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
     )
 
     /**
@@ -181,6 +204,7 @@ interface TrackedMediaRepository {
      * Re-syncs every favorites/watchlist slice from TMDB into the local table, so screens that only
      * read the table (the "Upcoming" tab) see changes without the user first opening the paged
      * Favorites/Watchlist grids. Writes exactly what the grids' `TrackedMediaRemoteMediator` writes.
+     * Sends the toggles [queueOfflineToggle] queued first, so the refresh sees them on TMDB.
      * A slice is only pruned of removed titles when all its pages were fetched; on any network
      * failure the slice keeps whatever it already had.
      */
@@ -354,6 +378,32 @@ internal class SqliteTrackedMediaRepositoryImpl(
         databaseProvider().myDatabaseQueries.deleteTrackedMediaRow(id.toLong(), mediaType, category.storageValue)
     }
 
+    override suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    ) {
+        databaseProvider().myDatabaseQueries.upsertOutboxEntry(
+            id = id.toLong(),
+            mediaType = mediaType,
+            category = category.storageValue,
+            accountId = accountId,
+            desiredState = TrackedMediaOutboxConstant.desiredStateOf(isOn),
+            queuedAt = Clock.System.now().toEpochMilliseconds(),
+        )
+    }
+
+    override suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+    ) {
+        databaseProvider().myDatabaseQueries.deleteOutboxEntry(id.toLong(), mediaType, category.storageValue, accountId)
+    }
+
     override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> =
         flow {
             val since =
@@ -394,6 +444,7 @@ internal class SqliteTrackedMediaRepositoryImpl(
         sessionId: String,
     ) {
         val queries = databaseProvider().myDatabaseQueries
+        TrackedMediaOutboxFlusher(accountMediaRepository, queries).flush(accountId, sessionId)
         AccountMediaCategory.entries.forEach { category ->
             listOf(SearchMediaType.MOVIE, SearchMediaType.TV).forEach { mediaType ->
                 refreshSlice(queries, category, mediaType, accountId, sessionId)

@@ -25,7 +25,8 @@ private object NetworkOnlyTrackedMediaConstant {
  * rather than fighting sql.js/WebWorkerDriver's build and bundling cost for a platform with no
  * offline story to begin with. [pagedFlow] fetches TMDB directly, one page at a time, with no
  * local mirror behind it - so there's nothing for [markPendingDelete]/[clearPendingDelete]/
- * [trackLocally]/[confirmDelete]/[updatePollState] to update either; they're no-ops here.
+ * [trackLocally]/[confirmDelete]/[updatePollState] to update either; they're no-ops here. So are
+ * [queueOfflineToggle]/[clearQueuedToggle]: nothing persists across a page load to hold a queue.
  */
 internal class NetworkOnlyTrackedMediaRepositoryImpl(
     private val accountMediaRepository: AccountMediaRepository,
@@ -96,6 +97,21 @@ internal class NetworkOnlyTrackedMediaRepositoryImpl(
         id: Int,
         mediaType: String,
         category: AccountMediaCategory,
+    ) = Unit
+
+    override suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    ) = Unit
+
+    override suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
     ) = Unit
 
     // No local table to enumerate on web - same reasoning as trackedTvForPolling above.

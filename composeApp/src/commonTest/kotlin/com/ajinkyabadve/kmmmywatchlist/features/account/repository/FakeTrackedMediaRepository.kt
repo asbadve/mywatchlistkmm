@@ -135,6 +135,37 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
         confirmDeleteCalls.add(Triple(id, mediaType, category))
     }
 
+    val queueOfflineToggleCalls = mutableListOf<QueuedToggleCall>()
+    val clearQueuedToggleCalls = mutableListOf<QueuedToggleCall>()
+
+    /** One [queueOfflineToggle]/[clearQueuedToggle] call; [isOn] is null for a clear. */
+    data class QueuedToggleCall(
+        val id: Int,
+        val mediaType: String,
+        val category: AccountMediaCategory,
+        val accountId: Long,
+        val isOn: Boolean? = null,
+    )
+
+    override suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    ) {
+        queueOfflineToggleCalls.add(QueuedToggleCall(id, mediaType, category, accountId, isOn))
+    }
+
+    override suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+    ) {
+        clearQueuedToggleCalls.add(QueuedToggleCall(id, mediaType, category, accountId))
+    }
+
     private val upcomingFlow = MutableStateFlow<List<UpcomingMediaItem>>(emptyList())
 
     /** Seeds what [observeUpcoming] emits - dumb, no SQL sort/filter simulation. That logic is

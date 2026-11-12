@@ -103,21 +103,8 @@ class MediaActionsState(
                 runCatchingApiCall("toggling favorite for $mediaType/$mediaId") {
                     accountMediaRepository.setFavorite(accountId, sessionId, mediaType, mediaId, newValue)
                 }
-            when (outcome) {
-                ToggleOutcome.SUCCESS ->
-                    if (!newValue) {
-                        trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
-                    } else {
-                        trackLocally(AccountMediaCategory.FAVORITES)
-                    }
-                // Offline - the optimistic icon state stays put. A removal stays queued (local
-                // hide); an addition is written locally so Upcoming matches the icon, and the next
-                // complete refresh drops it again if it never reached TMDB.
-                ToggleOutcome.OFFLINE -> if (newValue) trackLocally(AccountMediaCategory.FAVORITES)
-                ToggleOutcome.FAILED -> {
-                    _uiState.update { it.copy(isFavorite = !newValue) }
-                    if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
-                }
+            settleToggle(outcome, AccountMediaCategory.FAVORITES, accountId, newValue) {
+                _uiState.update { it.copy(isFavorite = !newValue) }
             }
         }
     }
@@ -137,19 +124,43 @@ class MediaActionsState(
                 runCatchingApiCall("toggling watchlist for $mediaType/$mediaId") {
                     accountMediaRepository.setWatchlist(accountId, sessionId, mediaType, mediaId, newValue)
                 }
-            when (outcome) {
-                ToggleOutcome.SUCCESS ->
-                    if (!newValue) {
-                        trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
-                    } else {
-                        trackLocally(AccountMediaCategory.WATCHLIST)
-                    }
-                // Same as toggleFavorite's offline branch.
-                ToggleOutcome.OFFLINE -> if (newValue) trackLocally(AccountMediaCategory.WATCHLIST)
-                ToggleOutcome.FAILED -> {
-                    _uiState.update { it.copy(isInWatchlist = !newValue) }
-                    if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
-                }
+            settleToggle(outcome, AccountMediaCategory.WATCHLIST, accountId, newValue) {
+                _uiState.update { it.copy(isInWatchlist = !newValue) }
+            }
+        }
+    }
+
+    /**
+     * The local side of a favorite/watchlist toggle once its TMDB call resolved - shared by
+     * [toggleFavorite] and [toggleWatchlist], which differ only in [category] and which icon
+     * [rollBackIcon] resets.
+     * - Sent: confirm a removal, or write an addition locally; drop any toggle still queued for
+     *   this title, since this one supersedes it.
+     * - Offline: the icon keeps its new state. A removal stays hidden locally, an addition is
+     *   written locally, and the toggle is queued so the next refresh sends it to TMDB first
+     *   (see [TrackedMediaRepository.queueOfflineToggle]).
+     * - Failed: TMDB rejected it - the icon and any local hide roll back.
+     */
+    private suspend fun settleToggle(
+        outcome: ToggleOutcome,
+        category: AccountMediaCategory,
+        accountId: Long,
+        newValue: Boolean,
+        rollBackIcon: () -> Unit,
+    ) {
+        val id = mediaId.toInt()
+        when (outcome) {
+            ToggleOutcome.SUCCESS -> {
+                if (newValue) trackLocally(category) else trackedMediaRepository.confirmDelete(id, mediaType, category)
+                trackedMediaRepository.clearQueuedToggle(id, mediaType, category, accountId)
+            }
+            ToggleOutcome.OFFLINE -> {
+                if (newValue) trackLocally(category)
+                trackedMediaRepository.queueOfflineToggle(id, mediaType, category, accountId, newValue)
+            }
+            ToggleOutcome.FAILED -> {
+                rollBackIcon()
+                if (!newValue) trackedMediaRepository.clearPendingDelete(id, mediaType, category)
             }
         }
     }
@@ -167,9 +178,9 @@ class MediaActionsState(
         }
     }
 
-    /** [OFFLINE] is distinguished from [FAILED] so a toggle made without connectivity stays queued
-     *  (see [markPendingDelete][TrackedMediaRepository.markPendingDelete]) instead of bouncing back -
-     *  only a real server-side rejection rolls the toggle back. */
+    /** [OFFLINE] is distinguished from [FAILED] so a toggle made without connectivity is queued
+     *  for the next refresh (see [settleToggle]) instead of bouncing back - only a real
+     *  server-side rejection rolls the toggle back. */
     private enum class ToggleOutcome { SUCCESS, OFFLINE, FAILED }
 
     private suspend fun runCatchingApiCall(
