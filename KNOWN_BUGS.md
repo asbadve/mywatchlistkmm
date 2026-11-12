@@ -11,6 +11,44 @@ Each entry: what you see, where it is, what has been ruled out, and the next con
 
 ---
 
+## Favorites grid blank for ~10s after returning from an offline toggle
+**What you see:** offline, favorite a title on its detail page, then go back to My Fav >
+Favorites: the grid is blank with a spinner for about 10 seconds before the saved titles reappear
+(with the new "not synced" marker). Seen 2026-11-12 on the Android emulator (Pixel 10 Pro Fold).
+**Where:** `AccountFavoritesWatchlistTab` / `TrackedMediaRepository.pagedFlow`. It follows the local
+write (`trackLocally`) that invalidates the grid's `QueryPagingSource`.
+**Ruled out:** not the grid's own network refresh - `TrackedMediaRemoteMediator.initialize()` now
+skips it when rows are saved, and a plain tab switch offline (no new write) shows the grid at once.
+**Next step:** log `loadState` (source and mediator, refresh/append) while reproducing, to see whether
+the reload after invalidation is waiting on something - for example the detail screen's still-running
+`account_states` call or detail-cache refresh holding the database.
+
+## Movie/TV detail pages take ~1 minute to show their cached copy offline
+**What you see:** offline, opening a movie whose detail page was cached shows a spinner for about a
+minute, then the cached page. A page that was never cached never loads. Seen 2026-11-12 on the
+Android emulator; present before the offline-first work too.
+**Where:** the detail screens' `NetworkBoundResource`-style detail cache. The likely cause is the same
+as the Favorites grid's (fixed 2026-11-12): the cached copy is only shown after the network fetch fails,
+and offline that takes as long as `TmdbClient`'s `HttpRequestRetry` (3 retries, growing delays).
+**Next step:** emit the cached copy first and refresh in the background (offline-first reads, per
+developer.android.com/topic/architecture/data-layer/offline-first), or skip the retries for an
+`UnknownHostException`, which means no network rather than a flaky one.
+
+## Favorite/watchlist hearts show empty offline for titles that are favorited
+**What you see:** offline, a detail page for a title in your favorites or watchlist shows an empty
+heart/bookmark. Tapping it queues an "add" (harmless on TMDB, but wrong in the UI). Seen 2026-11-12.
+**Where:** `MediaActionsState.load()` gets the icon state only from TMDB's `account_states`; offline
+that call fails and the icons stay at their default (off).
+**Next step:** when `account_states` fails, fall back to the local `trackedMedia` rows (not
+`isDeleted`) plus any queued toggle for the title, then replace them with TMDB's answer once online.
+
+## Avengers: Doomsday shows an empty heart online although it is a favorite
+**What you see:** online, its detail page shows an empty heart even after fully loading, while
+TMDB's favorites list (and the local grid) include it. Free Guy and Ramayana showed the right state the
+same session. Seen 2026-11-12 on the Android emulator; not investigated.
+**Next step:** check the `account_states` response for movie 1003596 (an unreleased title) and how
+`MediaActionsState.load()` maps it.
+
 ## Android tests — 4 region-picker UI tests are skipped (Compose test-framework race)
 **What you see:** on an Android device/emulator, 4 of the 5 `RegionPickerDialogUiTest` tests report
 "skipped": the three that type into the dialog, plus the tap-a-region test, which hit the same race
