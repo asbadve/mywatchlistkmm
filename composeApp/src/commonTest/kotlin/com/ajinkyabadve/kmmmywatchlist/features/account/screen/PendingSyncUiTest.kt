@@ -17,13 +17,6 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMe
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchMediaType
 import com.ajinkyabadve.kmmmywatchlist.features.search.model.SearchResultItem
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /**
@@ -31,18 +24,11 @@ import kotlin.test.Test
  * above the grid counting every waiting change, and both clearing on their own once the queue
  * drains. The queue itself (what gets queued, sent, kept) is covered by TrackedMediaOutboxTest.
  */
-@OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalTestApi::class)
 class PendingSyncUiTest {
-    // The grid's ScreenModel collects pendingSync on its Main-dispatcher scope.
-    @BeforeTest
-    fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
+    // No Dispatchers.setMain here: the grid ScreenModel's Main-dispatcher scope runs on the real
+    // Main dispatcher, as in AccountFavoritesWatchlistTabUiTest. Replacing it kept Compose from ever
+    // going idle on Android (every test timed out with ComposeNotIdleException).
 
     @Test
     fun testOnlyTheTitleAddedOfflineGetsTheNotSyncedMarker() =
