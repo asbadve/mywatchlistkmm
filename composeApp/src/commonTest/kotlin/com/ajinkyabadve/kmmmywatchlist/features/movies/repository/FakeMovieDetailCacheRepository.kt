@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.movies.repository
 import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.core.data.Resource
 import com.ajinkyabadve.kmmmywatchlist.features.movies.model.MovieDetail
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
@@ -21,6 +22,9 @@ class FakeMovieDetailCacheRepository : MovieDetailCacheRepository {
     var getMovieDetailResult: Result<MovieDetail> = Result.success(MovieDetail())
     val getMovieDetailCalls = mutableListOf<Long>()
 
+    /** Models a fetch still retrying offline: emit `Loading(cached)` and never finish. */
+    var networkNeverResponds = false
+
     fun seedCached(
         movieId: Long,
         detail: MovieDetail,
@@ -34,6 +38,11 @@ class FakeMovieDetailCacheRepository : MovieDetailCacheRepository {
         flow {
             getMovieDetailCalls.add(movieId)
             val cached = flowFor(movieId).value
+            if (networkNeverResponds) {
+                // What NetworkBoundResource emits before its fetch - then the fetch never ends.
+                emit(Resource.Loading(cached))
+                awaitCancellation()
+            }
             getMovieDetailResult.fold(
                 onSuccess = { detail ->
                     flowFor(movieId).value = detail

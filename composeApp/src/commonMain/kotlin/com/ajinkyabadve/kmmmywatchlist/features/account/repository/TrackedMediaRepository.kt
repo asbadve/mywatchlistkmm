@@ -151,6 +151,16 @@ interface TrackedMediaRepository {
         category: AccountMediaCategory,
     )
 
+    /**
+     * The lists [id]/[mediaType] is in on this device - rows hidden by a pending removal excluded,
+     * offline additions included. The detail screen's favorite/watchlist icons show this before
+     * TMDB's `account_states` answers, and instead of it when offline.
+     */
+    suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory>
+
     /** Hard-deletes a row [markPendingDelete] queued, once its removal is confirmed with TMDB. */
     suspend fun confirmDelete(
         id: Int,
@@ -389,6 +399,19 @@ internal class SqliteTrackedMediaRepositoryImpl(
             // The upsert doesn't touch isDeleted/pendingSync - revive a row queued for removal.
             queries.clearTrackedMediaPendingDelete(snapshot.id.toLong(), snapshot.mediaType, category.storageValue)
         }
+    }
+
+    override suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory> {
+        val stored =
+            databaseProvider()
+                .myDatabaseQueries
+                .selectTrackedCategories(id.toLong(), mediaType)
+                .awaitAsList()
+                .toSet()
+        return AccountMediaCategory.entries.filter { it.storageValue in stored }.toSet()
     }
 
     override suspend fun confirmDelete(

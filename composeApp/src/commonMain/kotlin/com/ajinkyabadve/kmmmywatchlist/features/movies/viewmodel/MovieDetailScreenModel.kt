@@ -106,7 +106,10 @@ class MovieDetailScreenModel(
         viewModelScope.launch(Dispatchers.Main) {
             movieDetailCacheRepository.getMovieDetail(movieId).collect { resource ->
                 when (resource) {
-                    is Resource.Loading -> Unit // _uiState already starts Loading
+                    // Offline-first: NetworkBoundResource hands over the cached copy before it
+                    // fetches. Show it now - offline that fetch only fails after the HTTP client's
+                    // retries (~1 min), and the cache used to wait for that error.
+                    is Resource.Loading -> resource.data?.let { _uiState.value = successState(it) }
                     is Resource.Success -> _uiState.value = successState(resource.data)
                     is Resource.Error ->
                         if (resource.data != null) {

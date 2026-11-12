@@ -94,6 +94,12 @@ internal class NetworkOnlyTrackedMediaRepositoryImpl(
         category: AccountMediaCategory,
     ) = Unit
 
+    // No local table on web - the icons rely on account_states alone, as before.
+    override suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory> = emptySet()
+
     override suspend fun confirmDelete(
         id: Int,
         mediaType: String,

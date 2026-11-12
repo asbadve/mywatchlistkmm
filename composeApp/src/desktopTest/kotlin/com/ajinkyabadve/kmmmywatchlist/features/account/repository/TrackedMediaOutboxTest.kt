@@ -303,6 +303,24 @@ class TrackedMediaOutboxTest {
             assertTrue(repository.sendQueuedToggles(ACCOUNT_ID, SESSION_ID))
         }
 
+    /** What the detail icons show before/without TMDB: offline additions in, offline removals out. */
+    @Test
+    fun testTrackedCategories_reflectsOfflineChanges() =
+        runTest {
+            val database = createTestDatabase()
+            val repository = repository(database)
+            repository.trackLocally(snapshot(), AccountMediaCategory.WATCHLIST)
+            addOffline(repository)
+            assertEquals(
+                setOf(AccountMediaCategory.FAVORITES, AccountMediaCategory.WATCHLIST),
+                repository.trackedCategories(TRACKED_ID, MediaTypeConstant.MOVIE),
+            )
+
+            removeOffline(repository)
+
+            assertEquals(setOf(AccountMediaCategory.WATCHLIST), repository.trackedCategories(TRACKED_ID, MediaTypeConstant.MOVIE))
+        }
+
     private fun repository(
         database: MyDatabase,
         fake: FakeAccountMediaRepository = FakeAccountMediaRepository(),

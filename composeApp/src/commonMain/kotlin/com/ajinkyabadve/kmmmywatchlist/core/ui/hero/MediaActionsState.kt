@@ -80,12 +80,23 @@ class MediaActionsState(
 
     fun load(sessionId: String) {
         coroutineScope.launch {
+            // Offline-first: show what this device knows (the local favorites/watchlist, offline
+            // changes included) straight away. TMDB's account_states below replaces it when it
+            // answers; offline it never does, and the icons used to fall back to "off" even for a
+            // title in your favorites.
+            val local = trackedMediaRepository.trackedCategories(mediaId.toInt(), mediaType)
+            _uiState.update {
+                it.copy(
+                    isFavorite = AccountMediaCategory.FAVORITES in local,
+                    isInWatchlist = AccountMediaCategory.WATCHLIST in local,
+                    isLoading = false,
+                )
+            }
             runCatchingApiCall("loading account states for $mediaType/$mediaId") {
                 val states = accountMediaRepository.getAccountStates(sessionId, mediaType, mediaId)
                 _uiState.update { it.copy(isFavorite = states.favorite, isInWatchlist = states.watchlist, isLoading = false) }
             }
-            // Also clears the shimmer on failure - an unknown favorite/watchlist state is shown as
-            // unset rather than stuck loading forever; the next successful load corrects it.
+            // Also clears the shimmer on failure, in case the local read above didn't run first.
             _uiState.update { it.copy(isLoading = false) }
         }
     }

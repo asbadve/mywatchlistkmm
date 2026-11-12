@@ -128,6 +128,22 @@ class FakeTrackedMediaRepository : TrackedMediaRepository {
         trackLocallyCalls.add(snapshot to category)
     }
 
+    private val trackedCategoriesById = mutableMapOf<Pair<Int, String>, Set<AccountMediaCategory>>()
+
+    /** Seeds what [trackedCategories] returns for a title - the local favorite/watchlist state. */
+    fun seedTrackedCategories(
+        id: Int,
+        mediaType: String,
+        categories: Set<AccountMediaCategory>,
+    ) {
+        trackedCategoriesById[id to mediaType] = categories
+    }
+
+    override suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory> = trackedCategoriesById[id to mediaType].orEmpty()
+
     override suspend fun confirmDelete(
         id: Int,
         mediaType: String,

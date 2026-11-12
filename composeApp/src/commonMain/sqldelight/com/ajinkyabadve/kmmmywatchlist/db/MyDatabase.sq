@@ -166,6 +166,11 @@ UPDATE trackedMedia SET isDeleted = 0, pendingSync = 0 WHERE id = ? AND mediaTyp
 deleteTrackedMediaRow:
 DELETE FROM trackedMedia WHERE id = ? AND mediaType = ? AND category = ?;
 
+-- Which lists a title is in locally (rows not hidden by a pending removal) - the detail screen's
+-- favorite/watchlist icons show this first, before (or, offline, instead of) TMDB's account_states.
+selectTrackedCategories:
+SELECT category FROM trackedMedia WHERE id = ? AND mediaType = ? AND isDeleted = 0;
+
 -- One row regardless of isDeleted/pendingSync - selectByCategoryPaged below excludes isDeleted
 -- rows, so this is what TrackedMediaRemoteMediatorTest uses to confirm a row queued for an
 -- offline delete (isDeleted = 1) is still there, not gone.

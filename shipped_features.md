@@ -1365,7 +1365,10 @@ and Google's offline & sync design guidelines (grey not red, reassuring copy, no
   `PendingSyncUiTest`, `SendQueuedTogglesUseCaseTest`, pending-sync cases in
   `AccountMediaListScreenModelTest` and `MediaActionsStateTest`. Checked on the Android emulator against
   a real TMDB account, dark and light.
-- **Follow-ups** (in `KNOWN_BUGS.md`): ~10s blank grid after returning from an offline toggle; detail
-  pages slow to show their cached copy offline; hearts empty offline for favorited titles. Not done:
+- [x] **Detail screens offline-first too** (2026-11-12): Movie/TV detail show the cached copy as
+  soon as `NetworkBoundResource` hands it over (was ~1 min offline), and the favorite/watchlist icons
+  start from the local lists instead of falling back to "off" offline. Verified on a physical Android device.
+- **Follow-ups** (in `KNOWN_BUGS.md`): ~10s blank grid seen once on the emulator, not on hardware;
+  detail ScreenModels are Activity-scoped, so a reopened title keeps a stale icon state. Not done:
   iOS foreground send (needs an app-level foreground hook; only app start for now).
 

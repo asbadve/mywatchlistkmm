@@ -129,6 +129,43 @@ class MediaActionsStateTest {
             assertFalse(mediaActionsState.uiState.value.isLoading)
         }
 
+    /** Offline: the icons show the local favorites/watchlist instead of falling back to "off". */
+    @Test
+    fun testOfflineLoadShowsTheLocalFavoriteAndWatchlistState() =
+        runTest(testDispatcher) {
+            fakeTrackedMediaRepository.seedTrackedCategories(
+                MediaActionsStateTestConstant.MOVIE_ID.toInt(),
+                MediaTypeConstant.MOVIE,
+                setOf(AccountMediaCategory.FAVORITES, AccountMediaCategory.WATCHLIST),
+            )
+            fakeAccountMediaRepository.accountStatesResult = Result.failure(IOException("Mock network failure"))
+            val mediaActionsState = state()
+
+            mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID)
+
+            assertTrue(mediaActionsState.uiState.value.isFavorite)
+            assertTrue(mediaActionsState.uiState.value.isInWatchlist)
+            assertFalse(mediaActionsState.uiState.value.isLoading)
+        }
+
+    /** Online, TMDB's answer wins over the local state - e.g. a title unfavorited on the website. */
+    @Test
+    fun testOnlineLoadReplacesTheLocalStateWithTmdbs() =
+        runTest(testDispatcher) {
+            fakeTrackedMediaRepository.seedTrackedCategories(
+                MediaActionsStateTestConstant.MOVIE_ID.toInt(),
+                MediaTypeConstant.MOVIE,
+                setOf(AccountMediaCategory.FAVORITES),
+            )
+            fakeAccountMediaRepository.accountStatesResult = Result.success(AccountStates(favorite = false, watchlist = true))
+            val mediaActionsState = state()
+
+            mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID)
+
+            assertFalse(mediaActionsState.uiState.value.isFavorite)
+            assertTrue(mediaActionsState.uiState.value.isInWatchlist)
+        }
+
     /** Toggling doesn't wait on `isLoading` - an optimistic toggle updates immediately either way. */
     @Test
     fun testToggleFavoriteWorksWhileStillLoading() {

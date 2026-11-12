@@ -62,7 +62,13 @@ fun accountMediaGridContent(
 ) {
     val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
 
-    if (lazyPagingItems.itemCount == 0 && lazyPagingItems.loadState.refresh is LoadState.NotLoading) {
+    // Empty only once both halves are done: the local read (source) and the network refresh
+    // (mediator, absent on web). The combined `refresh` alone reads NotLoading for a frame while the
+    // local read is still running (seen 2026-11-12 on a physical Android device), which flashed this message.
+    val loadState = lazyPagingItems.loadState
+    val nothingLoading =
+        loadState.source.refresh is LoadState.NotLoading && (loadState.mediator?.refresh ?: loadState.refresh) is LoadState.NotLoading
+    if (lazyPagingItems.itemCount == 0 && nothingLoading) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = emptyMessage,

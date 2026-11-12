@@ -11,43 +11,38 @@ Each entry: what you see, where it is, what has been ruled out, and the next con
 
 ---
 
-## Favorites grid blank for ~10s after returning from an offline toggle
+## Favorites grid blank for ~10s after returning from an offline toggle (emulator only so far)
 **What you see:** offline, favorite a title on its detail page, then go back to My Fav >
-Favorites: the grid is blank with a spinner for about 10 seconds before the saved titles reappear
-(with the new "not synced" marker). Seen 2026-11-12 on the Android emulator (Pixel 10 Pro Fold).
-**Where:** `AccountFavoritesWatchlistTab` / `TrackedMediaRepository.pagedFlow`. It follows the local
-write (`trackLocally`) that invalidates the grid's `QueryPagingSource`.
-**Ruled out:** not the grid's own network refresh - `TrackedMediaRemoteMediator.initialize()` now
-skips it when rows are saved, and a plain tab switch offline (no new write) shows the grid at once.
-**Next step:** log `loadState` (source and mediator, refresh/append) while reproducing, to see whether
-the reload after invalidation is waiting on something - for example the detail screen's still-running
-`account_states` call or detail-cache refresh holding the database.
+Favorites: the grid was blank with a spinner for about 10 seconds before the saved titles came back.
+Seen once, 2026-11-12, on the Android emulator (Pixel 10 Pro Fold AVD).
+**Not reproduced on hardware:** on a physical Android device, the same steps - a favorite and a
+watchlist toggle, each followed by going back - brought the grid back in ~30ms both times (temporary
+`loadState` logging: source Loading -> NotLoading with 31 items). The emulator was badly loaded at the
+time (17s on the splash screen right after), so this is most likely emulator slowness.
+**Fixed alongside:** the logging showed the combined `refresh` reads NotLoading for a frame while the
+local read is still running, which could flash "No favorites yet"; `accountMediaGridContent` now
+waits for both the source and mediator refresh.
+**Next step:** close this if it doesn't reappear on a real device; if it does, log
+`loadState.source`/`loadState.mediator` again around the return to the grid.
 
-## Movie/TV detail pages take ~1 minute to show their cached copy offline
-**What you see:** offline, opening a movie whose detail page was cached shows a spinner for about a
-minute, then the cached page. A page that was never cached never loads. Seen 2026-11-12 on the
-Android emulator; present before the offline-first work too.
-**Where:** the detail screens' `NetworkBoundResource`-style detail cache. The likely cause is the same
-as the Favorites grid's (fixed 2026-11-12): the cached copy is only shown after the network fetch fails,
-and offline that takes as long as `TmdbClient`'s `HttpRequestRetry` (3 retries, growing delays).
-**Next step:** emit the cached copy first and refresh in the background (offline-first reads, per
-developer.android.com/topic/architecture/data-layer/offline-first), or skip the retries for an
-`UnknownHostException`, which means no network rather than a flaky one.
-
-## Favorite/watchlist hearts show empty offline for titles that are favorited
-**What you see:** offline, a detail page for a title in your favorites or watchlist shows an empty
-heart/bookmark. Tapping it queues an "add" (harmless on TMDB, but wrong in the UI). Seen 2026-11-12.
-**Where:** `MediaActionsState.load()` gets the icon state only from TMDB's `account_states`; offline
-that call fails and the icons stay at their default (off).
-**Next step:** when `account_states` fails, fall back to the local `trackedMedia` rows (not
-`isDeleted`) plus any queued toggle for the title, then replace them with TMDB's answer once online.
-
-## Avengers: Doomsday shows an empty heart online although it is a favorite
-**What you see:** online, its detail page shows an empty heart even after fully loading, while
-TMDB's favorites list (and the local grid) include it. Free Guy and Ramayana showed the right state the
-same session. Seen 2026-11-12 on the Android emulator; not investigated.
-**Next step:** check the `account_states` response for movie 1003596 (an unreleased title) and how
-`MediaActionsState.load()` maps it.
+## Detail screen keeps a stale favorite/watchlist state when reopened
+**What you see:** open a movie offline, go back, go online and open the same movie again: the
+favorite/watchlist icons keep the first visit's state instead of asking TMDB. Seen 2026-11-12 on the
+emulator as an empty heart on Avengers: Doomsday (a favorite) while online. Not a TMDB problem: on a
+physical Android device, `account_states` for movie 1003596 returned `"favorite":true,"watchlist":true` and the
+icons showed it.
+**Where:** `MovieDetailScreen`/`TvDetailScreen` get their ScreenModel with
+`viewModel(key = "MovieDetailScreenModel:$movieId")`, and `NavDisplay` (App.kt) has no ViewModel
+entry decorator, so every detail ScreenModel is owned by the Activity: reopening a title reuses it,
+and `MediaActionsState.load()` only runs once, at creation. It also keeps every detail ScreenModel
+opened in a session in memory.
+**Mitigated 2026-11-12:** the icons now start from the local favorites/watchlist, so the offline
+first visit shows the right state; a state changed elsewhere (e.g. on the TMDB website) is still
+not picked up on reopen.
+**Next step:** add `rememberViewModelStoreNavEntryDecorator()` to `NavDisplay`'s `entryDecorators`
+(the `lifecycle-viewmodel-navigation3` dependency is already declared), following the navigation-3
+skill. Check first that switching top-level tabs doesn't drop the other tabs' entries - if it does,
+their ScreenModels would be cleared and reloaded on every tab switch.
 
 ## Android tests — 4 region-picker UI tests are skipped (Compose test-framework race)
 **What you see:** on an Android device/emulator, 4 of the 5 `RegionPickerDialogUiTest` tests report
