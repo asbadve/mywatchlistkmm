@@ -29,6 +29,7 @@ what stops the same ground being re-covered. This file holds only what is still 
 | [16. Release-Date Reminders for Unreleased Titles](shipped_features.md#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts--done-2026-10-04) | DONE |
 | [17. Remove Existing Deprecated API Usages](shipped_features.md#17-remove-existing-deprecated-api-usages--done-2026-10-17) | DONE |
 | [18. Settings Toggle to Turn Off Trending Carousel Autoscroll](shipped_features.md#18-settings-toggle-to-turn-off-trending-carousel-autoscroll--done-2026-11-11) | DONE |
+| [19. Offline-first Favorites/Watchlist with "not synced" markers](shipped_features.md#19-offline-first-favoriteswatchlist-with-not-synced-markers--done-2026-11-12) | DONE |
 
 **Still open inside those shipped items** - the only unchecked boxes left in the archive, listed
 here so they are not lost behind the "DONE" markers above:

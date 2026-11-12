@@ -11,26 +11,19 @@ Each entry: what you see, where it is, what has been ruled out, and the next con
 
 ---
 
-## Offline favorite/watchlist changes are never sent to TMDB
-
-**Symptom.** Favorite, unfavorite, watchlist or un-watchlist a title while offline: the icon keeps
-the new state and the local lists follow it, but TMDB never hears about it. Back online, the next
-complete refresh puts the lists back to what TMDB has - an offline removal comes back, an offline
-addition disappears. Found 2026-10-17 while fixing the Upcoming-timeline defect; not reported by a
-user yet.
-
-**Where.** `MediaActionsState` treats a network failure as `ToggleOutcome.OFFLINE` and leaves the
-change "queued": a removal is marked `isDeleted = 1, pendingSync = 1` in `trackedMedia`, an
-addition is written locally by `TrackedMediaRepository.trackLocally`. Its comments say a sync
-flushes the queue, but nothing does - no code reads `pendingSync` back, retries `setFavorite`/
-`setWatchlist`, or keeps queued additions at all. `TrackedMediaRepository.refreshAll` only skips
-`pendingSync = 1` rows when pruning, so queued removals stay hidden locally forever while TMDB
-still has the title.
-
-**Next step.** Add a real outbox: record each offline toggle (media, category, desired on/off),
-flush it before `refreshAll` prunes (and from the background job), and only then reconcile with
-TMDB. Don't overload `pendingSync` for additions - today it means "removal pending", so a flush
-written against it would send an offline addition as a delete.
+## Favorites grid blank for ~10s after returning from an offline toggle (emulator only so far)
+**What you see:** offline, favorite a title on its detail page, then go back to My Fav >
+Favorites: the grid was blank with a spinner for about 10 seconds before the saved titles came back.
+Seen once, 2026-11-12, on the Android emulator (Pixel 10 Pro Fold AVD).
+**Not reproduced on hardware:** on a physical Android device, the same steps - a favorite and a
+watchlist toggle, each followed by going back - brought the grid back in ~30ms both times (temporary
+`loadState` logging: source Loading -> NotLoading with 31 items). The emulator was badly loaded at the
+time (17s on the splash screen right after), so this is most likely emulator slowness.
+**Fixed alongside:** the logging showed the combined `refresh` reads NotLoading for a frame while the
+local read is still running, which could flash "No favorites yet"; `accountMediaGridContent` now
+waits for both the source and mediator refresh.
+**Next step:** close this if it doesn't reappear on a real device; if it does, log
+`loadState.source`/`loadState.mediator` again around the return to the grid.
 
 ## Android tests — 4 region-picker UI tests are skipped (Compose test-framework race)
 **What you see:** on an Android device/emulator, 4 of the 5 `RegionPickerDialogUiTest` tests report

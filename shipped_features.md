@@ -1364,3 +1364,45 @@ endpoint, no DB schema change.
   default is on; screen model persists the change. Compose UI - settings switch renders and
   toggles; carousel does not advance when disabled.
 - [x] Verify the usual Gradle tasks (desktopTest, compileKotlinDesktop, assembleDebug, ktlintCheck).
+
+---
+
+## 19. Offline-first Favorites/Watchlist with "not synced" markers — DONE (2026-11-12)
+*Not an open-list item: grew out of the KNOWN_BUGS fix "Offline favorite/watchlist changes are never
+sent to TMDB" (2026-11-11/12, branch `fix/offline-favorite-watchlist-outbox`).*
+
+**Goal**: Favorites/Watchlist keep working offline - your saved lists show at once, changes made
+offline reach TMDB by themselves, and the UI says honestly which ones haven't yet. Based on Android's
+offline-first guide (local data first, queued "lazy" writes, WorkManager with a network constraint)
+and Google's offline & sync design guidelines (grey not red, reassuring copy, no retry countdowns).
+
+- [x] **Outbox** (`trackedMediaOutbox`, migration `2.sqm`, schema 3): offline toggles are queued per
+  title, list and account and sent before `refreshAll` prunes (`TrackedMediaOutboxFlusher`). Sent ->
+  dropped; still offline -> kept; 401 -> kept for the next sign-in; other rejection -> dropped, TMDB's
+  state wins. Pre-outbox stuck removals were converted on upgrade.
+- [x] **Local data first**: `TrackedMediaRemoteMediator.initialize()` skips the automatic network
+  refresh when a list already has saved rows. Offline the grid had been blank ~90s while that
+  refresh exhausted the HTTP client's retries; now it paints at once.
+- [x] **Automatic sending** (`QueuedToggleSyncScheduler`): Android - a one-off WorkManager job
+  constrained to a connected network, scheduled at app start and after each offline change (verified:
+  sent ~46s after reconnecting, app untouched). iOS/desktop - one send at app start; My Fav's refresh
+  covers the rest. Web never queues.
+- [x] **"Not synced" UI**: an upload-cloud marker on posters added offline (`NotSyncedBadge`), and a
+  grey line above the grid counting every waiting change, removals included (`PendingSyncLine`). Both
+  clear on their own once the queue drains.
+- [x] Tests: `TrackedMediaOutboxTest`, `OutboxMigrationTest`, `PagedFlowOfflineTest`,
+  `PendingSyncUiTest`, `SendQueuedTogglesUseCaseTest`, pending-sync cases in
+  `AccountMediaListScreenModelTest` and `MediaActionsStateTest`. Checked on the Android emulator against
+  a real TMDB account, dark and light.
+- [x] **Detail screens offline-first too** (2026-11-12): Movie/TV detail show the cached copy as
+  soon as `NetworkBoundResource` hands it over (was ~1 min offline), and the favorite/watchlist icons
+  start from the local lists instead of falling back to "off" offline. Verified on a physical Android device.
+- [x] **ScreenModels per back-stack entry** (2026-11-12): `NavDisplay` now uses
+  `rememberViewModelStoreNavEntryDecorator()` (`rememberAppEntryDecorators`), so a reopened title gets
+  a fresh ScreenModel and reloads its favorite/watchlist state; detail ScreenModels used to be
+  Activity-scoped and kept a stale state for the whole session. The login ScreenModel stays
+  app-wide (`sharedAuthScreenModel`). Verified on the Android emulator: reopening a title asks TMDB
+  again, switching tabs reloads nothing.
+- **Follow-ups** (in `KNOWN_BUGS.md`): ~10s blank grid seen once on the emulator, not on hardware.
+  Not done: iOS foreground send (needs an app-level foreground hook; only app start for now).
+

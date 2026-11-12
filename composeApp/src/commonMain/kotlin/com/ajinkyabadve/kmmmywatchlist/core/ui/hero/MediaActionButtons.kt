@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
 import com.ajinkyabadve.kmmmywatchlist.core.notification.rememberNotificationPermissionRequester
 import com.ajinkyabadve.kmmmywatchlist.design.util.addShimmerLoadingAnimation
@@ -36,8 +35,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.repository.ListsReposito
 import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AddToListDialog
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
-import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModelDefaults
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthUiState
+import com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel.sharedAuthScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.NotificationSettingsRepositoryImpl
 import kotlinx.coroutines.launch
@@ -152,7 +151,7 @@ internal fun MediaActionButtonsSection(
     scheduleNotificationJob: () -> Unit = { NotificationScheduler.schedule() },
 ) {
     val authScreenModel =
-        viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) }
+        sharedAuthScreenModel(authRepository)
     val authUiState by authScreenModel.uiState.collectAsState()
     val session = (authUiState as? AuthUiState.LoggedIn)?.session ?: return
 

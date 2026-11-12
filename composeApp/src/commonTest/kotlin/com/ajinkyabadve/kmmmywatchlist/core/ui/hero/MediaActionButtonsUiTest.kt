@@ -14,9 +14,11 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.model.AccountStates
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeAccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeListsRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.FakeTrackedMediaRepository
+import com.ajinkyabadve.kmmmywatchlist.features.account.screen.AccountMediaCategory
 import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.FakeAuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.settings.repository.FakeNotificationSettingsRepository
+import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -26,6 +28,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 private object MediaActionButtonsUiTestConstant {
+    const val OFFLINE = "offline"
     const val MOVIE_ID = 42L
     const val SESSION_ID = "session_abc"
     const val ACCOUNT_ID = 100L
@@ -175,6 +178,47 @@ class MediaActionButtonsSectionUiTest {
     fun testPreChecksFavoriteFromAccountStates() =
         runComposeUiTest {
             val mediaActionsState = preloadedMediaActionsState(favorite = true, watchlist = false)
+            setContent {
+                MediaActionButtonsSection(
+                    mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,
+                    colors = colors(),
+                    showAddToList = false,
+                    authRepository = fakeAuthRepository,
+                    mediaActionsState = mediaActionsState,
+                    listsRepository = FakeListsRepository(),
+                )
+            }
+
+            onNodeWithContentDescription(MediaActionButtonsUiTestConstant.FAVORITE_CONTENT_DESCRIPTION).performClick()
+
+            assertEquals(listOf(false), fakeAccountMediaRepository.setFavoriteCalls)
+        }
+
+    /**
+     * Offline (account_states fails) with the title in the local favorites: the heart starts on, so
+     * tapping it turns favorite OFF - not on, as it did when an offline load fell back to "off".
+     */
+    @Test
+    fun testOfflineHeartStartsFromTheLocalFavorites() =
+        runComposeUiTest {
+            fakeAccountMediaRepository.accountStatesResult = Result.failure(IOException(MediaActionButtonsUiTestConstant.OFFLINE))
+            val trackedMediaRepository =
+                FakeTrackedMediaRepository().apply {
+                    seedTrackedCategories(
+                        MediaActionButtonsUiTestConstant.MOVIE_ID.toInt(),
+                        MediaTypeConstant.MOVIE,
+                        setOf(AccountMediaCategory.FAVORITES),
+                    )
+                }
+            val mediaActionsState =
+                MediaActionsState(
+                    MediaTypeConstant.MOVIE,
+                    MediaActionButtonsUiTestConstant.MOVIE_ID,
+                    CoroutineScope(UnconfinedTestDispatcher()),
+                    fakeAccountMediaRepository,
+                    trackedMediaRepository,
+                    scheduleQueuedToggleSync = {},
+                ).apply { load(MediaActionButtonsUiTestConstant.SESSION_ID) }
             setContent {
                 MediaActionButtonsSection(
                     mediaId = MediaActionButtonsUiTestConstant.MOVIE_ID,

@@ -27,5 +27,5 @@ package com.ajinkyabadve.kmmmywatchlist.db
  * match `CURRENT`, independent of whether a real `.sqm` migration exists yet.
  */
 internal object LocalSchemaVersion {
-    const val CURRENT = 2
+    const val CURRENT = 3
 }

@@ -1,0 +1,16 @@
+-- Offline favorite/watchlist outbox (see trackedMediaOutbox in MyDatabase.sq).
+CREATE TABLE trackedMediaOutbox (
+    id INTEGER NOT NULL,
+    mediaType TEXT NOT NULL,
+    category TEXT NOT NULL,
+    accountId INTEGER NOT NULL,
+    desiredState INTEGER NOT NULL,
+    queuedAt INTEGER NOT NULL,
+    PRIMARY KEY (id, mediaType, category, accountId)
+);
+
+-- Before the outbox, an offline removal only set pendingSync = 1 and was never sent. Queue each
+-- one as a removal so the first flush finally sends it. Their account was never stored, so they
+-- go in unclaimed (accountId 0) - the first signed-in account to flush claims them.
+INSERT OR IGNORE INTO trackedMediaOutbox(id, mediaType, category, accountId, desiredState, queuedAt)
+SELECT id, mediaType, category, 0, 0, lastSyncedAt FROM trackedMedia WHERE pendingSync = 1;
