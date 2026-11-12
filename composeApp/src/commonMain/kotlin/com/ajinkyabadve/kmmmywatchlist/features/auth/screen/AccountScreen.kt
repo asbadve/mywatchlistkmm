@@ -54,6 +54,7 @@ import com.ajinkyabadve.kmmmywatchlist.features.auth.model.UserSession
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel.AccountScreenModel
+import com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel.sharedAuthScreenModel
 import com.ajinkyabadve.kmmmywatchlist.features.backup.screen.BackupRestoreDialogs
 import com.ajinkyabadve.kmmmywatchlist.features.backup.viewmodel.BackupScreenModel
 import com.ajinkyabadve.kmmmywatchlist.openUrl
@@ -102,7 +103,7 @@ fun AccountScreen(
     backupScreenModel: BackupScreenModel = viewModel { BackupScreenModel() },
     accountScreenModel: AccountScreenModel = viewModel { AccountScreenModel() },
     screenModel: AuthScreenModel =
-        viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
+        sharedAuthScreenModel(authRepository),
 ) {
     val uiState by screenModel.uiState.collectAsState()
     val settingsState by accountScreenModel.uiState.collectAsState()

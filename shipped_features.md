@@ -1368,7 +1368,12 @@ and Google's offline & sync design guidelines (grey not red, reassuring copy, no
 - [x] **Detail screens offline-first too** (2026-11-12): Movie/TV detail show the cached copy as
   soon as `NetworkBoundResource` hands it over (was ~1 min offline), and the favorite/watchlist icons
   start from the local lists instead of falling back to "off" offline. Verified on a physical Android device.
-- **Follow-ups** (in `KNOWN_BUGS.md`): ~10s blank grid seen once on the emulator, not on hardware;
-  detail ScreenModels are Activity-scoped, so a reopened title keeps a stale icon state. Not done:
-  iOS foreground send (needs an app-level foreground hook; only app start for now).
+- [x] **ScreenModels per back-stack entry** (2026-11-12): `NavDisplay` now uses
+  `rememberViewModelStoreNavEntryDecorator()` (`rememberAppEntryDecorators`), so a reopened title gets
+  a fresh ScreenModel and reloads its favorite/watchlist state; detail ScreenModels used to be
+  Activity-scoped and kept a stale state for the whole session. The login ScreenModel stays
+  app-wide (`sharedAuthScreenModel`). Verified on the Android emulator: reopening a title asks TMDB
+  again, switching tabs reloads nothing.
+- **Follow-ups** (in `KNOWN_BUGS.md`): ~10s blank grid seen once on the emulator, not on hardware.
+  Not done: iOS foreground send (needs an app-level foreground hook; only app start for now).
 

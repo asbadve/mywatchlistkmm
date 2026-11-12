@@ -12,7 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ajinkyabadve.kmmmywatchlist.core.WindowSize
 import com.ajinkyabadve.kmmmywatchlist.core.asString
 import com.ajinkyabadve.kmmmywatchlist.core.auth.WebAuthLauncher
@@ -27,8 +26,8 @@ import com.ajinkyabadve.kmmmywatchlist.features.account.screen.MyFavTabs
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepository
 import com.ajinkyabadve.kmmmywatchlist.features.auth.repository.AuthRepositoryImpl
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModel
-import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthScreenModelDefaults
 import com.ajinkyabadve.kmmmywatchlist.features.auth.screen.AuthUiState
+import com.ajinkyabadve.kmmmywatchlist.features.auth.viewmodel.sharedAuthScreenModel
 
 @Composable
 fun MyFavScreenTab(
@@ -41,7 +40,7 @@ fun MyFavScreenTab(
     webAuthLauncher: WebAuthLauncher = rememberWebAuthLauncher(),
     authRepository: AuthRepository = AuthRepositoryImpl(),
     screenModel: AuthScreenModel =
-        viewModel(key = AuthScreenModelDefaults.SHARED_KEY) { AuthScreenModel(authRepository) },
+        sharedAuthScreenModel(authRepository),
     // Test-only seams, same pattern MovieScreenTabs uses for its per-tab repositories.
     listsRepository: ListsRepository? = null,
     trackedMediaRepository: TrackedMediaRepository? = null,
