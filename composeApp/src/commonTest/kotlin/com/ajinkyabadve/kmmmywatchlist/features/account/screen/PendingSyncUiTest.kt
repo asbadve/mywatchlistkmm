@@ -37,9 +37,10 @@ class PendingSyncUiTest {
             fake.seedQueuedToggles(AccountMediaCategory.FAVORITES, listOf(QueuedToggle(OFFLINE_ID, MediaTypeConstant.MOVIE, isOn = true)))
             setContent { tab(fake) }
             waitUntilExactlyOneExists(hasText(SYNCED_TITLE))
+            // The posters and the queue arrive on separate flows: wait for the marker itself.
+            waitUntilExactlyOneExists(hasTestTag(NotSyncedBadgeConstant.TAG))
 
             onAllNodesWithTag(NotSyncedBadgeConstant.TAG).assertCountEquals(1)
-            onNodeWithTag(NotSyncedBadgeConstant.TAG).assertExists()
             waitUntilExactlyOneExists(hasContentDescription(NOT_SYNCED_LABEL))
         }
 
@@ -59,6 +60,8 @@ class PendingSyncUiTest {
 
             waitUntilExactlyOneExists(hasTestTag(PendingSyncLineConstant.TAG))
             waitUntilExactlyOneExists(hasText(TWO_WAITING_TEXT, substring = true))
+            // The line can show before the grid's posters load; wait for the one marker.
+            waitUntilExactlyOneExists(hasTestTag(NotSyncedBadgeConstant.TAG))
             onAllNodesWithTag(NotSyncedBadgeConstant.TAG).assertCountEquals(1)
         }
 
