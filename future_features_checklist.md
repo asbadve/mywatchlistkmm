@@ -28,6 +28,7 @@ what stops the same ground being re-covered. This file holds only what is still 
 | [15. Upcoming Releases List for Favorites & Watchlist](shipped_features.md#15-upcoming-releases-list-for-favorites--watchlist-movies--episodes-date-sorted--done-2026-09-28) | DONE |
 | [16. Release-Date Reminders for Unreleased Titles](shipped_features.md#16-release-date-reminders-for-unreleased-titles-remind-me-cta--day-before--release-day-alerts--done-2026-10-04) | DONE |
 | [17. Remove Existing Deprecated API Usages](shipped_features.md#17-remove-existing-deprecated-api-usages--done-2026-10-17) | DONE |
+| [18. Settings Toggle to Turn Off Trending Carousel Autoscroll](shipped_features.md#18-settings-toggle-to-turn-off-trending-carousel-autoscroll--done-2026-11-11) | DONE |
 | [19. Offline-first Favorites/Watchlist with "not synced" markers](shipped_features.md#19-offline-first-favoriteswatchlist-with-not-synced-markers--done-2026-11-12) | DONE |
 
 **Still open inside those shipped items** - the only unchecked boxes left in the archive, listed
@@ -1098,31 +1099,3 @@ module straightforward) and item 23 (tests already run on every platform before 
   YAML flows (launch, browse, open detail, favorite, settings) run against the release build on
   Android and iOS before tagging - the one case where outside-in testing earns its cost.
 - [ ] Verify: both modules' tests pass on every platform with the same case count as before.
-
----
-
-## 25. Settings Toggle to Turn Off Trending Carousel Autoscroll (queued 2026-10-17)
-**Status (2026-10-25):** not started. PR #21 only added this plan; no code exists yet.
-
-**Goal**: Let users switch off the Trending tab's carousel autoscroll
-([shipped item 14](shipped_features.md#14-autoscroll-the-trending-media-carousels--done-2026-09-27))
-from the account screen's settings list. Today it can only be stopped indirectly (reduce motion /
-screen reader). Default stays **on**, so nothing changes for existing users. Small; no TMDB
-endpoint, no DB schema change.
-
-- [x] **Storage**: a repository in `features/settings/repository/` next to
-  `RestrictedModeRepository` (same multiplatform-settings pattern), e.g.
-  `isTrendingAutoScrollEnabled()` / `setTrendingAutoScrollEnabled()`, exposed as a `Flow`/
-  `StateFlow` so the Trending tab reacts without a restart. Key name as a `private const val`.
-- [x] **Gate**: add an `autoScrollEnabled: Boolean` parameter to `isAutoScrollAllowed`
-  (`core/ui/carousel/AutoScrollCarousel.kt`) and include it in `AutoScrollCarouselEffect`'s keys so
-  flipping the switch stops/starts the loop immediately. Feed it from `TrendingScreenTabViewModel`
-  state down through `TrendingMediaCarousel`.
-- [x] **UI**: a switch row in `SettingsList.kt` (label + description in `strings.xml`), wired
-  through `AccountUiState` / `AccountScreenModel.onTrendingAutoScrollChanged`.
-- [x] **Backup**: include the flag in the backup file (`features/backup/model/Backup.kt`) alongside
-  `restrictedModeEnabled`, defaulting to `true` when an older backup lacks it.
-- [x] Tests: unit - `isAutoScrollAllowed` returns false when the setting is off; repository
-  default is on; screen model persists the change. Compose UI - settings switch renders and
-  toggles; carousel does not advance when disabled.
-- [x] Verify the usual Gradle tasks (desktopTest, compileKotlinDesktop, assembleDebug, ktlintCheck).
