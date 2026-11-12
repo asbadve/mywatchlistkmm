@@ -31,6 +31,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.notification.EpisodeNotificationTarg
 import com.ajinkyabadve.kmmmywatchlist.core.notification.MediaDetailNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PendingNotificationTarget
 import com.ajinkyabadve.kmmmywatchlist.core.notification.PersonNotificationTarget
+import com.ajinkyabadve.kmmmywatchlist.core.sync.QueuedToggleSyncScheduler
 import qrgenerator.AppContext
 
 class AndroidApp : Application() {
@@ -52,6 +53,8 @@ class AndroidApp : Application() {
         }
         createEpisodeNotificationChannel()
         createReleaseReminderChannel()
+        // Offline favorite/watchlist changes from an earlier session go out once a network is there.
+        QueuedToggleSyncScheduler.schedule()
     }
 
     // Must exist before LocalNotifier.post() ever notifies against it - channels are one-time

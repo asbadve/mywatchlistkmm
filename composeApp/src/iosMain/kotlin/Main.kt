@@ -7,6 +7,7 @@ import com.ajinkyabadve.kmmmywatchlist.App
 import com.ajinkyabadve.kmmmywatchlist.core.logging.initLogging
 import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationScheduler
 import com.ajinkyabadve.kmmmywatchlist.core.notification.NotificationTapDelegate
+import com.ajinkyabadve.kmmmywatchlist.core.sync.QueuedToggleSyncScheduler
 import platform.UIKit.UIViewController
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -15,6 +16,8 @@ fun MainViewController(): UIViewController {
     initLogging()
     NotificationTapDelegate.register()
     NotificationScheduler.ensureRegisteredAtLaunch()
+    // Offline favorite/watchlist changes from an earlier session - see QueuedToggleSyncScheduler.
+    QueuedToggleSyncScheduler.schedule()
     return ComposeUIViewController(configure = { enforceStrictPlistSanityCheck = false }) {
         App(calculateWindowSizeClass())
     }

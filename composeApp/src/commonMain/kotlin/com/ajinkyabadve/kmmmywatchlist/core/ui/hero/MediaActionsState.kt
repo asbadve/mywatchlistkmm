@@ -1,6 +1,7 @@
 package com.ajinkyabadve.kmmmywatchlist.core.ui.hero
 
 import com.ajinkyabadve.kmmmywatchlist.core.constant.MediaTypeConstant
+import com.ajinkyabadve.kmmmywatchlist.core.sync.QueuedToggleSyncScheduler
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepository
 import com.ajinkyabadve.kmmmywatchlist.features.account.repository.AccountMediaRepositoryImpl
@@ -59,6 +60,9 @@ class MediaActionsState(
     // this state holder never hits the real database.
     private val trackedMediaRepository: TrackedMediaRepository = TrackedMediaRepositoryImpl(),
     private val trackedMediaSnapshot: () -> TrackedMediaSnapshot? = { null },
+    // Test seam, same shape as MediaActionButtons' scheduleNotificationJob: the real scheduler
+    // starts a WorkManager job / background send, which a unit test must never reach.
+    private val scheduleQueuedToggleSync: () -> Unit = { QueuedToggleSyncScheduler.schedule() },
 ) {
     private val _uiState = MutableStateFlow(MediaActionsUiState())
     val uiState: StateFlow<MediaActionsUiState> = _uiState.asStateFlow()
@@ -76,12 +80,23 @@ class MediaActionsState(
 
     fun load(sessionId: String) {
         coroutineScope.launch {
+            // Offline-first: show what this device knows (the local favorites/watchlist, offline
+            // changes included) straight away. TMDB's account_states below replaces it when it
+            // answers; offline it never does, and the icons used to fall back to "off" even for a
+            // title in your favorites.
+            val local = trackedMediaRepository.trackedCategories(mediaId.toInt(), mediaType)
+            _uiState.update {
+                it.copy(
+                    isFavorite = AccountMediaCategory.FAVORITES in local,
+                    isInWatchlist = AccountMediaCategory.WATCHLIST in local,
+                    isLoading = false,
+                )
+            }
             runCatchingApiCall("loading account states for $mediaType/$mediaId") {
                 val states = accountMediaRepository.getAccountStates(sessionId, mediaType, mediaId)
                 _uiState.update { it.copy(isFavorite = states.favorite, isInWatchlist = states.watchlist, isLoading = false) }
             }
-            // Also clears the shimmer on failure - an unknown favorite/watchlist state is shown as
-            // unset rather than stuck loading forever; the next successful load corrects it.
+            // Also clears the shimmer on failure, in case the local read above didn't run first.
             _uiState.update { it.copy(isLoading = false) }
         }
     }
@@ -103,21 +118,8 @@ class MediaActionsState(
                 runCatchingApiCall("toggling favorite for $mediaType/$mediaId") {
                     accountMediaRepository.setFavorite(accountId, sessionId, mediaType, mediaId, newValue)
                 }
-            when (outcome) {
-                ToggleOutcome.SUCCESS ->
-                    if (!newValue) {
-                        trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
-                    } else {
-                        trackLocally(AccountMediaCategory.FAVORITES)
-                    }
-                // Offline - the optimistic icon state stays put. A removal stays queued (local
-                // hide); an addition is written locally so Upcoming matches the icon, and the next
-                // complete refresh drops it again if it never reached TMDB.
-                ToggleOutcome.OFFLINE -> if (newValue) trackLocally(AccountMediaCategory.FAVORITES)
-                ToggleOutcome.FAILED -> {
-                    _uiState.update { it.copy(isFavorite = !newValue) }
-                    if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.FAVORITES)
-                }
+            settleToggle(outcome, AccountMediaCategory.FAVORITES, accountId, newValue) {
+                _uiState.update { it.copy(isFavorite = !newValue) }
             }
         }
     }
@@ -137,19 +139,44 @@ class MediaActionsState(
                 runCatchingApiCall("toggling watchlist for $mediaType/$mediaId") {
                     accountMediaRepository.setWatchlist(accountId, sessionId, mediaType, mediaId, newValue)
                 }
-            when (outcome) {
-                ToggleOutcome.SUCCESS ->
-                    if (!newValue) {
-                        trackedMediaRepository.confirmDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
-                    } else {
-                        trackLocally(AccountMediaCategory.WATCHLIST)
-                    }
-                // Same as toggleFavorite's offline branch.
-                ToggleOutcome.OFFLINE -> if (newValue) trackLocally(AccountMediaCategory.WATCHLIST)
-                ToggleOutcome.FAILED -> {
-                    _uiState.update { it.copy(isInWatchlist = !newValue) }
-                    if (!newValue) trackedMediaRepository.clearPendingDelete(mediaId.toInt(), mediaType, AccountMediaCategory.WATCHLIST)
-                }
+            settleToggle(outcome, AccountMediaCategory.WATCHLIST, accountId, newValue) {
+                _uiState.update { it.copy(isInWatchlist = !newValue) }
+            }
+        }
+    }
+
+    /**
+     * The local side of a favorite/watchlist toggle once its TMDB call resolved - shared by
+     * [toggleFavorite] and [toggleWatchlist], which differ only in [category] and which icon
+     * [rollBackIcon] resets.
+     * - Sent: confirm a removal, or write an addition locally; drop any toggle still queued for
+     *   this title, since this one supersedes it.
+     * - Offline: the icon keeps its new state. A removal stays hidden locally, an addition is
+     *   written locally, and the toggle is queued (see [TrackedMediaRepository.queueOfflineToggle])
+     *   and a send scheduled for when the network is back (`QueuedToggleSyncScheduler`).
+     * - Failed: TMDB rejected it - the icon and any local hide roll back.
+     */
+    private suspend fun settleToggle(
+        outcome: ToggleOutcome,
+        category: AccountMediaCategory,
+        accountId: Long,
+        newValue: Boolean,
+        rollBackIcon: () -> Unit,
+    ) {
+        val id = mediaId.toInt()
+        when (outcome) {
+            ToggleOutcome.SUCCESS -> {
+                if (newValue) trackLocally(category) else trackedMediaRepository.confirmDelete(id, mediaType, category)
+                trackedMediaRepository.clearQueuedToggle(id, mediaType, category, accountId)
+            }
+            ToggleOutcome.OFFLINE -> {
+                if (newValue) trackLocally(category)
+                trackedMediaRepository.queueOfflineToggle(id, mediaType, category, accountId, newValue)
+                scheduleQueuedToggleSync()
+            }
+            ToggleOutcome.FAILED -> {
+                rollBackIcon()
+                if (!newValue) trackedMediaRepository.clearPendingDelete(id, mediaType, category)
             }
         }
     }
@@ -167,9 +194,9 @@ class MediaActionsState(
         }
     }
 
-    /** [OFFLINE] is distinguished from [FAILED] so a toggle made without connectivity stays queued
-     *  (see [markPendingDelete][TrackedMediaRepository.markPendingDelete]) instead of bouncing back -
-     *  only a real server-side rejection rolls the toggle back. */
+    /** [OFFLINE] is distinguished from [FAILED] so a toggle made without connectivity is queued
+     *  for the next refresh (see [settleToggle]) instead of bouncing back - only a real
+     *  server-side rejection rolls the toggle back. */
     private enum class ToggleOutcome { SUCCESS, OFFLINE, FAILED }
 
     private suspend fun runCatchingApiCall(

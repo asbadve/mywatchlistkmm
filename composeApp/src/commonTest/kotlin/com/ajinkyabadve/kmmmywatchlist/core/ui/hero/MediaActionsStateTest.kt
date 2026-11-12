@@ -46,6 +46,7 @@ class MediaActionsStateTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private val fakeAccountMediaRepository = FakeAccountMediaRepository()
     private val fakeTrackedMediaRepository = FakeTrackedMediaRepository()
+    private var scheduledSyncs = 0
 
     // Built in a standalone runTest{}, isolated from each test's own runTest(testDispatcher){} -
     // see MovieListScreenModelTest's identical setup for why resolving this inline inside a test
@@ -65,6 +66,18 @@ class MediaActionsStateTest {
         Dispatchers.resetMain()
     }
 
+    /** The [FakeTrackedMediaRepository.QueuedToggleCall] this state holder records; [isOn] null = a clear. */
+    private fun queued(
+        category: AccountMediaCategory,
+        isOn: Boolean? = null,
+    ) = FakeTrackedMediaRepository.QueuedToggleCall(
+        MediaActionsStateTestConstant.MOVIE_ID.toInt(),
+        MediaTypeConstant.MOVIE,
+        category,
+        MediaActionsStateTestConstant.ACCOUNT_ID,
+        isOn,
+    )
+
     private fun state(snapshot: TrackedMediaSnapshot? = MediaActionsStateTestConstant.SNAPSHOT) =
         MediaActionsState(
             MediaTypeConstant.MOVIE,
@@ -73,6 +86,7 @@ class MediaActionsStateTest {
             fakeAccountMediaRepository,
             fakeTrackedMediaRepository,
             trackedMediaSnapshot = { snapshot },
+            scheduleQueuedToggleSync = { scheduledSyncs++ },
         )
 
     private fun tvState() =
@@ -82,6 +96,7 @@ class MediaActionsStateTest {
             CoroutineScope(testDispatcher),
             fakeAccountMediaRepository,
             fakeTrackedMediaRepository,
+            scheduleQueuedToggleSync = { scheduledSyncs++ },
         )
 
     /** Before `load()` is ever called, the icons must show a ghost/shimmer, not a guessed state. */
@@ -114,6 +129,43 @@ class MediaActionsStateTest {
             assertFalse(mediaActionsState.uiState.value.isLoading)
         }
 
+    /** Offline: the icons show the local favorites/watchlist instead of falling back to "off". */
+    @Test
+    fun testOfflineLoadShowsTheLocalFavoriteAndWatchlistState() =
+        runTest(testDispatcher) {
+            fakeTrackedMediaRepository.seedTrackedCategories(
+                MediaActionsStateTestConstant.MOVIE_ID.toInt(),
+                MediaTypeConstant.MOVIE,
+                setOf(AccountMediaCategory.FAVORITES, AccountMediaCategory.WATCHLIST),
+            )
+            fakeAccountMediaRepository.accountStatesResult = Result.failure(IOException("Mock network failure"))
+            val mediaActionsState = state()
+
+            mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID)
+
+            assertTrue(mediaActionsState.uiState.value.isFavorite)
+            assertTrue(mediaActionsState.uiState.value.isInWatchlist)
+            assertFalse(mediaActionsState.uiState.value.isLoading)
+        }
+
+    /** Online, TMDB's answer wins over the local state - e.g. a title unfavorited on the website. */
+    @Test
+    fun testOnlineLoadReplacesTheLocalStateWithTmdbs() =
+        runTest(testDispatcher) {
+            fakeTrackedMediaRepository.seedTrackedCategories(
+                MediaActionsStateTestConstant.MOVIE_ID.toInt(),
+                MediaTypeConstant.MOVIE,
+                setOf(AccountMediaCategory.FAVORITES),
+            )
+            fakeAccountMediaRepository.accountStatesResult = Result.success(AccountStates(favorite = false, watchlist = true))
+            val mediaActionsState = state()
+
+            mediaActionsState.load(MediaActionsStateTestConstant.SESSION_ID)
+
+            assertFalse(mediaActionsState.uiState.value.isFavorite)
+            assertTrue(mediaActionsState.uiState.value.isInWatchlist)
+        }
+
     /** Toggling doesn't wait on `isLoading` - an optimistic toggle updates immediately either way. */
     @Test
     fun testToggleFavoriteWorksWhileStillLoading() {
@@ -141,6 +193,9 @@ class MediaActionsStateTest {
                 fakeTrackedMediaRepository.markPendingDeleteCalls,
             )
             assertTrue(fakeTrackedMediaRepository.confirmDeleteCalls.isEmpty())
+            assertEquals(listOf(queued(AccountMediaCategory.FAVORITES, isOn = false)), fakeTrackedMediaRepository.queueOfflineToggleCalls)
+            // A send is scheduled for when the network is back.
+            assertEquals(1, scheduledSyncs)
         }
 
     /** A real server-side rejection (not offline) rolls both the icon and the local queue back. */
@@ -159,6 +214,9 @@ class MediaActionsStateTest {
                 listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
                 fakeTrackedMediaRepository.clearPendingDeleteCalls,
             )
+            assertTrue(fakeTrackedMediaRepository.queueOfflineToggleCalls.isEmpty())
+            assertTrue(fakeTrackedMediaRepository.clearQueuedToggleCalls.isEmpty())
+            assertEquals(0, scheduledSyncs)
         }
 
     /** A successful removal hard-deletes the queued row rather than leaving it marked pending. */
@@ -175,6 +233,10 @@ class MediaActionsStateTest {
                 listOf(Triple(MediaActionsStateTestConstant.MOVIE_ID.toInt(), MediaTypeConstant.MOVIE, AccountMediaCategory.FAVORITES)),
                 fakeTrackedMediaRepository.confirmDeleteCalls,
             )
+            // Supersedes anything still queued for this title from an earlier offline toggle.
+            assertEquals(listOf(queued(AccountMediaCategory.FAVORITES)), fakeTrackedMediaRepository.clearQueuedToggleCalls)
+            assertTrue(fakeTrackedMediaRepository.queueOfflineToggleCalls.isEmpty())
+            assertEquals(0, scheduledSyncs)
         }
 
     /** Favoriting a TV show ON is exactly the moment the episode-alerts opt-in prompt should fire. */
@@ -270,6 +332,20 @@ class MediaActionsStateTest {
                 listOf(MediaActionsStateTestConstant.SNAPSHOT to AccountMediaCategory.FAVORITES),
                 fakeTrackedMediaRepository.trackLocallyCalls,
             )
+            assertEquals(listOf(queued(AccountMediaCategory.FAVORITES, isOn = true)), fakeTrackedMediaRepository.queueOfflineToggleCalls)
+        }
+
+    /** The watchlist toggle queues under its own list, not favorites. */
+    @Test
+    fun testTurningWatchlistOnWhileOfflineQueuesItUnderWatchlist() =
+        runTest(testDispatcher) {
+            fakeAccountMediaRepository.setWatchlistResult = Result.failure(IOException("Mock network failure"))
+            val mediaActionsState = state()
+
+            mediaActionsState.toggleWatchlist(MediaActionsStateTestConstant.ACCOUNT_ID, MediaActionsStateTestConstant.SESSION_ID)
+
+            assertTrue(mediaActionsState.uiState.value.isInWatchlist)
+            assertEquals(listOf(queued(AccountMediaCategory.WATCHLIST, isOn = true)), fakeTrackedMediaRepository.queueOfflineToggleCalls)
         }
 
     /** A real rejection rolls the heart back, so nothing may be written. */

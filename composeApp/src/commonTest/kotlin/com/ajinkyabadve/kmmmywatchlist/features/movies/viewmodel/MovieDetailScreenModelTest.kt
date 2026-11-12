@@ -87,6 +87,31 @@ class MovieDetailScreenModelTest {
             assertTrue(fakeCacheRepository.getMovieDetailCalls.size == 2)
         }
 
+    /** Offline: the cached page shows while the network call is still retrying, not after it fails. */
+    @Test
+    fun testCachedDetailShowsWhileTheNetworkIsStillPending() =
+        runTest(testDispatcher) {
+            val cachedDetail = MovieDetail(id = 42, title = "Cached Movie")
+            fakeCacheRepository.seedCached(42, cachedDetail)
+            fakeCacheRepository.networkNeverResponds = true
+
+            val viewModel = buildModel()
+
+            val state = assertIs<MovieDetailState.Success>(viewModel.uiState.value)
+            assertEquals(cachedDetail, state.movieDetail)
+        }
+
+    /** Nothing cached yet: stays Loading while the network is pending (no empty page). */
+    @Test
+    fun testNothingCachedStaysLoadingWhileTheNetworkIsPending() =
+        runTest(testDispatcher) {
+            fakeCacheRepository.networkNeverResponds = true
+
+            val viewModel = buildModel()
+
+            assertIs<MovieDetailState.Loading>(viewModel.uiState.value)
+        }
+
     @Test
     fun testLocalCacheSurvivesANetworkErrorOnTheInitialLoad() =
         runTest(testDispatcher) {

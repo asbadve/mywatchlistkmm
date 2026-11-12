@@ -115,7 +115,9 @@ class TvDetailScreenModel(
         viewModelScope.launch(Dispatchers.Main) {
             tvDetailCacheRepository.getTvDetail(tvId).collect { resource ->
                 when (resource) {
-                    is Resource.Loading -> Unit // _uiState already starts Loading
+                    // Offline-first: show the cached copy NetworkBoundResource hands over before it
+                    // fetches, instead of waiting for the fetch to fail - see MovieDetailScreenModel.
+                    is Resource.Loading -> resource.data?.let { _uiState.value = buildSuccessState(it.first, it.second) }
                     is Resource.Success -> _uiState.value = buildSuccessState(resource.data.first, resource.data.second)
                     is Resource.Error ->
                         if (resource.data != null) {

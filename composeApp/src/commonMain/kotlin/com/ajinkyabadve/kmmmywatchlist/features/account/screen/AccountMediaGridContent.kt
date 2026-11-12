@@ -58,10 +58,17 @@ fun accountMediaGridContent(
     emptyMessage: String,
     onItemSelected: (id: Long) -> Unit,
     lazyGridState: LazyGridState = rememberLazyGridState(),
+    notSyncedIds: Set<Int> = emptySet(),
 ) {
     val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
 
-    if (lazyPagingItems.itemCount == 0 && lazyPagingItems.loadState.refresh is LoadState.NotLoading) {
+    // Empty only once both halves are done: the local read (source) and the network refresh
+    // (mediator, absent on web). The combined `refresh` alone reads NotLoading for a frame while the
+    // local read is still running (seen 2026-11-12 on a physical Android device), which flashed this message.
+    val loadState = lazyPagingItems.loadState
+    val nothingLoading =
+        loadState.source.refresh is LoadState.NotLoading && (loadState.mediator?.refresh ?: loadState.refresh) is LoadState.NotLoading
+    if (lazyPagingItems.itemCount == 0 && nothingLoading) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = emptyMessage,
@@ -104,6 +111,15 @@ fun accountMediaGridContent(
                         modifier =
                             Modifier
                                 .align(Alignment.TopEnd)
+                                .padding(AccountMediaGridConstant.BADGE_OFFSET),
+                    )
+                }
+                // Top-start, so it never collides with the Upcoming badge in the other corner.
+                if (item.id in notSyncedIds) {
+                    NotSyncedBadge(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
                                 .padding(AccountMediaGridConstant.BADGE_OFFSET),
                     )
                 }

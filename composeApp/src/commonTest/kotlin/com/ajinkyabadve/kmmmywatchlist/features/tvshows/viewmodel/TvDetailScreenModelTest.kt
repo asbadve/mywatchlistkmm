@@ -197,6 +197,22 @@ class TvDetailScreenModelTest {
             assertEquals(1, state.tvDetail.id)
         }
 
+    /** Offline: the cached page shows while the network call is still retrying, not after it fails. */
+    @Test
+    fun testCachedDetailShowsWhileTheNetworkIsStillPending() =
+        runTest(testDispatcher) {
+            val cachedDetail = TvDetail(id = 1, title = "Cached Show", seasons = listOf(SeasonSummary(seasonNumber = 1)))
+            fakeCacheRepository.seedCached(1, cachedDetail)
+            fakeCacheRepository.seedCachedSeason(1, TvSeasonDetail(seasonNumber = 1, name = "Cached Season"))
+            fakeCacheRepository.networkNeverResponds = true
+
+            val viewModel = buildModel()
+
+            val state = assertIs<TvDetailState.Success>(viewModel.uiState.value)
+            assertEquals("Cached Show", state.tvDetail.title)
+            assertEquals("Cached Season", state.currentSeason?.name)
+        }
+
     @Test
     fun testLocalCacheSurvivesANetworkErrorOnTheInitialLoad() =
         runTest(testDispatcher) {

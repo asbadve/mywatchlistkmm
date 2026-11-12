@@ -3,6 +3,7 @@ package com.ajinkyabadve.kmmmywatchlist.features.account.repository
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import com.ajinkyabadve.kmmmywatchlist.features.account.model.QueuedToggle
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedMediaSnapshot
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvPollCandidate
 import com.ajinkyabadve.kmmmywatchlist.features.account.model.TrackedTvShowSummary
@@ -25,7 +26,8 @@ private object NetworkOnlyTrackedMediaConstant {
  * rather than fighting sql.js/WebWorkerDriver's build and bundling cost for a platform with no
  * offline story to begin with. [pagedFlow] fetches TMDB directly, one page at a time, with no
  * local mirror behind it - so there's nothing for [markPendingDelete]/[clearPendingDelete]/
- * [trackLocally]/[confirmDelete]/[updatePollState] to update either; they're no-ops here.
+ * [trackLocally]/[confirmDelete]/[updatePollState] to update either; they're no-ops here. So are
+ * [queueOfflineToggle]/[clearQueuedToggle]/[observeQueuedToggles]/[sendQueuedToggles]: nothing persists across a page load to hold a queue.
  */
 internal class NetworkOnlyTrackedMediaRepositoryImpl(
     private val accountMediaRepository: AccountMediaRepository,
@@ -92,11 +94,43 @@ internal class NetworkOnlyTrackedMediaRepositoryImpl(
         category: AccountMediaCategory,
     ) = Unit
 
+    // No local table on web - the icons rely on account_states alone, as before.
+    override suspend fun trackedCategories(
+        id: Int,
+        mediaType: String,
+    ): Set<AccountMediaCategory> = emptySet()
+
     override suspend fun confirmDelete(
         id: Int,
         mediaType: String,
         category: AccountMediaCategory,
     ) = Unit
+
+    override suspend fun queueOfflineToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+        isOn: Boolean,
+    ) = Unit
+
+    override suspend fun clearQueuedToggle(
+        id: Int,
+        mediaType: String,
+        category: AccountMediaCategory,
+        accountId: Long,
+    ) = Unit
+
+    override fun observeQueuedToggles(
+        accountId: Long,
+        category: AccountMediaCategory,
+    ): Flow<List<QueuedToggle>> = flowOf(emptyList())
+
+    // Nothing is ever queued on web, so there's never anything left to send.
+    override suspend fun sendQueuedToggles(
+        accountId: Long,
+        sessionId: String,
+    ): Boolean = true
 
     // No local table to enumerate on web - same reasoning as trackedTvForPolling above.
     override fun observeUpcoming(): Flow<List<UpcomingMediaItem>> = flowOf(emptyList())

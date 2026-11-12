@@ -4,6 +4,7 @@ import com.ajinkyabadve.kmmmywatchlist.core.UiText
 import com.ajinkyabadve.kmmmywatchlist.core.data.Resource
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvDetail
 import com.ajinkyabadve.kmmmywatchlist.features.tvshows.model.TvSeasonDetail
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
@@ -23,6 +24,9 @@ class FakeTvDetailCacheRepository : TvDetailCacheRepository {
      *  that don't care about seasons don't have to set it. */
     var getTvDetailSeasonsResult: Map<Int, TvSeasonDetail> = emptyMap()
     val getTvDetailCalls = mutableListOf<Long>()
+
+    /** Models a fetch still retrying offline: emit `Loading(cached)` and never finish. */
+    var networkNeverResponds = false
 
     fun seedCached(
         tvId: Long,
@@ -54,6 +58,11 @@ class FakeTvDetailCacheRepository : TvDetailCacheRepository {
             getTvDetailCalls.add(tvId)
             val cachedDetail = detailFlowFor(tvId).value
             val cached = cachedDetail?.let { it to seasonsFlowFor(tvId).value }
+            if (networkNeverResponds) {
+                // What NetworkBoundResource emits before its fetch - then the fetch never ends.
+                emit(Resource.Loading(cached))
+                awaitCancellation()
+            }
             getTvDetailResult.fold(
                 onSuccess = { detail ->
                     detailFlowFor(tvId).value = detail

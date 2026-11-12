@@ -307,6 +307,13 @@
     <string name="action_delete">Delete</string>
     <string name="favorite_content_description">Favorite</string>
     <string name="watchlist_content_description">Watchlist</string>
+    <!-- Favorites/Watchlist grid: a title added offline that hasn't reached TMDB yet. -->
+    <string name="not_synced_content_description">Not synced yet</string>
+    <!-- Line above the Favorites/Watchlist grid while offline changes wait to be sent. -->
+    <plurals name="pending_sync_waiting">
+        <item quantity="one">1 change not synced to TMDB yet. It'll be sent automatically once you're online.</item>
+        <item quantity="other">%1$d changes not synced to TMDB yet. They'll be sent automatically once you're online.</item>
+    </plurals>
 
     <!-- Region -->
     <string name="settings_region_label">Region</string>
